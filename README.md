@@ -1,5 +1,5 @@
 # Shortterm Loadforecasting 
 
-... extension of the following IEEE RTSI Conference Paper: *Improve Load Forecasting in Energy Communities through Transfer Learning using Open-Access Synthetic Profiles*.
+... extension of [this](https://arxiv.org/abs/2407.08434) IEEE RTSI Conference Paper.
 
 ... using state of the art models like xLSTMs, Transformers, Mamba, etc.
