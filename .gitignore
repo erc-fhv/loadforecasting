@@ -4,4 +4,4 @@
 *.csv
 *.h5
 data/Smartmeter data of London Households/
-data/CSV_74_Loadprofiles_1min_W_var/
+*.pyc

@@ -4,7 +4,7 @@ class StandardProfiles_Readout:
     
     def __init__(
                 self,
-                profiles_path = '../../data/raw/',
+                profiles_path = '../data/',
                 profiles_folder = 'CSV_74_Loadprofiles_1min_W_var/',
                 ):        
         
@@ -18,7 +18,7 @@ class StandardProfiles_Readout:
                 ):
 
         # Read in the Standard-Power-Profiles CSV file
-        df = pd.read_csv('../../data/raw/Standard_Loadprofile_APCS_2010.csv', delimiter=';')
+        df = pd.read_csv('../data/Standard_Loadprofile_APCS_2010.csv', delimiter=';')
 
         # Combine the 'Date' and 'Time' columns and convert to datetime format
         df['Datetime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'], format='%d.%m.%Y %H:%M:%S')
