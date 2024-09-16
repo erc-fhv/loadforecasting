@@ -1,145 +1,169 @@
-# import tensorflow.keras as keras
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import LearningRateScheduler
-from tensorflow.keras import regularizers
-import numpy as np
-from tensorflow.keras.callbacks import ModelCheckpoint
-import tensorflow.keras.backend as K
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.autograd import Variable
+from torch.utils.data import DataLoader, Dataset
 
-# for reproducibility
-np.random.seed(0)
-tf.random.set_seed(0)
-
-# Calculate the sMAPE
-# @keras.saving.register_keras_serializable()
-# def sMAPE(y_true, y_pred):
-#     epsilon = 0.0001  # avoid division by zero
-#     diff = K.abs(y_true - y_pred) / K.clip((K.abs(y_true) + K.abs(y_pred)) / 2, epsilon, None)
-#     return 100. * K.mean(diff, axis=-1)
-
-# # Calculate the RMSE
-# @keras.saving.register_keras_serializable()
-# def RMSE(y_true, y_pred):
-#     return K.sqrt(keras.losses.mean_squared_error(y_true, y_pred))
-
-class Optimizer:
-
-    def __init__(
-                self, 
-                maxEpochs,
-                set_learning_rates = [0.001],
-                miniBatchSize=None,
-                loss_type = 'MSE'
-                ):
-                
-        self.loss_type = loss_type
-        self.set_learning_rates = set_learning_rates
-        self.maxEpochs = maxEpochs
-        self.miniBatchSize = miniBatchSize
-        self.optimizer = Adam
-
-    def get_optimizer(self):
-        return self.optimizer(
-            learning_rate=self.set_learning_rates[0]
-        )
-
-    def get_early_stopping_callbacks(self):
-        return keras.callbacks.EarlyStopping(monitor='loss', patience=10)
-
-    def get_lr_callback(self):
-
-        lr_switching_points = np.flip(np.linspace(1, 0, len(self.set_learning_rates), endpoint=False))
-
-        # Define a learning rate schedule function
-        def lr_schedule(epoch):            
-
-            # Iterate linearly through the set_learning_rates list, accord to the progress
-            progress = epoch / self.maxEpochs
-            
-            for i, boundary in enumerate(lr_switching_points):
-                if progress < boundary:
-                    return self.set_learning_rates[i]
-
-            # If progress is greater than or equal to 1, use the last learning rate
-            return self.set_learning_rates[-1]
-
-        # Create LearningRateScheduler callback
-        lr_scheduler = LearningRateScheduler(lr_schedule)
-
-        return lr_scheduler
-    
-    def get_model_checkpoint_callback(self):
-        checkpoint = ModelCheckpoint(filepath='checkpoints/best_model.h5', 
-                                    monitor='val_loss', 
-                                    save_best_only=True, 
-                                    save_weights_only=False, 
-                                    mode='min',
-                                    verbose=1)
-        return checkpoint
-    
-    def get_all_callbacks(self):
-
-        callbacks = [
-                        self.get_lr_callback(), 
-                        # self.get_early_stopping_callbacks()
-                        # self.get_model_checkpoint_callback(), 
-                    ]
-        return callbacks
-
-# Define the LSTM model
-#
-class Model:
-    def __init__(self, optimizer, reg_strength, chosen_model='LSTM', shape=None):
-        self.optimizer = optimizer
+class Model(nn.Module):
+    def __init__(self, num_of_features, chosen_model='LSTM', ):
+        super(Model, self).__init__()
         
         if chosen_model == 'LSTM':
-            model_layers = [
-                keras.layers.Bidirectional(keras.layers.LSTM(units=10, return_sequences=True, kernel_regularizer=regularizers.l2(reg_strength))),
-                keras.layers.BatchNormalization(),
-                keras.layers.Bidirectional(keras.layers.LSTM(units=30, return_sequences=True, kernel_regularizer=regularizers.l2(reg_strength))),
-                keras.layers.BatchNormalization(),
-                keras.layers.Lambda(lambda x: x[:, -24:, :]),
-                keras.layers.Dense(units=10, activation='relu', kernel_regularizer=regularizers.l2(reg_strength)),
-                keras.layers.Dense(units=10, activation='relu', kernel_regularizer=regularizers.l2(reg_strength)),
-                keras.layers.Dense(units=1, activation='linear'),
-            ]
-        elif chosen_model == 'LSTM_deep':
-            model_layers = [
-                keras.layers.Bidirectional(keras.layers.LSTM(units=10, return_sequences=True, kernel_regularizer=regularizers.l2(reg_strength))),
-                keras.layers.BatchNormalization(),
-                keras.layers.Lambda(lambda x: x[:, -24:, :]),
-                keras.layers.Dense(units=20, kernel_regularizer=regularizers.l2(reg_strength)),
-                keras.layers.Dense(units=20, kernel_regularizer=regularizers.l2(reg_strength)),
-                keras.layers.Dense(units=20, kernel_regularizer=regularizers.l2(reg_strength)),
-                keras.layers.Dense(units=20, kernel_regularizer=regularizers.l2(reg_strength)),
-                keras.layers.Dense(units=20, kernel_regularizer=regularizers.l2(reg_strength)),
-                keras.layers.Dense(units=20, kernel_regularizer=regularizers.l2(reg_strength)),
-                keras.layers.Dense(units=1, activation='linear'),
-            ]
+            self.model_layers = nn.Sequential(
+                nn.LSTM(input_size=num_of_features, hidden_size=10, batch_first=True, bidirectional=True),
+                # nn.BatchNorm1d(num_of_features * 2),  # Adjust for bidirectional doubling of features
+                nn.LSTM(input_size=20, hidden_size=30, batch_first=True, bidirectional=True),
+                # nn.BatchNorm1d(num_of_features * 2),
+                LambdaLayer(lambda x: x[:, -24:, :]),  # Custom layer to slice last 24 timesteps
+                nn.Linear(in_features=30*2, out_features=10),  # Adjust input size for bidirectional LSTM
+                nn.ReLU(),
+                nn.Linear(10, 10),
+                nn.ReLU(),
+                nn.Linear(10, 1)
+            )
+            
         else:
-            raise ValueError("Unknown model choosen.")
+            raise ValueError("Unknown model chosen.")
+    
+    def forward(self, x):
+        i=0
+        out, _ = self.model_layers[i](x)  # LSTM layers return both output and hidden state
+        # i=i+1
+        # out = self.model_layers[i](out)
+        i=i+1
+        out, _ = self.model_layers[i](out)  # second LSTM
+        # i=i+1
+        # out = self.model_layers[i](out)
+        i=i+1
+        out = self.model_layers[i](out)  # custom lambda slicing last 24 steps
+        i=i+1
+        # out = out.contiguous().view(out.size(0), -1)  # flatten before fully connected
+        # i=i+1
+        out = self.model_layers[i:](out)  # pass through the rest of the layers
+        return out
         
-        if shape != None:
-            input_layer = keras.Input(shape=shape)
-            model_layers.insert(0, input_layer)
+    def train_model(self, 
+                    X_train, 
+                    Y_train, 
+                    epochs=10,
+                    loss_fn= nn.MSELoss(), 
+                    set_learning_rates=[0.001], 
+                    batch_size=None, 
+                    verbose=0
+                    ):
+        # Create DataLoader
+        if batch_size is None:
+            batch_size = X_train.shape[0]  # If batch_size is not provided, use the full batch
+        train_dataset = SequenceDataset(X_train, Y_train)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         
-        self.model = keras.Sequential(model_layers)
+        my_optimizer = optim.Adam(self.parameters(), lr=set_learning_rates[0])
+        
+        # Initialize storage for training history
+        history = {
+            "loss": [],
+            "epoch_loss": []
+        }
+        
+        self.train()
+        for epoch in range(epochs):
+            total_loss = 0
+            batch_losses = []
+            for batch_x, batch_y in train_loader:
+                my_optimizer.zero_grad()
+                output = self(batch_x.float())
+                
+                # Reshape output and target
+                # output = output.view(-1, self.output_dim)  # Shape: (batch_size * seq_length, output_dim)
+                # batch_y = batch_y.view(-1)  # Shape: (batch_size * seq_length)
 
-    def compile(self, metrics=[]):  # RMSE, sMAPE, 
-        
-        self.model.compile(optimizer=self.optimizer.get_optimizer(), \
-                           loss=self.optimizer.loss_type,
-                           metrics=metrics
-                           )
+                # Compute the loss
+                loss = loss_fn(output, batch_y.float())
+                batch_losses.append(loss.item())
+                
+                # Backpropagation
+                loss.backward()
+                my_optimizer.step()
+                
+                total_loss += loss.item()
 
+            # Calculate average loss for the epoch
+            epoch_loss = total_loss / len(train_loader)
+            history['loss'].append(batch_losses)
+            history['epoch_loss'].append(epoch_loss)
+            
+            if verbose > 0:
+                print(f"Epoch {epoch + 1}/{epochs} - Loss: {epoch_loss:.4f}")
+                
+        return history
+        
     def save_weights(self, filename):
-        self.model.save_weights(filename)
+        torch.save(self.state_dict(), filename)
 
     def load_weights(self, filename):
-        self.model.load_weights(filename)
+        self.load_state_dict(torch.load(filename))
 
-    def predict(self, X, verbose='auto'):
-        return self.model.predict(X, verbose=verbose)
+    def predict(self, X, verbose=False):
+        self.eval()  # Set the model to evaluation mode
+        with torch.no_grad():
+            X = Variable(torch.Tensor(X))
+            output = self.forward(X)
+        return output.numpy()
 
+    def evaluate(self, X_val, Y_val, loss_fn=nn.MSELoss(), metrics=None, batch_size=None):
+        # Create DataLoader
+        if batch_size is None:
+            batch_size = X_val.shape[0]  # If batch_size is not provided, use the full batch
+        val_dataset = SequenceDataset(X_val, Y_val)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+        # Switch to evaluation mode
+        self.eval()
+        
+        total_loss = 0
+        metric_results = {metric: 0 for metric in metrics} if metrics else {}
+
+        with torch.no_grad():  # No gradient calculation
+            for batch_x, batch_y in val_loader:
+                output = self(batch_x.float())
+                
+                # Reshape output and target
+                # output = output.view(-1, self.output_dim)
+                # batch_y = batch_y.view(-1)
+                
+                # Compute loss
+                loss = loss_fn(output, batch_y.float())
+                total_loss += loss.item()
+
+                # Compute metrics if provided
+                if metrics:
+                    for metric_name, metric_fn in metrics.items():
+                        metric_results[metric_name] += metric_fn(output, batch_y).item()
+
+        # Calculate average loss and metrics over the validation set
+        avg_loss = total_loss / len(val_loader)
+        avg_metrics = {metric_name: total / len(val_loader) for metric_name, total in metric_results.items()}
+        
+        # Return loss and metrics (similar to Keras evaluate)
+        return avg_loss # avg_metrics if metrics else avg_loss
+
+# Custom layer (PyTorch Lambda equivalent)
+class LambdaLayer(nn.Module):
+    def __init__(self, lambda_func):
+        super(LambdaLayer, self).__init__()
+        self.lambda_func = lambda_func
+
+    def forward(self, x):
+        return self.lambda_func(x)
+
+    
+class SequenceDataset(Dataset):
+    def __init__(self, X, Y):
+        self.X = X
+        self.Y = Y
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        return self.X[idx], self.Y[idx]

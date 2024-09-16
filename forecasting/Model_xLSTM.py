@@ -55,7 +55,6 @@ class Model(nn.Module):
                     Y_train, 
                     epochs=10,
                     loss_fn= nn.MSELoss(), 
-                    optimizer=optim.Adam, 
                     set_learning_rates=[0.001], 
                     batch_size=None, 
                     verbose=0):
@@ -65,7 +64,7 @@ class Model(nn.Module):
         train_dataset = SequenceDataset(X_train, Y_train)
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         
-        my_optimizer = optimizer(self.parameters(), lr=set_learning_rates[0])
+        my_optimizer = optim.Adam(self.parameters(), lr=set_learning_rates[0])
         
         # Initialize storage for training history
         history = {

@@ -6,6 +6,8 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
+import os
+os.environ['HOST'] = '127.0.0.1'
 
 class PlotlyApp:
     def __init__(
@@ -186,7 +188,7 @@ class PlotlyApp:
 
     def run(self, myport=8050):
         # Run the app
-        self.app.run_server(debug=True, port=myport)
+        self.app.run(debug=True, port=myport)
 
 if __name__ == '__main__':
     lstm_app = PlotlyApp()
