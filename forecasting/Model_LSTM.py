@@ -45,8 +45,9 @@ class Model(nn.Module):
     def train_model(self, 
                     X_train, 
                     Y_train, 
-                    epochs=400,
+                    epochs=50,
                     loss_fn= nn.MSELoss(), 
+                    # set_learning_rates=[0.01, 0.001, 0.0001], 
                     set_learning_rates=[0.001], 
                     batch_size=None, 
                     verbose=0
@@ -147,7 +148,7 @@ class Model(nn.Module):
         # Return loss and metrics (similar to Keras evaluate)
         return avg_loss # avg_metrics if metrics else avg_loss
 
-# Custom layer (PyTorch Lambda equivalent)
+# Custom lambda layer
 class LambdaLayer(nn.Module):
     def __init__(self, lambda_func):
         super(LambdaLayer, self).__init__()

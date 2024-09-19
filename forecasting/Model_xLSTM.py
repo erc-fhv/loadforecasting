@@ -24,13 +24,13 @@ class Model(nn.Module):
         self.cfg = xLSTMBlockStackConfig(
             mlstm_block=mLSTMBlockConfig(
                 mlstm=mLSTMLayerConfig(
-                    conv1d_kernel_size=4, qkv_proj_blocksize=4, num_heads=2
+                    conv1d_kernel_size=4, qkv_proj_blocksize=4, num_heads=4
                 )
             ),
             slstm_block=sLSTMBlockConfig(
                 slstm=sLSTMLayerConfig(
                     backend="vanilla",
-                    num_heads=2,
+                    num_heads=6,
                     conv1d_kernel_size=4,
                     bias_init="powerlaw_blockdependent",
                 ),
@@ -42,14 +42,29 @@ class Model(nn.Module):
             slstm_at=[1],
         )
         
-        self.output_dim = 1
         self.xlstm_stack = xLSTMBlockStack(self.cfg)
-        self.dense_layer = nn.Linear(self.cfg.embedding_dim, self.output_dim)
+
+        # Adding additional dense layers
+        self.lambdaLayer = LambdaLayer(lambda x: x[:, -24:, :])  # Custom layer to slice last 24 timesteps
+        self.activation = nn.ReLU()
+        self.dense1 = nn.Linear(self.cfg.embedding_dim, 10)
+        self.dense2 = nn.Linear(10, 10)
+        self.output_dim = 1
+        self.output_layer = nn.Linear(10, self.output_dim)
+        
 
     def forward(self, x):
+        # print(x.shape)
         x = self.xlstm_stack(x)
-        x = self.dense_layer(x)
-        x[:, :24, :] = 0.0  # Take only the last 24h
+        # print(x.shape)
+        x = self.lambdaLayer(x)
+        # print(x.shape)
+        x = self.activation(self.dense1(x))
+        # print(x.shape)
+        x = self.activation(self.dense2(x))
+        # print(x.shape)
+        x = self.output_layer(x)        
+        # print(x.shape)
         return x
 
     def train_model(self, 
@@ -57,7 +72,8 @@ class Model(nn.Module):
                     Y_train, 
                     epochs=100,
                     loss_fn= nn.MSELoss(), 
-                    set_learning_rates=[0.05, 0.01, 0.005, 0.001], 
+                    # set_learning_rates=[0.05, 0.01, 0.005, 0.001], 
+                    set_learning_rates=[0.01], 
                     batch_size=None, 
                     verbose=0):
         # Create DataLoader
@@ -133,8 +149,8 @@ class Model(nn.Module):
                 output = self(batch_x.float())
                 
                 # Reshape output and target
-                output = output.view(-1, self.output_dim)
-                batch_y = batch_y.view(-1)
+                # output = output.view(-1, self.output_dim)
+                # batch_y = batch_y.view(-1)
                 
                 # Compute loss
                 loss = loss_fn(output, batch_y.float())
@@ -150,7 +166,7 @@ class Model(nn.Module):
         avg_metrics = {metric_name: total / len(val_loader) for metric_name, total in metric_results.items()}
         
         # Return loss and metrics (similar to Keras evaluate)
-        return avg_loss, avg_metrics if metrics else avg_loss
+        return avg_loss#, avg_metrics if metrics else avg_loss
 
 
     
@@ -191,3 +207,13 @@ class CustomLRScheduler:
         # Update the optimizer's learning rate
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = new_lr
+
+# Custom lambda layer
+class LambdaLayer(nn.Module):
+    def __init__(self, lambda_func):
+        super(LambdaLayer, self).__init__()
+        self.lambda_func = lambda_func
+
+    def forward(self, x):
+        return self.lambda_func(x)
+    
