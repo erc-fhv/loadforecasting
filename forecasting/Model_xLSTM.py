@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, StackDataset, Dataset
+from torch.autograd import Variable
+import torch.optim.lr_scheduler as lr_scheduler
 import numpy as np
 
 from xlstm import (
@@ -15,7 +17,7 @@ from xlstm import (
 )    
 
 class Model(nn.Module):
-    def __init__(self):
+    def __init__(self, num_of_features):
         super(Model, self).__init__()        
 
         # Configuration for xLSTMBlockStack
@@ -53,9 +55,9 @@ class Model(nn.Module):
     def train_model(self, 
                     X_train, 
                     Y_train, 
-                    epochs=10,
+                    epochs=100,
                     loss_fn= nn.MSELoss(), 
-                    set_learning_rates=[0.001], 
+                    set_learning_rates=[0.05, 0.01, 0.005, 0.001], 
                     batch_size=None, 
                     verbose=0):
         # Create DataLoader
@@ -65,7 +67,8 @@ class Model(nn.Module):
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         
         my_optimizer = optim.Adam(self.parameters(), lr=set_learning_rates[0])
-        
+        lr_scheduler = CustomLRScheduler(my_optimizer, set_learning_rates, epochs)
+
         # Initialize storage for training history
         history = {
             "loss": [],
@@ -90,6 +93,7 @@ class Model(nn.Module):
                 
                 # Backpropagation
                 loss.backward()
+                lr_scheduler.adjust_learning_rate(epoch)
                 my_optimizer.step()
                 
                 total_loss += loss.item()
@@ -100,15 +104,16 @@ class Model(nn.Module):
             history['epoch_loss'].append(epoch_loss)
             
             if verbose > 0:
-                print(f"Epoch {epoch + 1}/{epochs} - Loss: {epoch_loss:.4f}")
+                print(f"Epoch {epoch + 1}/{epochs} - Loss: {epoch_loss:.4f} - LR = {my_optimizer.param_groups[0]['lr']}")
                 
         return history
 
-    def predict(self, x):
-        self.eval()  # Switch the model to evaluation mode
-        with torch.no_grad():  # Disabling gradient calculation for efficiency
-            prediction = self(x)
-        return prediction
+    def predict(self, X, verbose=False):
+        self.eval()  # Set the model to evaluation mode
+        with torch.no_grad():
+            X = Variable(torch.Tensor(X))
+            output = self.forward(X)
+        return output.numpy()
 
     def evaluate(self, X_val, Y_val, loss_fn=nn.MSELoss(), metrics=None, batch_size=None):
         # Create DataLoader
@@ -159,3 +164,30 @@ class SequenceDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.Y[idx]
+
+class CustomLRScheduler:
+    def __init__(self, optimizer, set_learning_rates, max_epochs):
+        self.optimizer = optimizer
+        self.set_learning_rates = set_learning_rates
+        self.max_epochs = max_epochs
+        
+        # Compute lr_switching_points
+        self.lr_switching_points = np.flip(np.linspace(1, 0, len(self.set_learning_rates), endpoint=False))
+
+    # This function adjusts the learning rate based on the epoch
+    def adjust_learning_rate(self, epoch):
+        # Calculate the progress through the epochs (0 to 1)
+        progress = epoch / self.max_epochs
+
+        # Determine the current learning rate based on progress
+        for i, boundary in enumerate(self.lr_switching_points):
+            if progress < boundary:
+                new_lr = self.set_learning_rates[i]
+                break
+        else:
+            # If progress is >= 1, use the last learning rate
+            new_lr = self.set_learning_rates[-1]
+
+        # Update the optimizer's learning rate
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = new_lr
