@@ -45,7 +45,7 @@ class Model(nn.Module):
     def train_model(self, 
                     X_train, 
                     Y_train, 
-                    epochs=50,
+                    epochs=400,
                     loss_fn= nn.MSELoss(), 
                     # set_learning_rates=[0.01, 0.001, 0.0001], 
                     set_learning_rates=[0.001], 

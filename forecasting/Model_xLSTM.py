@@ -44,18 +44,24 @@ class Model(nn.Module):
         
         self.xlstm_stack = xLSTMBlockStack(self.cfg)
 
+        self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=10, batch_first=True, bidirectional=True)
+        self.lstm2 = nn.LSTM(input_size=20, hidden_size=30, batch_first=True, bidirectional=True)
+
         # Adding additional dense layers
         self.lambdaLayer = LambdaLayer(lambda x: x[:, -24:, :])  # Custom layer to slice last 24 timesteps
         self.activation = nn.ReLU()
+        # self.dense1 = nn.Linear(60, 10)
         self.dense1 = nn.Linear(self.cfg.embedding_dim, 10)
         self.dense2 = nn.Linear(10, 10)
         self.output_dim = 1
         self.output_layer = nn.Linear(10, self.output_dim)
         
-
+    
     def forward(self, x):
         # print(x.shape)
         x = self.xlstm_stack(x)
+        # x, _ = self.lstm1(x)
+        # x, _ = self.lstm2(x)
         # print(x.shape)
         x = self.lambdaLayer(x)
         # print(x.shape)
@@ -66,14 +72,15 @@ class Model(nn.Module):
         x = self.output_layer(x)        
         # print(x.shape)
         return x
-
+    
+    
     def train_model(self, 
                     X_train, 
                     Y_train, 
                     epochs=100,
                     loss_fn= nn.MSELoss(), 
-                    # set_learning_rates=[0.05, 0.01, 0.005, 0.001], 
-                    set_learning_rates=[0.01], 
+                    set_learning_rates=[0.01, 0.005, 0.001], 
+                    # set_learning_rates=[0.001], 
                     batch_size=None, 
                     verbose=0):
         # Create DataLoader
@@ -100,8 +107,8 @@ class Model(nn.Module):
                 output = self(batch_x.float())
                 
                 # Reshape output and target
-                output = output.view(-1, self.output_dim)  # Shape: (batch_size * seq_length, output_dim)
-                batch_y = batch_y.view(-1)  # Shape: (batch_size * seq_length)
+                # output = output.view(-1, self.output_dim)  # Shape: (batch_size * seq_length, output_dim)
+                # batch_y = batch_y.view(-1)  # Shape: (batch_size * seq_length)
 
                 # Compute the loss
                 loss = loss_fn(output, batch_y.float())
