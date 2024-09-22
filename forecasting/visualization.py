@@ -125,7 +125,7 @@ class PlotlyApp:
                 if selected_dataset != 'all':
                     print("Warning: Without given model, the visualiation only works for the 'all' dataset", flush=True)
             else:
-                Y_pred = self.model_plot.model.predict(X_selected, verbose=0)
+                Y_pred = self.model_plot.predict(X_selected, verbose=0)
                 Y_pred = Y_pred[selected_date,:,0]
             Y_pred = self.lstmAdapter.deNormalizeY(Y_pred)
 
