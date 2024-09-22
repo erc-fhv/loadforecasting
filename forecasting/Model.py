@@ -83,6 +83,50 @@ class LSTM(nn.Module):
         x = self.activation(self.dense2(x))
         x = self.output_layer(x)        
         return x
+import torch
+import torch.nn as nn
+
+
+class Transformer(nn.Module):
+    def __init__(self, num_of_features, output_dim=1, num_heads=4, num_layers=2, hidden_dim=128):
+        super(Transformer, self).__init__()
+
+        # Embedding layer to transform input into model dimension
+        self.embedding = nn.Linear(num_of_features, hidden_dim)
+        
+        # Transformer Encoder Layer
+        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_dim, nhead=num_heads, batch_first=True)
+        
+        # Stack multiple encoder layers
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        
+        # Additional dense layers
+        self.lambdaLayer = LambdaLayer(lambda x: x[:, -24:, :])  # Custom layer to slice last 24 timesteps
+        self.activation = nn.ReLU()
+        self.dense1 = nn.Linear(hidden_dim, 10)
+        self.dense2 = nn.Linear(10, 10)
+        
+        # Output layer
+        self.output_dim = output_dim
+        self.output_layer = nn.Linear(10, self.output_dim)
+
+    def forward(self, x):
+        # Pass input through embedding layer
+        x = self.embedding(x)
+        
+        # Pass input through transformer encoder
+        x = self.transformer_encoder(x)
+        
+        # Slice the last 24 timesteps
+        x = self.lambdaLayer(x)
+        
+        # Pass through dense layers with ReLU activation
+        x = self.activation(self.dense1(x))
+        x = self.activation(self.dense2(x))
+        
+        # Output layer
+        x = self.output_layer(x)
+        return x
 
 
 class Model():
@@ -92,11 +136,21 @@ class Model():
             self.my_model = xLSTM(num_of_features)
         elif model_type == "LSTM":
             self.my_model = LSTM(num_of_features)
+        elif model_type == "Transformer":
+            self.my_model = Transformer(num_of_features)
+        elif model_type == "PersistencePredictor":
+            self.my_model = "PersistencePredictor"
+            self.lookback_days = 7
         else:
             assert False, "Unexpected 'model_type' parameter received."
     
     def forward(self, x):
-        return self.my_model.forward(x)
+        if self.my_model == "PersistencePredictor":
+            prediction = np.zeros(shape=self.Y_train.shape)
+            prediction[:, self.lookback_steps:, :] = self.Y_train[:, :-self.lookback_steps, :]
+            return prediction
+        else:         
+            return self.my_model.forward(x)
     
     # Print the number of parameters of this model
     def get_nr_of_parameters(self, print=True):
@@ -110,49 +164,54 @@ class Model():
     def train_model(self, 
                     X_train, 
                     Y_train, 
-                    epochs=3,
+                    epochs=100,
                     loss_fn= nn.MSELoss(), 
                     set_learning_rates=[0.01, 0.005, 0.001], 
                     batch_size=256,
                     verbose=0):
         
-        # Create DataLoader
-        train_dataset = SequenceDataset(X_train, Y_train)
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        
-        my_optimizer = optim.Adam(self.my_model.parameters(), lr=set_learning_rates[0])
-        lr_scheduler = CustomLRScheduler(my_optimizer, set_learning_rates, epochs)
-
-        # Initialize storage for training history
-        history = {"loss": []}
-        
-        self.my_model.train()
-        for epoch in range(epochs):
-            total_loss = 0  
-            total_samples = 0
-            batch_losses = []  
+        if self.my_model == "PersistencePredictor":
+            self.Y_train  = Y_train            
+            mse_loss = loss_fn(Y_train[:, self.lookback_steps:, :, :], Y_train[:, :-self.lookback_steps, :, :])
+            history['loss'] = mse_loss
+        else:            
+            # Create DataLoader
+            train_dataset = SequenceDataset(X_train, Y_train)
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
             
-            # Optimize over one epoch
-            for batch_x, batch_y in train_loader:
-                my_optimizer.zero_grad()
-                output = self.my_model(batch_x.float())
-                loss = loss_fn(output, batch_y.float())
-                batch_losses.append(loss.item())
-                loss.backward()
-                lr_scheduler.adjust_learning_rate(epoch)
-                my_optimizer.step()                
-                total_loss += loss.item() * batch_x.size(0)
-                total_samples += batch_x.size(0)
+            my_optimizer = optim.Adam(self.my_model.parameters(), lr=set_learning_rates[0])
+            lr_scheduler = CustomLRScheduler(my_optimizer, set_learning_rates, epochs)
 
-            # Calculate average loss for the epoch
-            epoch_loss = total_loss / total_samples
-            history['loss'].append(epoch_loss)
+            # Initialize storage for training history
+            history = {"loss": []}
             
-            if verbose > 0:
-                print(f"Epoch {epoch + 1}/{epochs} - " + 
-                      f"Loss = {epoch_loss:.4f} - " + 
-                      f"LR = {my_optimizer.param_groups[0]['lr']}", 
-                      flush=True)
+            self.my_model.train()
+            for epoch in range(epochs):
+                total_loss = 0  
+                total_samples = 0
+                batch_losses = []  
+                
+                # Optimize over one epoch
+                for batch_x, batch_y in train_loader:
+                    my_optimizer.zero_grad()
+                    output = self.my_model(batch_x.float())
+                    loss = loss_fn(output, batch_y.float())
+                    batch_losses.append(loss.item())
+                    loss.backward()
+                    lr_scheduler.adjust_learning_rate(epoch)
+                    my_optimizer.step()                
+                    total_loss += loss.item() * batch_x.size(0)
+                    total_samples += batch_x.size(0)
+
+                # Calculate average loss for the epoch
+                epoch_loss = total_loss / total_samples
+                history['loss'].append(epoch_loss)
+                
+                if verbose > 0:
+                    print(f"Epoch {epoch + 1}/{epochs} - " + 
+                        f"Loss = {epoch_loss:.4f} - " + 
+                        f"LR = {my_optimizer.param_groups[0]['lr']}", 
+                        flush=True)
 
         return history
 
