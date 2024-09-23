@@ -4,6 +4,8 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torch.autograd import Variable
 import numpy as np
+import torch.nn.functional as F
+
 
 from xlstm import (
     xLSTMBlockStack,
@@ -13,7 +15,7 @@ from xlstm import (
     sLSTMBlockConfig,
     sLSTMLayerConfig,
     FeedForwardConfig,
-) 
+)
 
 class xLSTM(nn.Module):
     def __init__(self, num_of_features, output_dim = 1):
@@ -65,7 +67,9 @@ class LSTM(nn.Module):
         super(LSTM, self).__init__()     
 
         self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=10, batch_first=True, bidirectional=True)
-        self.lstm2 = nn.LSTM(input_size=20, hidden_size=30, batch_first=True, bidirectional=True)
+        self.lstm2 = nn.LSTM(input_size=60, hidden_size=30, batch_first=True, bidirectional=True)
+        self.lstm3 = nn.LSTM(input_size=60, hidden_size=30, batch_first=True, bidirectional=True)
+        self.lstm4 = nn.LSTM(input_size=60, hidden_size=30, batch_first=True, bidirectional=True)
 
         # Adding additional dense layers
         self.lambdaLayer = LambdaLayer(lambda x: x[:, -24:, :])  # Custom layer to slice last 24 timesteps
@@ -78,17 +82,17 @@ class LSTM(nn.Module):
     def forward(self, x):
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
+        x, _ = self.lstm3(x)
+        x, _ = self.lstm4(x)
         x = self.lambdaLayer(x)
         x = self.activation(self.dense1(x))
         x = self.activation(self.dense2(x))
         x = self.output_layer(x)        
         return x
-import torch
-import torch.nn as nn
 
 
 class Transformer(nn.Module):
-    def __init__(self, num_of_features, output_dim=1, num_heads=4, num_layers=2, hidden_dim=128):
+    def __init__(self, num_of_features, output_dim=1, num_heads=4, num_layers=1, hidden_dim=20):
         super(Transformer, self).__init__()
 
         # Embedding layer to transform input into model dimension
@@ -129,6 +133,38 @@ class Transformer(nn.Module):
         return x
 
 
+class KNN(nn.Module):
+    def __init__(self, num_of_features, output_dim=1):
+        super(KNN, self).__init__()
+        self.X_train = None
+        self.Y_train = None
+    
+    def forward(self, x):
+        """
+        Given an input x, find the closest neighbor from the training data X_train
+        and return the corresponding Y_train.
+        """
+        
+        batch_size = x.size(0)
+        x_flat = x.view(batch_size, -1)  # Flatten input to (batch_size, 24*20)
+        distances = torch.cdist(x_flat, self.X_train)  # Compute pairwise distances
+        nearest_neighbors = torch.argmin(distances, dim=1)  # Get nearest neighbor index
+        y_pred = self.Y_train[nearest_neighbors]  # Fetch corresponding Y_train
+        return y_pred
+    
+    def train_model(self, X_train, Y_train):
+        
+        # Check if the input is a NumPy array and convert it to a torch.Tensor if necessary
+        if isinstance(X_train, np.ndarray):
+            X_train = torch.tensor(X_train, dtype=torch.float32)
+        if isinstance(Y_train, np.ndarray):
+            Y_train = torch.tensor(Y_train, dtype=torch.float32)
+
+        # Store the training data as flattened tensors
+        self.X_train = X_train.view(X_train.shape[0], -1)  # Flatten X_train
+        self.Y_train = Y_train  # Y_train remains unchanged in shape (nr_of_days, 24, 1)
+
+
 class Model():
     def __init__(self, num_of_features, model_type= "xLSTM"):   
 
@@ -138,25 +174,19 @@ class Model():
             self.my_model = LSTM(num_of_features)
         elif model_type == "Transformer":
             self.my_model = Transformer(num_of_features)
-        elif model_type == "PersistencePredictor":
-            self.my_model = "PersistencePredictor"
-            self.lookback_days = 7
+        elif model_type == "KNN":
+            self.my_model = KNN(num_of_features)
         else:
             assert False, "Unexpected 'model_type' parameter received."
     
     def forward(self, x):
-        if self.my_model == "PersistencePredictor":
-            prediction = np.zeros(shape=self.Y_train.shape)
-            prediction[:, self.lookback_steps:, :] = self.Y_train[:, :-self.lookback_steps, :]
-            return prediction
-        else:         
-            return self.my_model.forward(x)
+        return self.my_model.forward(x)
     
     # Print the number of parameters of this model
-    def get_nr_of_parameters(self, print=True):
+    def get_nr_of_parameters(self, do_print=True):
         total_params = sum(p.numel() for p in self.my_model.parameters())
         
-        if print == True:
+        if do_print == True:
             print(f"Total number of parameters: {total_params}")   
             
         return total_params
@@ -170,10 +200,10 @@ class Model():
                     batch_size=256,
                     verbose=0):
         
-        if self.my_model == "PersistencePredictor":
-            self.Y_train  = Y_train            
-            mse_loss = loss_fn(Y_train[:, self.lookback_steps:, :, :], Y_train[:, :-self.lookback_steps, :, :])
-            history['loss'] = mse_loss
+        if type(self.my_model) == KNN:
+            mse_loss = self.my_model.train_model(X_train, Y_train)
+            history = {}
+            history['loss'] = [0.0]
         else:            
             # Create DataLoader
             train_dataset = SequenceDataset(X_train, Y_train)
@@ -224,25 +254,30 @@ class Model():
 
     def evaluate(self, X_val, Y_val, results={}, loss_fn=nn.MSELoss(), batch_size=256):
         
-        # Create DataLoader
-        val_dataset = SequenceDataset(X_val, Y_val)
-        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        if type(self.my_model) == KNN:
+            output = self.my_model(torch.Tensor(X_val))
+            loss = loss_fn(output, torch.Tensor(Y_val))
+            results['val_loss'] = [loss]
+        else:
+            # Create DataLoader
+            val_dataset = SequenceDataset(X_val, Y_val)
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-        self.my_model.eval()        
-        total_loss = 0
-        total_samples = 0
-        
-        with torch.no_grad():  # No gradient calculation
-            for batch_x, batch_y in val_loader:
-                                
-                # Compute loss
-                output = self.my_model(batch_x.float())
-                loss = loss_fn(output, batch_y.float())
-                total_loss += loss.item() * batch_x.size(0)
-                total_samples += batch_x.size(0)
+            self.my_model.eval()        
+            total_loss = 0
+            total_samples = 0
+            
+            with torch.no_grad():  # No gradient calculation
+                for batch_x, batch_y in val_loader:
+                                    
+                    # Compute loss
+                    output = self.my_model(batch_x.float())
+                    loss = loss_fn(output, batch_y.float())
+                    total_loss += loss.item() * batch_x.size(0)
+                    total_samples += batch_x.size(0)
 
-        # Calculate average loss
-        results['val_loss'] = [total_loss / total_samples]
+            # Calculate average loss
+            results['val_loss'] = [total_loss / total_samples]
         
         return results
 
