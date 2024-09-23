@@ -196,7 +196,7 @@ class Model():
                     Y_train, 
                     epochs=100,
                     loss_fn= nn.MSELoss(), 
-                    set_learning_rates=[0.01, 0.005, 0.001], 
+                    set_learning_rates=[0.01, 0.005, 0.001, 0.0005], 
                     batch_size=256,
                     verbose=0):
         
