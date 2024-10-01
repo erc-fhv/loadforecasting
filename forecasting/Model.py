@@ -4,7 +4,6 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torch.autograd import Variable
 import numpy as np
-import torch.nn.functional as F
 
 
 from xlstm import (
@@ -18,7 +17,7 @@ from xlstm import (
 )
 
 class xLSTM(nn.Module):
-    def __init__(self, num_of_features, output_dim = 1):
+    def __init__(self, num_of_features, output_dim = 1, lstmAdapter=None):
         super(xLSTM, self).__init__()     
 
         # Configuration for the xLSTM
@@ -58,18 +57,16 @@ class xLSTM(nn.Module):
         x = self.lambdaLayer(x)
         x = self.activation(self.dense1(x))
         x = self.activation(self.dense2(x))
-        x = self.output_layer(x)        
+        x = self.output_layer(x)
         return x
 
 
 class LSTM(nn.Module):
-    def __init__(self, num_of_features, output_dim = 1):
-        super(LSTM, self).__init__()     
+    def __init__(self, num_of_features, output_dim = 1, lstmAdapter=None):
+        super(LSTM, self).__init__()
 
-        self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=10, batch_first=True, bidirectional=True)
-        self.lstm2 = nn.LSTM(input_size=60, hidden_size=30, batch_first=True, bidirectional=True)
-        self.lstm3 = nn.LSTM(input_size=60, hidden_size=30, batch_first=True, bidirectional=True)
-        self.lstm4 = nn.LSTM(input_size=60, hidden_size=30, batch_first=True, bidirectional=True)
+        self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=50, batch_first=True, bidirectional=True)
+        self.lstm2 = nn.LSTM(input_size=100, hidden_size=30, batch_first=True, bidirectional=True)
 
         # Adding additional dense layers
         self.lambdaLayer = LambdaLayer(lambda x: x[:, -24:, :])  # Custom layer to slice last 24 timesteps
@@ -82,8 +79,6 @@ class LSTM(nn.Module):
     def forward(self, x):
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
-        x, _ = self.lstm3(x)
-        x, _ = self.lstm4(x)
         x = self.lambdaLayer(x)
         x = self.activation(self.dense1(x))
         x = self.activation(self.dense2(x))
@@ -92,16 +87,14 @@ class LSTM(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, num_of_features, output_dim=1, num_heads=4, num_layers=1, hidden_dim=20):
+    def __init__(self, num_of_features, output_dim=1, lstmAdapter=None, num_heads=4, num_layers=1, hidden_dim=20):
         super(Transformer, self).__init__()
 
         # Embedding layer to transform input into model dimension
         self.embedding = nn.Linear(num_of_features, hidden_dim)
         
-        # Transformer Encoder Layer
+        # Transformer Encoder Layers
         encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_dim, nhead=num_heads, batch_first=True)
-        
-        # Stack multiple encoder layers
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         
         # Additional dense layers
@@ -132,12 +125,12 @@ class Transformer(nn.Module):
         x = self.output_layer(x)
         return x
 
-
 class KNN(nn.Module):
-    def __init__(self, num_of_features, output_dim=1):
+    def __init__(self, num_of_features, output_dim=1, lstmAdapter=None):
         super(KNN, self).__init__()
         self.X_train = None
         self.Y_train = None
+        self.num_of_features = num_of_features
     
     def forward(self, x):
         """
@@ -146,10 +139,18 @@ class KNN(nn.Module):
         """
         
         batch_size = x.size(0)
-        x_flat = x.view(batch_size, -1)  # Flatten input to (batch_size, 24*20)
+        x_flat = x.view(batch_size, -1)  # Flatten input to (batch_size, 24*num_of_features)
+        assert x_flat.shape == torch.Size([batch_size, 48 * self.num_of_features]), \
+            f"Shape mismatch: got {x_flat.shape}, expected ({batch_size}, {48 * self.num_of_features})"
         distances = torch.cdist(x_flat, self.X_train)  # Compute pairwise distances
+        assert distances.shape == torch.Size([batch_size, self.Y_train.shape[0]]), \
+            f"Shape mismatch: got {distances.shape}, expected ({batch_size}, {self.Y_train.shape[0]})"
         nearest_neighbors = torch.argmin(distances, dim=1)  # Get nearest neighbor index
+        assert nearest_neighbors.shape == torch.Size([batch_size]), \
+            f"Shape mismatch: got {nearest_neighbors.shape}, expected ({batch_size})"
         y_pred = self.Y_train[nearest_neighbors]  # Fetch corresponding Y_train
+        assert y_pred.shape == torch.Size([batch_size, 24, 1]), \
+            f"Shape mismatch: got {y_pred.shape}, expected ({torch.Size([batch_size, 24, 1])})"
         return y_pred
     
     def train_model(self, X_train, Y_train):
@@ -165,8 +166,39 @@ class KNN(nn.Module):
         self.Y_train = Y_train  # Y_train remains unchanged in shape (nr_of_days, 24, 1)
 
 
+
+class PersistencePrediction(nn.Module):
+    def __init__(self, num_of_features, output_dim=1, lstmAdapter=None):
+        super(PersistencePrediction, self).__init__()
+        self.num_of_features = num_of_features
+        self.lstmAdapter = lstmAdapter
+    
+    def forward(self, x):
+        """
+        Estimate the upcoming profile accord to the last profiles.
+        This is done with the un-normalized lagged power features.
+        """
+        
+        batch_size = x.size(0)
+        assert x.shape == (batch_size, 48, self.num_of_features), \
+            f"Shape mismatch: got {x.shape}, expected ({batch_size}, 48, {self.num_of_features})" \
+            + "Please check the the following feature dimension."
+        
+        x = self.lstmAdapter.deNormalizeX(x)    # de-normalize the lagged power feature
+        y_pred = (x[:,-24:,11] + x[:,-24:,12] + x[:,-24:,13]) / 3.0
+        y_pred = y_pred[:,:,np.newaxis]  # Get Shape: (batch_size, 24, 1)
+        y_pred = self.lstmAdapter.normalizeY(y_pred)    # normalize the output, to compare it to other models.
+        
+        assert y_pred.shape == (batch_size, 24, 1), \
+            f"Shape mismatch: got {y_pred.shape}, expected ({batch_size}, 24, 1)"
+            
+        return y_pred
+    
+    def train_model(self, X_train, Y_train):        
+        pass
+
 class Model():
-    def __init__(self, num_of_features, model_type= "xLSTM"):   
+    def __init__(self, num_of_features, model_type= "xLSTM", lstmAdapter=None):   
 
         if model_type == "xLSTM":
             self.my_model = xLSTM(num_of_features)
@@ -176,6 +208,8 @@ class Model():
             self.my_model = Transformer(num_of_features)
         elif model_type == "KNN":
             self.my_model = KNN(num_of_features)
+        elif model_type == "PersistencePrediction":
+            self.my_model = PersistencePrediction(num_of_features, lstmAdapter=lstmAdapter)
         else:
             assert False, "Unexpected 'model_type' parameter received."
     
@@ -200,11 +234,11 @@ class Model():
                     batch_size=256,
                     verbose=0):
         
-        if type(self.my_model) == KNN:
-            mse_loss = self.my_model.train_model(X_train, Y_train)
+        if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
+            self.my_model.train_model(X_train, Y_train)
             history = {}
             history['loss'] = [0.0]
-        else:            
+        else:
             # Create DataLoader
             train_dataset = SequenceDataset(X_train, Y_train)
             train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -254,8 +288,10 @@ class Model():
 
     def evaluate(self, X_val, Y_val, results={}, loss_fn=nn.MSELoss(), batch_size=256):
         
-        if type(self.my_model) == KNN:
+        if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
             output = self.my_model(torch.Tensor(X_val))
+            assert output.shape == Y_val.shape, \
+                f"Shape mismatch: got {output.shape}, expected {Y_val.shape})"
             loss = loss_fn(output, torch.Tensor(Y_val))
             results['val_loss'] = [loss]
         else:

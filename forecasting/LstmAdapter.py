@@ -254,10 +254,10 @@ class LstmAdapter:
             if self.addLaggedPower == True:
                 prev_days = []
                 for day in range(1, 4):
-                    start = next_prediction_date - pd.Timedelta(days=day*7, hours=0)
-                    end = start + pd.Timedelta(days=0, hours=23)
+                    start = next_prediction_date - pd.Timedelta(days=day*7+1, hours=0)
+                    end = start + pd.Timedelta(days=0, hours=47)
                     prev_day = powerProfiles.loc[start:end]                    
-                    X_all_data[batch_id, -len(prev_day):, index]  = np.array(prev_day.values)
+                    X_all_data[batch_id, :, index]  = np.array(prev_day.values)
                     index += 1
 
             # If available: Add past weather measurmenents to the LSTM input

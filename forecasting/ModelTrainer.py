@@ -13,7 +13,7 @@ def optimize_model(model_type, load_profile):
 
     # Train the model
     num_of_features = X['train'].shape[2]
-    myModel = model.Model(num_of_features, model_type)
+    myModel = model.Model(num_of_features, model_type, lstmAdapter=lstmAdapter)
     history = myModel.train_model(X['train'], Y['train'], verbose=1)
     history = myModel.evaluate(X['test'], Y['test'], history)
     

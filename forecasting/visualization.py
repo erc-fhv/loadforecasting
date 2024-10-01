@@ -17,6 +17,7 @@ class PlotlyApp:
             model,
             lstmAdapter,
             predictions = None,
+            timezone = 'UTC+00:00',
             Y_model_pretrain = None,
             lstmAdapter_pretrain = None
                  ):
@@ -28,6 +29,7 @@ class PlotlyApp:
         self.model_plot = model
         self.lstmAdapter = lstmAdapter
         self.predictions = predictions
+        self.timezone = timezone
         self.Y_model_pretrain = Y_model_pretrain
         self.lstmAdapter_pretrain = lstmAdapter_pretrain
 
@@ -104,7 +106,7 @@ class PlotlyApp:
     def update_date_plot(self, selected_dataset, selected_date):
 
         try: # use a try-catch to prevent a kernel crash
-
+            
             # Validate the inputs
             #
             if selected_dataset == None:
@@ -131,7 +133,7 @@ class PlotlyApp:
 
             # Create a DataFrame for Plotly Express
             startdate = self.lstmAdapter.getStartDateFromIndex(selected_dataset, selected_date)
-            datetime_index = pd.date_range(start=startdate, periods=Y_pred.shape[0], freq='1h').tz_convert('UTC+01:00') # TODO: make the target timezone parametrizable
+            datetime_index = pd.date_range(start=startdate, periods=Y_pred.shape[0], freq='1h').tz_convert(self.timezone)
             
             if self.Y_model_pretrain is None:
                 df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': Y_real, 'Y_pred': Y_pred})
