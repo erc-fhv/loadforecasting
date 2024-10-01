@@ -146,7 +146,7 @@ class LstmAdapter:
 
         # Define the number of weather features
         if weatherData is None:
-            num_of_weather_features = 4 # Default weather features
+            num_of_weather_features = 6 # Default weather features
         else:
             num_of_weather_features = weatherData.shape[1]
         nr_of_features += num_of_weather_features

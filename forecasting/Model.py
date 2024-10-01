@@ -4,8 +4,6 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torch.autograd import Variable
 import numpy as np
-
-
 from xlstm import (
     xLSTMBlockStack,
     xLSTMBlockStackConfig,
@@ -15,6 +13,136 @@ from xlstm import (
     sLSTMLayerConfig,
     FeedForwardConfig,
 )
+
+
+class Model():
+    def __init__(self, num_of_features, model_type= "xLSTM", lstmAdapter=None):
+        
+        if model_type not in globals():
+            raise ValueError(f"Unexpected 'model_type' parameter received: {model_type}")
+        else:
+            # Instantiate model_type (if it is implemented)
+            my_model_class = globals()[model_type]
+            self.my_model = my_model_class(num_of_features, lstmAdapter=lstmAdapter)
+
+    def forward(self, x):
+        return self.my_model.forward(x)
+    
+    # Print the number of parameters of this model
+    def get_nr_of_parameters(self, do_print=True):
+        total_params = sum(p.numel() for p in self.my_model.parameters())
+        
+        if do_print == True:
+            print(f"Total number of parameters: {total_params}")   
+            
+        return total_params
+    
+    def train_model(self, 
+                    X_train, 
+                    Y_train, 
+                    pretraining_mode = 'load_weights',
+                    epochs=1,
+                    loss_fn= nn.MSELoss(), 
+                    set_learning_rates=[0.01, 0.005, 0.001, 0.0005], 
+                    batch_size=256,
+                    verbose=0):
+        
+        if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
+            self.my_model.train_model(X_train, Y_train)
+            history = {}
+            history['loss'] = [0.0]
+        else:
+            # Create DataLoader
+            train_dataset = SequenceDataset(X_train, Y_train)
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+            
+            my_optimizer = optim.Adam(self.my_model.parameters(), lr=set_learning_rates[0])
+            lr_scheduler = CustomLRScheduler(my_optimizer, set_learning_rates, epochs)
+
+            # Initialize storage for training history
+            history = {"loss": []}
+            
+            # Load pretrained weights
+            if pretraining_mode == 'load_weights':
+                pretrained_weights_path = f'outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+                self.my_model.load_state_dict(torch.load(pretrained_weights_path))
+
+            self.my_model.train()
+            for epoch in range(epochs):
+                total_loss = 0  
+                total_samples = 0
+                batch_losses = []  
+                
+                # Optimize over one epoch
+                for batch_x, batch_y in train_loader:
+                    my_optimizer.zero_grad()
+                    output = self.my_model(batch_x.float())
+                    loss = loss_fn(output, batch_y.float())
+                    batch_losses.append(loss.item())
+                    loss.backward()
+                    lr_scheduler.adjust_learning_rate(epoch)
+                    my_optimizer.step()                
+                    total_loss += loss.item() * batch_x.size(0)
+                    total_samples += batch_x.size(0)
+
+                # Calculate average loss for the epoch
+                epoch_loss = total_loss / total_samples
+                history['loss'].append(epoch_loss)
+                
+                if verbose > 0:
+                    print(f"Epoch {epoch + 1}/{epochs} - " + 
+                        f"Loss = {epoch_loss:.4f} - " + 
+                        f"LR = {my_optimizer.param_groups[0]['lr']}", 
+                        flush=True)
+                    
+            # Save the trained weights
+            if pretraining_mode == 'store_weights':
+                pretrained_weights_path = f'outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+                torch.save(self.my_model.state_dict(), pretrained_weights_path)
+
+        return history
+
+    def predict(self, X, verbose=False):
+        self.my_model.eval()  # Set the model to evaluation mode
+        with torch.no_grad():
+            X = Variable(torch.Tensor(X))
+            output = self.my_model.forward(X)
+        return output.numpy()
+
+    def evaluate(self, X_val, Y_val, results={}, loss_fn=nn.MSELoss(), batch_size=256):
+        
+        if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
+            output = self.my_model(torch.Tensor(X_val))
+            assert output.shape == Y_val.shape, \
+                f"Shape mismatch: got {output.shape}, expected {Y_val.shape})"
+            loss = loss_fn(output, torch.Tensor(Y_val))
+            results['val_loss'] = [loss]
+        else:
+            # Create DataLoader
+            val_dataset = SequenceDataset(X_val, Y_val)
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+            self.my_model.eval()        
+            total_loss = 0
+            total_samples = 0
+            
+            with torch.no_grad():  # No gradient calculation
+                for batch_x, batch_y in val_loader:
+                                    
+                    # Compute loss
+                    output = self.my_model(batch_x.float())
+                    loss = loss_fn(output, batch_y.float())
+                    total_loss += loss.item() * batch_x.size(0)
+                    total_samples += batch_x.size(0)
+
+            # Calculate average loss
+            if total_samples > 0:
+                results['val_loss'] = [total_loss / total_samples]
+            else:
+                results['val_loss'] = [0.0]
+        
+        return results
+
 
 class xLSTM(nn.Module):
     def __init__(self, num_of_features, output_dim = 1, lstmAdapter=None):
@@ -196,126 +324,6 @@ class PersistencePrediction(nn.Module):
     
     def train_model(self, X_train, Y_train):        
         pass
-
-class Model():
-    def __init__(self, num_of_features, model_type= "xLSTM", lstmAdapter=None):   
-
-        if model_type == "xLSTM":
-            self.my_model = xLSTM(num_of_features)
-        elif model_type == "LSTM":
-            self.my_model = LSTM(num_of_features)
-        elif model_type == "Transformer":
-            self.my_model = Transformer(num_of_features)
-        elif model_type == "KNN":
-            self.my_model = KNN(num_of_features)
-        elif model_type == "PersistencePrediction":
-            self.my_model = PersistencePrediction(num_of_features, lstmAdapter=lstmAdapter)
-        else:
-            assert False, "Unexpected 'model_type' parameter received."
-    
-    def forward(self, x):
-        return self.my_model.forward(x)
-    
-    # Print the number of parameters of this model
-    def get_nr_of_parameters(self, do_print=True):
-        total_params = sum(p.numel() for p in self.my_model.parameters())
-        
-        if do_print == True:
-            print(f"Total number of parameters: {total_params}")   
-            
-        return total_params
-    
-    def train_model(self, 
-                    X_train, 
-                    Y_train, 
-                    epochs=100,
-                    loss_fn= nn.MSELoss(), 
-                    set_learning_rates=[0.01, 0.005, 0.001, 0.0005], 
-                    batch_size=256,
-                    verbose=0):
-        
-        if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
-            self.my_model.train_model(X_train, Y_train)
-            history = {}
-            history['loss'] = [0.0]
-        else:
-            # Create DataLoader
-            train_dataset = SequenceDataset(X_train, Y_train)
-            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-            
-            my_optimizer = optim.Adam(self.my_model.parameters(), lr=set_learning_rates[0])
-            lr_scheduler = CustomLRScheduler(my_optimizer, set_learning_rates, epochs)
-
-            # Initialize storage for training history
-            history = {"loss": []}
-            
-            self.my_model.train()
-            for epoch in range(epochs):
-                total_loss = 0  
-                total_samples = 0
-                batch_losses = []  
-                
-                # Optimize over one epoch
-                for batch_x, batch_y in train_loader:
-                    my_optimizer.zero_grad()
-                    output = self.my_model(batch_x.float())
-                    loss = loss_fn(output, batch_y.float())
-                    batch_losses.append(loss.item())
-                    loss.backward()
-                    lr_scheduler.adjust_learning_rate(epoch)
-                    my_optimizer.step()                
-                    total_loss += loss.item() * batch_x.size(0)
-                    total_samples += batch_x.size(0)
-
-                # Calculate average loss for the epoch
-                epoch_loss = total_loss / total_samples
-                history['loss'].append(epoch_loss)
-                
-                if verbose > 0:
-                    print(f"Epoch {epoch + 1}/{epochs} - " + 
-                        f"Loss = {epoch_loss:.4f} - " + 
-                        f"LR = {my_optimizer.param_groups[0]['lr']}", 
-                        flush=True)
-
-        return history
-
-    def predict(self, X, verbose=False):
-        self.my_model.eval()  # Set the model to evaluation mode
-        with torch.no_grad():
-            X = Variable(torch.Tensor(X))
-            output = self.my_model.forward(X)
-        return output.numpy()
-
-    def evaluate(self, X_val, Y_val, results={}, loss_fn=nn.MSELoss(), batch_size=256):
-        
-        if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
-            output = self.my_model(torch.Tensor(X_val))
-            assert output.shape == Y_val.shape, \
-                f"Shape mismatch: got {output.shape}, expected {Y_val.shape})"
-            loss = loss_fn(output, torch.Tensor(Y_val))
-            results['val_loss'] = [loss]
-        else:
-            # Create DataLoader
-            val_dataset = SequenceDataset(X_val, Y_val)
-            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-
-            self.my_model.eval()        
-            total_loss = 0
-            total_samples = 0
-            
-            with torch.no_grad():  # No gradient calculation
-                for batch_x, batch_y in val_loader:
-                                    
-                    # Compute loss
-                    output = self.my_model(batch_x.float())
-                    loss = loss_fn(output, batch_y.float())
-                    total_loss += loss.item() * batch_x.size(0)
-                    total_samples += batch_x.size(0)
-
-            # Calculate average loss
-            results['val_loss'] = [total_loss / total_samples]
-        
-        return results
 
     
 class SequenceDataset(Dataset):

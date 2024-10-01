@@ -8,3 +8,4 @@ data/Smartmeter data of London Households/
 forecasting/plotly_profile_X.pdf
 forecasting/plotly_profile_Y.pdf
 *.png
+forecasting/outputs/

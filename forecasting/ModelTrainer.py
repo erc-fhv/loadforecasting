@@ -5,7 +5,7 @@ import multiprocessing as mp
 import Model as model
 import importlib
 
-def optimize_model(model_type, load_profile):
+def optimize_model(model_type, load_profile, pretraining_mode):
 
     # Load a new powerprofile
     with open(load_profile, 'rb') as f:
@@ -14,7 +14,7 @@ def optimize_model(model_type, load_profile):
     # Train the model
     num_of_features = X['train'].shape[2]
     myModel = model.Model(num_of_features, model_type, lstmAdapter=lstmAdapter)
-    history = myModel.train_model(X['train'], Y['train'], verbose=1)
+    history = myModel.train_model(X['train'], Y['train'], pretraining_mode, verbose=1)
     history = myModel.evaluate(X['test'], Y['test'], history)
     
     # Return the results
@@ -37,20 +37,20 @@ class ModelTrainer:
                 results = list(
                     tqdm(
                         pool.imap(self.optimize_model_wrapper, 
-                                  [(model_type, load_profile)
+                                  [(model_type, load_profile, self.test_config['pretraining_mode'])
                                   for model_type in self.test_config['models']
                                   for load_profile in self.test_config['data']]),
                         total=len(self.test_config['models'])*len(self.test_config['data']),
                     )
                 )
-                pool.close()
-                pool.join()
+                # pool.close()
+                # pool.join()
 
         else:   # Single Process
             results = []
             for model_type in tqdm(self.test_config['models']):
-                for load_profile in self.test_config['data']:
-                    result = optimize_model(model_type, load_profile)
+                for load_profile in tqdm(self.test_config['data']):
+                    result = optimize_model(model_type, load_profile, self.test_config['pretraining_mode'])
                     results.append(result)
 
         # create a dict out of the results
