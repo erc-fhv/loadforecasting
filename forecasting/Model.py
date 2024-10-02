@@ -40,12 +40,18 @@ class Model():
     def train_model(self, 
                     X_train, 
                     Y_train, 
+                    X_val = np.array([]), 
+                    Y_val = np.array([]),
                     pretraining_mode = 'load_weights',
-                    epochs=1,
+                    epochs=100,
                     loss_fn= nn.MSELoss(), 
                     set_learning_rates=[0.01, 0.005, 0.001, 0.0005], 
                     batch_size=256,
                     verbose=0):
+                
+        # if type(self.my_model) == xLSTM:
+        #     set_learning_rates=[0.01]
+        #     epochs=20   # xLSTM need less epochs.
         
         if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
             self.my_model.train_model(X_train, Y_train)
@@ -90,8 +96,14 @@ class Model():
                 history['loss'].append(epoch_loss)
                 
                 if verbose > 0:
+                    if X_val.shape[0] != 0 and Y_val.shape[0] != 0:
+                        eval_value = self.evaluate(X_val, Y_val)
+                        val_loss = float(eval_value['val_loss'][-1])
+                    else:
+                        val_loss = -1.0
                     print(f"Epoch {epoch + 1}/{epochs} - " + 
                         f"Loss = {epoch_loss:.4f} - " + 
+                        f"Val_Loss = {val_loss:.4f} - " + 
                         f"LR = {my_optimizer.param_groups[0]['lr']}", 
                         flush=True)
                     
@@ -145,9 +157,12 @@ class Model():
 
 
 class xLSTM(nn.Module):
-    def __init__(self, num_of_features, output_dim = 1, lstmAdapter=None):
+    def __init__(self, num_of_features, output_dim = 1, lstmAdapter=None, hidden_dim=20):
         super(xLSTM, self).__init__()     
 
+        # Embedding layer to transform input into model dimension
+        # self.embedding = nn.Linear(num_of_features, hidden_dim)
+        
         # Configuration for the xLSTM
         # molu: The config was left as provided by NX-AI, if not commented by me.
         self.cfg = xLSTMBlockStackConfig(
@@ -181,6 +196,7 @@ class xLSTM(nn.Module):
         self.output_layer = nn.Linear(10, self.output_dim)
         
     def forward(self, x):
+        # x = self.embedding(x)
         x = self.xlstm_stack(x)
         x = self.lambdaLayer(x)
         x = self.activation(self.dense1(x))
@@ -219,16 +235,16 @@ class Transformer(nn.Module):
         super(Transformer, self).__init__()
 
         # Embedding layer to transform input into model dimension
-        self.embedding = nn.Linear(num_of_features, hidden_dim)
+        # self.embedding = nn.Linear(num_of_features, hidden_dim)
         
         # Transformer Encoder Layers
-        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_dim, nhead=num_heads, batch_first=True)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=num_of_features, nhead=num_heads, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         
         # Additional dense layers
         self.lambdaLayer = LambdaLayer(lambda x: x[:, -24:, :])  # Custom layer to slice last 24 timesteps
         self.activation = nn.ReLU()
-        self.dense1 = nn.Linear(hidden_dim, 10)
+        self.dense1 = nn.Linear(num_of_features, 10)
         self.dense2 = nn.Linear(10, 10)
         
         # Output layer
@@ -237,7 +253,7 @@ class Transformer(nn.Module):
 
     def forward(self, x):
         # Pass input through embedding layer
-        x = self.embedding(x)
+        # x = self.embedding(x)
         
         # Pass input through transformer encoder
         x = self.transformer_encoder(x)

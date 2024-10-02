@@ -210,6 +210,7 @@ dependencies:
       - debugpy==1.8.5
       - decorator==5.1.1
       - defusedxml==0.7.1
+      - demandlib==0.2.1
       - distlib==0.3.8
       - execnet==2.1.1
       - executing==2.1.0
