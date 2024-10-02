@@ -120,40 +120,67 @@ class Model():
             X = Variable(torch.Tensor(X))
             output = self.my_model.forward(X)
         return output.numpy()
+    
+    # Compute Symmetric Mean Absolute Percentage Error (sMAPE).
+    def smape(self, y_true, y_pred):        
+        numerator = torch.abs(y_pred - y_true)
+        denominator = (torch.abs(y_true) + torch.abs(y_pred))
+        eps = 1e-8 # To avoid division by zero
+        smape_value = torch.mean(numerator / (denominator + eps)) * 2 * 100
+        return smape_value.item()
 
     def evaluate(self, X_val, Y_val, results={}, loss_fn=nn.MSELoss(), batch_size=256):
-        
+                
         if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
             output = self.my_model(torch.Tensor(X_val))
             assert output.shape == Y_val.shape, \
                 f"Shape mismatch: got {output.shape}, expected {Y_val.shape})"
+            
+            # Compute MSE Loss
             loss = loss_fn(output, torch.Tensor(Y_val))
-            results['val_loss'] = [loss]
+            results['val_loss'] = [loss.item()]
+            
+            # Compute sMAPE
+            smape_val = self.smape(torch.Tensor(Y_val), output)
+            results['val_sMAPE'] = [smape_val]
+            
         else:
+            # Initialize metrics
+            total_loss = 0
+            total_smape = 0
+            total_samples = 0
+            
             # Create DataLoader
             val_dataset = SequenceDataset(X_val, Y_val)
             val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
             self.my_model.eval()        
-            total_loss = 0
-            total_samples = 0
-            
             with torch.no_grad():  # No gradient calculation
                 for batch_x, batch_y in val_loader:
-                                    
-                    # Compute loss
+
+                    # Predict
                     output = self.my_model(batch_x.float())
+                    
+                    # Compute MSE Loss
                     loss = loss_fn(output, batch_y.float())
                     total_loss += loss.item() * batch_x.size(0)
+                    
+                    # Compute sMAPE
+                    smape_val = self.smape(batch_y.float(), output)
+                    total_smape += smape_val * batch_x.size(0)
+                    
                     total_samples += batch_x.size(0)
 
-            # Calculate average loss
+            # Calculate average loss and sMAPE
             if total_samples > 0:
                 results['val_loss'] = [total_loss / total_samples]
+                results['val_sMAPE'] = [total_smape / total_samples]
             else:
                 results['val_loss'] = [0.0]
+                results['val_sMAPE'] = [0.0]
         
         return results
+
 
 
 class xLSTM(nn.Module):
@@ -329,7 +356,8 @@ class PersistencePrediction(nn.Module):
             + "Please check the the following feature dimension."
         
         x = self.lstmAdapter.deNormalizeX(x)    # de-normalize the lagged power feature
-        y_pred = (x[:,-24:,11] + x[:,-24:,12] + x[:,-24:,13]) / 3.0
+        # y_pred = (x[:,-24:,11] + x[:,-24:,12] + x[:,-24:,13]) / 3.0
+        y_pred = x[:,-24:,11]
         y_pred = y_pred[:,:,np.newaxis]  # Get Shape: (batch_size, 24, 1)
         y_pred = self.lstmAdapter.normalizeY(y_pred)    # normalize the output, to compare it to other models.
         
