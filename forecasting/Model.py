@@ -42,7 +42,8 @@ class Model():
                     Y_train, 
                     X_val = np.array([]), 
                     Y_val = np.array([]),
-                    pretraining_mode = 'load_weights',
+                    pretrain_now = False,
+                    finetune_now = True,
                     epochs=100,
                     loss_fn= nn.MSELoss(), 
                     set_learning_rates=[0.01, 0.005, 0.001, 0.0005], 
@@ -69,7 +70,7 @@ class Model():
             history = {"loss": []}
             
             # Load pretrained weights
-            if pretraining_mode == 'load_weights':
+            if finetune_now == True:
                 pretrained_weights_path = f'outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
                 self.my_model.load_state_dict(torch.load(pretrained_weights_path))
 
@@ -108,7 +109,7 @@ class Model():
                         flush=True)
                     
             # Save the trained weights
-            if pretraining_mode == 'store_weights':
+            if pretrain_now == True:
                 pretrained_weights_path = f'outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
                 torch.save(self.my_model.state_dict(), pretrained_weights_path)
 
