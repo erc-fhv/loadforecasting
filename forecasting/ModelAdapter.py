@@ -5,7 +5,7 @@ import datetime
 
 # Bring the data into the data format needed by the model
 #
-class LstmAdapter:
+class ModelAdapter:
 
     def __init__(self,
                  public_holidays,

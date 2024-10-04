@@ -15,11 +15,11 @@ class PlotlyApp:
             X_model,
             Y_model,
             model,
-            lstmAdapter,
+            modelAdapter,
             predictions = None,
             timezone = 'UTC+00:00',
             Y_model_pretrain = None,
-            lstmAdapter_pretrain = None
+            modelAdapter_pretrain = None
                  ):
         
         # Initialize the Dash app
@@ -27,11 +27,11 @@ class PlotlyApp:
         self.X_plot = X_model
         self.Y_plot = Y_model
         self.model_plot = model
-        self.lstmAdapter = lstmAdapter
+        self.modelAdapter = modelAdapter
         self.predictions = predictions
         self.timezone = timezone
         self.Y_model_pretrain = Y_model_pretrain
-        self.lstmAdapter_pretrain = lstmAdapter_pretrain
+        self.modelAdapter_pretrain = modelAdapter_pretrain
 
         # Define the layout of the app
         self.app.layout = html.Div([
@@ -87,7 +87,7 @@ class PlotlyApp:
             selected_date = self.Y_plot[selected_dataset].shape[0] - 1
 
         available_days = self.Y_plot[selected_dataset].shape[0] - 1
-        subset = self.lstmAdapter.getDatasetTypeFromIndex(selected_date)
+        subset = self.modelAdapter.getDatasetTypeFromIndex(selected_date)
 
         if selected_dataset == 'all':
             subset_text = f" Subset: {subset}."
@@ -95,7 +95,7 @@ class PlotlyApp:
             subset_text = ""
 
         # Convert the one-hot weekday encoding to a short string representation
-        prediction_timestep = int(self.lstmAdapter.prediction_history.total_seconds() / (60.0 * 60.0))
+        prediction_timestep = int(self.modelAdapter.prediction_history.total_seconds() / (60.0 * 60.0))
         weekday_one_hot = self.X_plot[selected_dataset][selected_date, prediction_timestep, :7]
         weekday_str = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][np.argmax(weekday_one_hot)]
 
@@ -118,7 +118,7 @@ class PlotlyApp:
 
             # Get the real measured power profile of the selected day
             Y_real = self.Y_plot[selected_dataset][selected_date,:,0]
-            Y_real = self.lstmAdapter.deNormalizeY(Y_real)
+            Y_real = self.modelAdapter.deNormalizeY(Y_real)
 
             # Get the predicted power profile of the selected day
             X_selected = self.X_plot[selected_dataset]
@@ -129,17 +129,17 @@ class PlotlyApp:
             else:
                 Y_pred = self.model_plot.predict(X_selected, verbose=0)
                 Y_pred = Y_pred[selected_date,:,0]
-            Y_pred = self.lstmAdapter.deNormalizeY(Y_pred)
+            Y_pred = self.modelAdapter.deNormalizeY(Y_pred)
 
             # Create a DataFrame for Plotly Express
-            startdate = self.lstmAdapter.getStartDateFromIndex(selected_dataset, selected_date)
+            startdate = self.modelAdapter.getStartDateFromIndex(selected_dataset, selected_date)
             datetime_index = pd.date_range(start=startdate, periods=Y_pred.shape[0], freq='1h').tz_convert(self.timezone)
             
             if self.Y_model_pretrain is None:
                 df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': Y_real, 'Y_pred': Y_pred})
             else:
                 # Add scaled standard load profile
-                Y_standardload_denormalized = self.lstmAdapter_pretrain.deNormalizeY(self.Y_model_pretrain[selected_dataset][selected_date,:,0])
+                Y_standardload_denormalized = self.modelAdapter_pretrain.deNormalizeY(self.Y_model_pretrain[selected_dataset][selected_date,:,0])
                 df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': Y_real, 'Y_pred': Y_pred, 'Y_standardload': Y_standardload_denormalized})
 
             # Create a line chart using Plotly Express
@@ -159,7 +159,7 @@ class PlotlyApp:
                         
             # # Additionally visualize the input Data of the LSTM
             # # Create a dataframe
-            startdate = self.lstmAdapter.getStartDateFromIndex(selected_dataset, selected_date) - self.lstmAdapter.prediction_history
+            startdate = self.modelAdapter.getStartDateFromIndex(selected_dataset, selected_date) - self.modelAdapter.prediction_history
             datetime_index = pd.date_range(start=startdate, periods=X_selected.shape[1], freq='1h')
             X_visualized = X_selected[selected_date,:,:]
             df_X = pd.DataFrame(X_visualized, index=datetime_index)
@@ -178,8 +178,8 @@ class PlotlyApp:
             fig_X.update_yaxes(showgrid=True, gridcolor='lightgrey')
 
             # Store the create figure
-            fig_Y.write_image('plotly_profile_Y.pdf', format='pdf')
-            fig_X.write_image('plotly_profile_X.pdf', format='pdf')
+            fig_Y.write_image('outputs/plotly_profile_Y.pdf', format='pdf')
+            fig_X.write_image('outputs/plotly_profile_X.pdf', format='pdf')
 
             return fig_Y, fig_X
         

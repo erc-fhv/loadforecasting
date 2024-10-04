@@ -5,7 +5,6 @@
 *.h5
 data/Smartmeter data of London Households/
 *.pyc
-forecasting/plotly_profile_X.pdf
-forecasting/plotly_profile_Y.pdf
 *.png
 forecasting/outputs/
+.env
