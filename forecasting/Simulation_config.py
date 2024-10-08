@@ -36,8 +36,8 @@ class DoTransferLearning():
     YES = True      # <= Baseline
     NO = False
     
-class UsedModes():
-    ALL = ['xLSTM', 'LSTM', 'Transformer', 'KNN', 'PersistencePrediction']
+class UsedModels():
+    ALL = ('xLSTM', 'LSTM', 'Transformer', 'KNN', 'PersistencePrediction')
 
 # Collect all classes from above
 all_above_classes = [name for name, obj in globals().items() if isinstance(obj, type)]
@@ -47,9 +47,8 @@ Config_of_one_simulation = namedtuple('Config_of_one_simulation', all_above_clas
 configs = [
     
     # Baseline:
-    Config_of_one_simulation(DoPretraining.YES, ModelSize.MEDIUM, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._10,
-                             TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, DoTransferLearning.YES,
-                             UsedModes.ALL),
+    Config_of_one_simulation(DoPretraining.NO, ModelSize.MEDIUM, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._10,
+                             TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, DoTransferLearning.YES, UsedModels.ALL),
     
     # Variations:    
     # Config_of_one_simulation(DoPretraining.YES, ModelSize.MEDIUM, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._10,

@@ -44,7 +44,7 @@ class Model():
                     Y_dev = np.array([]),
                     pretrain_now = False,
                     finetune_now = True,
-                    epochs=100,
+                    epochs=1,
                     loss_fn= nn.MSELoss(), 
                     set_learning_rates=[0.01, 0.005, 0.001, 0.0005], 
                     batch_size=256,
@@ -72,7 +72,7 @@ class Model():
             
             # Load pretrained weights
             if finetune_now == True:
-                pretrained_weights_path = f'outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+                pretrained_weights_path = f'forecasting/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
                 self.my_model.load_state_dict(torch.load(pretrained_weights_path))
 
             # Start training
@@ -113,11 +113,11 @@ class Model():
                         f"LR = {my_optimizer.param_groups[0]['lr']}", 
                         flush=True)
                 else:
-                    print(".", sep="")
+                    print(".", end="")
                     
             # Save the trained weights
             if pretrain_now == True:
-                pretrained_weights_path = f'outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+                pretrained_weights_path = f'forecasting/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
                 torch.save(self.my_model.state_dict(), pretrained_weights_path)
 
         return history
@@ -220,7 +220,7 @@ class xLSTM(nn.Module):
         self.xlstm_stack = xLSTMBlockStack(self.cfg)
 
         # Adding additional dense layers
-        self.lambdaLayer = LambdaLayer(lambda x: x[:, -24:, :])  # Custom layer to slice last 24 timesteps
+        self.lambdaLayer = Take_last_n_sequence_elements(24)  # Custom layer to slice last 24 timesteps
         self.activation = nn.ReLU()
         self.dense1 = nn.Linear(self.cfg.embedding_dim, 10)
         self.dense2 = nn.Linear(10, 10)
@@ -243,7 +243,7 @@ class LSTM(nn.Module):
         self.lstm2 = nn.LSTM(input_size=100, hidden_size=10, batch_first=True, bidirectional=True)
 
         # Adding additional dense layers
-        self.lambdaLayer = LambdaLayer(lambda x: x[:, -24:, :])  # Custom layer to slice last 24 timesteps
+        self.lambdaLayer = Take_last_n_sequence_elements(24)  # Custom layer to slice last 24 timesteps
         self.activation = nn.ReLU()
         self.dense1 = nn.Linear(num_of_features, 10)
         self.dense2 = nn.Linear(10, 10)
@@ -263,7 +263,7 @@ class LSTM(nn.Module):
 class Transformer(nn.Module):
     def __init__(self, num_of_features, modelAdapter=None):
         super(Transformer, self).__init__()
-        num_heads=4, 
+        num_heads=4
         num_layers=1
         
         # Transformer Encoder Layers
@@ -271,7 +271,7 @@ class Transformer(nn.Module):
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         
         # Additional dense layers
-        self.lambdaLayer = LambdaLayer(lambda x: x[:, -24:, :])  # Custom layer to slice last 24 timesteps
+        self.lambdaLayer = Take_last_n_sequence_elements(24)  # Custom layer to slice last 24 timesteps
         self.activation = nn.ReLU()
         self.dense1 = nn.Linear(num_of_features, 10)
         self.dense2 = nn.Linear(10, 10)
@@ -398,12 +398,12 @@ class CustomLRScheduler:
             param_group['lr'] = new_lr
 
 
-# Custom lambda layer
-class LambdaLayer(nn.Module):
-    def __init__(self, lambda_func):
-        super(LambdaLayer, self).__init__()
-        self.lambda_func = lambda_func
+# Custom layer
+class Take_last_n_sequence_elements(nn.Module):
+    def __init__(self, n):
+        super(Take_last_n_sequence_elements, self).__init__()
+        self.n = n
 
     def forward(self, x):
-        return self.lambda_func(x)
-
+        return x[:, -self.n:, :]
+    
