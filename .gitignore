@@ -6,5 +6,5 @@
 data/Smartmeter data of London Households/
 *.pyc
 *.png
-forecasting/outputs/
+scripts/outputs/
 .env
