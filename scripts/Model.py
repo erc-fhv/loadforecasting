@@ -44,7 +44,7 @@ class Model():
                     Y_dev = np.array([]),
                     pretrain_now = False,
                     finetune_now = True,
-                    epochs=1,
+                    epochs=100,
                     loss_fn= nn.MSELoss(), 
                     set_learning_rates=[0.01, 0.005, 0.001, 0.0005], 
                     batch_size=256,
@@ -72,7 +72,7 @@ class Model():
             
             # Load pretrained weights
             if finetune_now == True:
-                pretrained_weights_path = f'forecasting/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+                pretrained_weights_path = f'scripts/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
                 self.my_model.load_state_dict(torch.load(pretrained_weights_path))
 
             # Start training
@@ -113,11 +113,11 @@ class Model():
                         f"LR = {my_optimizer.param_groups[0]['lr']}", 
                         flush=True)
                 else:
-                    print(".", end="")
+                    print(".", end="", flush=True)                    
                     
             # Save the trained weights
             if pretrain_now == True:
-                pretrained_weights_path = f'forecasting/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+                pretrained_weights_path = f'scripts/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
                 torch.save(self.my_model.state_dict(), pretrained_weights_path)
 
         return history

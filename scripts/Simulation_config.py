@@ -19,8 +19,8 @@ class Aggregation_Count():
     _74_HOUSEHOLDS  = 'data/london_loadprofiles.pkl'                        # <= Baseline
 
 class NrOfComunities():
-    _10 = 1
-    _20 = 2      # <= Baseline
+    _10 = 10
+    _20 = 20      # <= Baseline
     
 class TrainingHistory():
     _2_MONTH = 1
@@ -47,7 +47,7 @@ Config_of_one_simulation = namedtuple('Config_of_one_simulation', all_above_clas
 configs = [
     
     # Baseline:
-    Config_of_one_simulation(DoPretraining.NO, ModelSize.MEDIUM, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._10,
+    Config_of_one_simulation(DoPretraining.YES, ModelSize.MEDIUM, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20,
                              TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, DoTransferLearning.YES, UsedModels.ALL),
     
     # Variations:    

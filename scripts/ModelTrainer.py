@@ -1,4 +1,3 @@
-from tqdm import tqdm
 import pickle
 import multiprocessing as mp
 import pandas as pd
@@ -46,10 +45,11 @@ class ModelTrainer:
 
             else:   # Single Process
                 results = []
-                for model_type in tqdm(sim_config.UsedModels, position=0):
-                    for load_profile in tqdm(loadprofiles, position=1, leave=False):
+                for model_type in sim_config.UsedModels:
+                    for load_profile in loadprofiles:
                         result = optimize_model(model_type, load_profile, sim_config)
                         results.append(result)
+                        print(f"Processing model {model_type} with load profile {load_profile}", flush=True)
 
             # Create a list of dictionaries out of the results
             model_types, load_profiles, sim_configs, histories, returnedModels = zip(*results)
@@ -66,6 +66,8 @@ class ModelTrainer:
         return
 
     def preprocess_data(self, sim_config):
+        
+        print(f"Do Data Preprocessing.", flush=True)
         
         # Readout the power profiles, bring them to the format needed by the model and store those profiles
         #
@@ -98,7 +100,7 @@ class ModelTrainer:
         for i, powerProfile in enumerate(loadProfiles[:sim_config.NrOfComunities]):
             
             # Preprocess data to get X and Y for the model
-            out_filename = 'forecasting/outputs/file_' + str(i) + '.pkl'
+            out_filename = 'scripts/outputs/file_' + str(i) + '.pkl'
             modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps, train_size = 466,
                                                     addLaggedPower=True, shuffle_data=False)
 
@@ -122,12 +124,13 @@ class ModelTrainer:
             modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps, train_size = len(all_standard_loadprofiles), 
                                                     dev_size = 0, addLaggedPower=True, shuffle_data=False)
             X, Y = modelAdapter.transformData(all_standard_loadprofiles, weatherData=None)
-            pretraining_filename = 'forecasting/outputs/standard_loadprofile.pkl'
+            pretraining_filename = 'scripts/outputs/standard_loadprofile.pkl'
             with open(pretraining_filename, 'wb') as file:
                 pickle.dump((X, Y, modelAdapter), file)
             
             # Do model pretraining
-            for model_type in tqdm(sim_config.UsedModels):
+            for model_type in sim_config.UsedModels:
+                print(f"Pretraining {model_type} model.", flush=True)
                 num_of_features = X['train'].shape[2]
                 myModel = model.Model(num_of_features, model_type, modelAdapter)
                 myModel.train_model(X['train'], Y['train'], pretrain_now=True, finetune_now=False, verbose=0)
@@ -137,11 +140,14 @@ class ModelTrainer:
     def store_results(self, all_train_histories, all_trained_models):      
         
         # Store both variables in a pickle files with the timestamp
-        timestamp = datetime.now().strftime("_%Y%m%d_%H%M")
-        filename = f"forecasting/outputs/model_evaluation{timestamp}.pkl"
-        with open(filename, 'wb') as f:
+        timestamp = datetime.now(pytz.timezone('Europe/Vienna')).strftime("_%Y%m%d_%H%M")
+        filename1 = f"scripts/outputs/model_evaluation{timestamp}.pkl"
+        with open(filename1, 'wb') as f:
             pickle.dump((all_train_histories, all_trained_models), f)
-        print(f"Results stored in: {filename}")
+        filename2 = f"scripts/outputs/model_evaluation.pkl"
+        with open(filename2, 'wb') as f:
+            pickle.dump((all_train_histories, all_trained_models), f)
+        print(f"Results stored as: {filename1} and {filename2}", flush=True)
     
     def optimize_model_wrapper(self, args):
         return optimize_model(*args)
