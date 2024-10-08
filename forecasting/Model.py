@@ -40,8 +40,8 @@ class Model():
     def train_model(self, 
                     X_train, 
                     Y_train, 
-                    X_val = np.array([]), 
-                    Y_val = np.array([]),
+                    X_dev = np.array([]), 
+                    Y_dev = np.array([]),
                     pretrain_now = False,
                     finetune_now = True,
                     epochs=100,
@@ -50,12 +50,16 @@ class Model():
                     batch_size=256,
                     verbose=0):
         
-        if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
-            
-            # These models are parameter-free and therefore don't need to be optimized
-            self.my_model.train_model(X_train, Y_train)
+        if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:            
             history = {}
             history['loss'] = [0.0]
+            
+            if pretrain_now:
+                # No pretraining possible for these parameter-free models
+                pass
+            else:
+                # These models are parameter-free and therefore don't need to be optimized
+                self.my_model.train_model(X_train, Y_train)
             
         else:
             
@@ -97,10 +101,10 @@ class Model():
                 history['loss'].append(epoch_loss)
                 
                 if verbose > 0:
-                    if X_val.shape[0] == 0 or Y_val.shape[0] == 0:
+                    if X_dev.shape[0] == 0 or Y_dev.shape[0] == 0:
                         val_loss = -1.0
                     else:
-                        eval_value = self.evaluate(X_val, Y_val)
+                        eval_value = self.evaluate(X_dev, Y_dev)
                         val_loss = float(eval_value['val_loss'][-1])
                         self.my_model.train()  # Switch back to training mode after evaluation
                     print(f"Epoch {epoch + 1}/{epochs} - " + 
@@ -108,6 +112,8 @@ class Model():
                         f"Val_Loss = {val_loss:.4f} - " + 
                         f"LR = {my_optimizer.param_groups[0]['lr']}", 
                         flush=True)
+                else:
+                    print(".", sep="")
                     
             # Save the trained weights
             if pretrain_now == True:
@@ -134,19 +140,19 @@ class Model():
         smape_value = torch.mean(numerator / (denominator + eps)) * 2 * 100
         return smape_value.item()
 
-    def evaluate(self, X_val, Y_val, results={}, loss_fn=nn.MSELoss(), batch_size=256):
+    def evaluate(self, X_dev, Y_dev, results={}, loss_fn=nn.MSELoss(), batch_size=256):
 
         if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
             
             # Predict
-            output = self.my_model(torch.Tensor(X_val))
-            assert output.shape == Y_val.shape, \
-                f"Shape mismatch: got {output.shape}, expected {Y_val.shape})"
+            output = self.my_model(torch.Tensor(X_dev))
+            assert output.shape == Y_dev.shape, \
+                f"Shape mismatch: got {output.shape}, expected {Y_dev.shape})"
             
             # Compute Loss
-            loss = loss_fn(output, torch.Tensor(Y_val))
+            loss = loss_fn(output, torch.Tensor(Y_dev))
             results['val_loss'] = [loss.item()]
-            smape_val = self.smape(torch.Tensor(Y_val), output)
+            smape_val = self.smape(torch.Tensor(Y_dev), output)
             results['val_sMAPE'] = [smape_val]
             
         else:
@@ -157,7 +163,7 @@ class Model():
             total_samples = 0
             
             # Create DataLoader
-            val_dataset = SequenceDataset(X_val, Y_val)
+            val_dataset = SequenceDataset(X_dev, Y_dev)
             val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
             self.my_model.eval()       # Switch off the training flags
