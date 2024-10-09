@@ -16,13 +16,14 @@ from xlstm import (
 
 
 class Model():
-    def __init__(self, num_of_features, model_type= "xLSTM", modelAdapter=None):
+    def __init__(self, model_type= "xLSTM", modelAdapter=None):
         
         if model_type not in globals():
             raise ValueError(f"Unexpected 'model_type' parameter received: {model_type}")
         else:
             # Instantiate model_type (if it is implemented)
-            my_model_class = globals()[model_type]
+            my_model_class = globals()[model_type]        
+            num_of_features = 20    # At this application the number of features are 20.
             self.my_model = my_model_class(num_of_features, modelAdapter=modelAdapter)
 
     def forward(self, x):
@@ -102,14 +103,14 @@ class Model():
                 
                 if verbose > 0:
                     if X_dev.shape[0] == 0 or Y_dev.shape[0] == 0:
-                        val_loss = -1.0
+                        dev_loss = -1.0
                     else:
                         eval_value = self.evaluate(X_dev, Y_dev)
-                        val_loss = float(eval_value['val_loss'][-1])
+                        dev_loss = float(eval_value['test_loss'][-1])
                         self.my_model.train()  # Switch back to training mode after evaluation
                     print(f"Epoch {epoch + 1}/{epochs} - " + 
                         f"Loss = {epoch_loss:.4f} - " + 
-                        f"Val_Loss = {val_loss:.4f} - " + 
+                        f"Dev_Loss = {dev_loss:.4f} - " + 
                         f"LR = {my_optimizer.param_groups[0]['lr']}", 
                         flush=True)
                 else:
@@ -151,9 +152,9 @@ class Model():
             
             # Compute Loss
             loss = loss_fn(output, torch.Tensor(Y_dev))
-            results['val_loss'] = [loss.item()]
+            results['test_loss'] = [loss.item()]
             smape_val = self.smape(torch.Tensor(Y_dev), output)
-            results['val_sMAPE'] = [smape_val]
+            results['test_sMAPE'] = [smape_val]
             
         else:
             
@@ -182,11 +183,11 @@ class Model():
 
             # Calculate average loss and sMAPE
             if total_samples > 0:
-                results['val_loss'] = [loss_sum / total_samples]
-                results['val_sMAPE'] = [smape_sum / total_samples]
+                results['test_loss'] = [loss_sum / total_samples]
+                results['test_sMAPE'] = [smape_sum / total_samples]
             else:
-                results['val_loss'] = [0.0]
-                results['val_sMAPE'] = [0.0]
+                results['test_loss'] = [0.0]
+                results['test_sMAPE'] = [0.0]
         
         return results
 

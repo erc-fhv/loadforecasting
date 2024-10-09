@@ -1,11 +1,9 @@
-import pickle
 import multiprocessing as mp
 import pandas as pd
 import holidays
 import pytz
 from demandlib import bdew
 import pickle
-from datetime import datetime
 
 # Imports own modules.
 # The imports are done relative to the root of the project.
@@ -14,6 +12,7 @@ import scripts.Model as model
 import scripts.Simulation_config as config
 import data.weather_data as weather_data
 import scripts.ModelAdapter as ModelAdapter
+import scripts.utils as utils
 
 
 class ModelTrainer:
@@ -24,7 +23,7 @@ class ModelTrainer:
     def run(self):
         
         # Run every single config
-        all_train_histories, all_trained_models = [], []
+        all_train_histories, all_trained_models = {}, {}
         for sim_config in config.configs:
             
             # Fetch and prepare all needed data
@@ -36,12 +35,7 @@ class ModelTrainer:
                     tasks = [(model_type, load_profile, sim_config)
                             for model_type in sim_config.UsedModels
                             for load_profile in loadprofiles]
-                    results = list(
-                        tqdm(
-                            pool.map(self.optimize_model_wrapper, tasks),
-                            total=len(tasks)
-                        )
-                    )
+                    results = list(pool.map(self.optimize_model_wrapper, tasks))
 
             else:   # Single Process
                 results = []
@@ -49,21 +43,19 @@ class ModelTrainer:
                     for load_profile in loadprofiles:
                         result = optimize_model(model_type, load_profile, sim_config)
                         results.append(result)
-                        print(f"Processing model {model_type} with load profile {load_profile}", flush=True)
 
-            # Create a list of dictionaries out of the results
+            # Store the results into dicts
             model_types, load_profiles, sim_configs, histories, returnedModels = zip(*results)
-            train_histories_unsorted = {(model_type, load_profil, sim_config): history for model_type, load_profil, sim_config, history in zip(model_types, load_profiles, sim_configs, histories)}
-            train_histories = dict(sorted((train_histories_unsorted.items())))
-            myModels_unsorted = {(model_type, load_profil, sim_config): returnedModel for model_type, load_profil, sim_config, returnedModel in zip(model_types, load_profiles, sim_configs, returnedModels)}
-            myModels = dict(sorted(myModels_unsorted.items()))                               
-            all_train_histories.append(train_histories)
-            all_trained_models.append(myModels)
+            for i in range(len(model_types)):
+                result_key = (model_types[i], load_profiles[i], sim_configs[i])
+                all_train_histories[result_key] = histories[i]
+                all_trained_models[result_key] = returnedModels[i]
         
-        # Pickle all results
-        self.store_results(all_train_histories, all_trained_models)
+        # Persist all results
+        utils.Serialize.store_results_with_pickle(all_train_histories)
+        utils.Serialize.store_results_with_torch(all_trained_models)
         
-        return
+        return      
 
     def preprocess_data(self, sim_config):
         
@@ -130,24 +122,11 @@ class ModelTrainer:
             
             # Do model pretraining
             for model_type in sim_config.UsedModels:
-                print(f"Pretraining {model_type} model.", flush=True)
-                num_of_features = X['train'].shape[2]
-                myModel = model.Model(num_of_features, model_type, modelAdapter)
+                print(f"\nPretraining {model_type} model.", flush=True)
+                myModel = model.Model(model_type, modelAdapter)
                 myModel.train_model(X['train'], Y['train'], pretrain_now=True, finetune_now=False, verbose=0)
 
-        return loadProfiles_filenames
-    
-    def store_results(self, all_train_histories, all_trained_models):      
-        
-        # Store both variables in a pickle files with the timestamp
-        timestamp = datetime.now(pytz.timezone('Europe/Vienna')).strftime("_%Y%m%d_%H%M")
-        filename1 = f"scripts/outputs/model_evaluation{timestamp}.pkl"
-        with open(filename1, 'wb') as f:
-            pickle.dump((all_train_histories, all_trained_models), f)
-        filename2 = f"scripts/outputs/model_evaluation.pkl"
-        with open(filename2, 'wb') as f:
-            pickle.dump((all_train_histories, all_trained_models), f)
-        print(f"Results stored as: {filename1} and {filename2}", flush=True)
+        return loadProfiles_filenames              
     
     def optimize_model_wrapper(self, args):
         return optimize_model(*args)
@@ -156,20 +135,21 @@ class ModelTrainer:
 # in order to avoid problems with multiprocessing.
 # 
 def optimize_model(model_type, load_profile, sim_config):
+    
+    print(f"\nProcessing model {model_type} with load profile {load_profile}", flush=True)
 
     # Load a new powerprofile
     with open(load_profile, 'rb') as f:
         (X, Y, modelAdapter) = pickle.load(f)
 
     # Train and evaluate the model
-    num_of_features = X['train'].shape[2]
-    myModel = model.Model(num_of_features, model_type, modelAdapter=modelAdapter)
+    myModel = model.Model(model_type, modelAdapter=modelAdapter)
     history = myModel.train_model(X['train'], Y['train'], X['test'], Y['test'], 
                                   pretrain_now=False, finetune_now=sim_config.DoTransferLearning, verbose=0)
     history = myModel.evaluate(X['test'], Y['test'], history)
     
     # Return the results
-    return (model_type, load_profile, sim_config, history, myModel)
+    return (model_type, load_profile, sim_config, history, myModel.my_model)
 
 if __name__ == "__main__":    
     ModelTrainer(use_multiprocessing=False).run()
