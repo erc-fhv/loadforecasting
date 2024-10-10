@@ -17,10 +17,7 @@ import scripts.utils as utils
 
 class ModelTrainer:
 
-    def __init__(self, use_multiprocessing = False):        
-        self.use_multiprocessing = use_multiprocessing
-
-    def run(self):
+    def run(self, use_multiprocessing = False):
         
         # Run every single config
         all_train_histories, all_trained_models = {}, {}
@@ -29,7 +26,7 @@ class ModelTrainer:
             # Fetch and prepare all needed data
             loadprofiles = self.preprocess_data(sim_config)
             
-            if self.use_multiprocessing:
+            if use_multiprocessing:
                 with mp.Pool() as pool:
                     # Prepare input arguments as a list of tuples and exectue them.
                     tasks = [(model_type, load_profile, sim_config)
@@ -152,5 +149,4 @@ def optimize_model(model_type, load_profile, sim_config):
     return (model_type, load_profile, sim_config, history, myModel.my_model)
 
 if __name__ == "__main__":    
-    ModelTrainer(use_multiprocessing=False).run()
-
+    ModelTrainer().run()

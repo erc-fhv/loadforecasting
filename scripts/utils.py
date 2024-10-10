@@ -120,7 +120,7 @@ class Deserialize:
             deserialize_key = Deserialize.deserialize_key(serialized_key)
             model = scripts.Model.Model(model_type=deserialize_key[0])
             model.my_model.load_state_dict(state_dict)            
-            reloaded_models[deserialize_key] = model.my_model
+            reloaded_models[deserialize_key] = model
         
         return reloaded_models
 

@@ -106,7 +106,7 @@ class PlotlyApp:
     def update_date_plot(self, selected_dataset, selected_date):
 
         try: # use a try-catch to prevent a kernel crash
-            
+
             # Validate the inputs
             #
             if selected_dataset == None:
@@ -127,14 +127,14 @@ class PlotlyApp:
                 if selected_dataset != 'all':
                     print("Warning: Without given model, the visualiation only works for the 'all' dataset", flush=True)
             else:
-                Y_pred = self.model_plot.predict(X_selected, verbose=0)
+                Y_pred = self.model_plot.predict(X_selected)
                 Y_pred = Y_pred[selected_date,:,0]
             Y_pred = self.modelAdapter.deNormalizeY(Y_pred)
 
             # Create a DataFrame for Plotly Express
             startdate = self.modelAdapter.getStartDateFromIndex(selected_dataset, selected_date)
             datetime_index = pd.date_range(start=startdate, periods=Y_pred.shape[0], freq='1h').tz_convert(self.timezone)
-            
+
             if self.Y_model_pretrain is None:
                 df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': Y_real, 'Y_pred': Y_pred})
             else:
@@ -156,7 +156,7 @@ class PlotlyApp:
             fig_Y.update_yaxes(showline = True, linewidth = 1, linecolor = 'black', mirror = True)
             if self.Y_model_pretrain is not None:
                 fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_standardload']/1000.0, mode='lines', name='Y_standardload')
-                        
+
             # # Additionally visualize the input Data of the LSTM
             # # Create a dataframe
             startdate = self.modelAdapter.getStartDateFromIndex(selected_dataset, selected_date) - self.modelAdapter.prediction_history
@@ -178,12 +178,13 @@ class PlotlyApp:
             fig_X.update_yaxes(showgrid=True, gridcolor='lightgrey')
 
             # Store the create figure
-            fig_Y.write_image('outputs/plotly_profile_Y.pdf', format='pdf')
-            fig_X.write_image('outputs/plotly_profile_X.pdf', format='pdf')
+            fig_Y.write_image('scripts/outputs/plotly_profile_Y.pdf', format='pdf')
+            fig_X.write_image('scripts/outputs/plotly_profile_X.pdf', format='pdf')
 
             return fig_Y, fig_X
         
         except:
+            print("hoi!")
 
             return px.line(), px.line()
         
