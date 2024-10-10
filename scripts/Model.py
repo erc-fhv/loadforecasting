@@ -16,27 +16,19 @@ from xlstm import (
 
 
 class Model():
-    def __init__(self, model_type= "xLSTM", modelAdapter=None):
+    def __init__(self, model_type, model_size, modelAdapter=None):
         
         if model_type not in globals():
+            # No class with name model_type is implemented below
             raise ValueError(f"Unexpected 'model_type' parameter received: {model_type}")
         else:
-            # Instantiate model_type (if it is implemented)
+            # Instantiate the model
             my_model_class = globals()[model_type]        
-            num_of_features = 20    # At this application the number of features are 20.
-            self.my_model = my_model_class(num_of_features, modelAdapter=modelAdapter)
+            num_of_features = 20    # For this application the number of features is fixed at 20.
+            self.my_model = my_model_class(model_size, num_of_features, modelAdapter=modelAdapter)
 
     def forward(self, x):
         return self.my_model.forward(x)
-    
-    # Print the number of parameters of this model
-    def get_nr_of_parameters(self, do_print=True):
-        total_params = sum(p.numel() for p in self.my_model.parameters())
-        
-        if do_print == True:
-            print(f"Total number of parameters: {total_params}")   
-            
-        return total_params
     
     def train_model(self, 
                     X_train, 
@@ -59,9 +51,9 @@ class Model():
                 # No pretraining possible for these parameter-free models
                 pass
             else:
-                # These models are parameter-free and therefore don't need to be optimized
+                # These models don't need to be optimized, as they are parameter-free.
                 self.my_model.train_model(X_train, Y_train)
-            
+        
         else:
             
             # Prepare Optimization
@@ -72,7 +64,7 @@ class Model():
             history = {"loss": []}
             
             # Load pretrained weights
-            if finetune_now == True:
+            if finetune_now:
                 pretrained_weights_path = f'scripts/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
                 self.my_model.load_state_dict(torch.load(pretrained_weights_path))
 
@@ -117,7 +109,7 @@ class Model():
                     print(".", end="", flush=True)                    
                     
             # Save the trained weights
-            if pretrain_now == True:
+            if pretrain_now:
                 pretrained_weights_path = f'scripts/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
                 torch.save(self.my_model.state_dict(), pretrained_weights_path)
 
@@ -190,43 +182,71 @@ class Model():
                 results['test_sMAPE'] = [0.0]
         
         return results
+    
+    # Print the number of parameters of this model
+    def get_nr_of_parameters(self, do_print=True):
+        total_params = sum(p.numel() for p in self.my_model.parameters())
+        
+        if do_print == True:
+            print(f"Total number of parameters: {total_params}")   
+            
+        return total_params
 
 
 class xLSTM(nn.Module):
-    def __init__(self, num_of_features, modelAdapter=None):
+    def __init__(self, model_size, num_of_features, modelAdapter=None):
         super(xLSTM, self).__init__()
         
-        # Configuration for the xLSTM
-        # molu: The config was left as provided by NX-AI, if not commented by me.
+        # The following xLSTM config variables are as as provided by NX-AI.
+        conv1d_kernel_size=4
+        num_heads=4
+        qkv_proj_blocksize=4
+        proj_factor=1.3
+        num_blocks=7
+        
+        if model_size == "MEDIUM":
+            # For the "MEDIUM" model: Take the default xLSTM from NX-AI.
+            pass
+        elif model_size == "SMALL":
+            num_blocks=3
+        elif model_size == "LARGE":
+            conv1d_kernel_size=24
+            num_heads=10
+            qkv_proj_blocksize=8
+            proj_factor=2.0
+            num_blocks=10
+        else:
+            assert False, f"Unimplemented model_size parameter given: {model_size}"
+        
+        # Configuration for the xLSTM Block
         self.cfg = xLSTMBlockStackConfig(
             mlstm_block=mLSTMBlockConfig(
                 mlstm=mLSTMLayerConfig(
-                    conv1d_kernel_size=4, qkv_proj_blocksize=4, num_heads=4
+                    conv1d_kernel_size=conv1d_kernel_size, qkv_proj_blocksize=qkv_proj_blocksize, num_heads=num_heads
                 )
             ),
             slstm_block=sLSTMBlockConfig(
                 slstm=sLSTMLayerConfig(
                     backend="vanilla",  # For now run at CPU. Changed from "cuda".
-                    num_heads=4,
-                    conv1d_kernel_size=4,
+                    num_heads=num_heads,
+                    conv1d_kernel_size=conv1d_kernel_size,
                     bias_init="powerlaw_blockdependent",
                 ),
-                feedforward=FeedForwardConfig(proj_factor=1.3, act_fn="gelu"),
+                feedforward=FeedForwardConfig(proj_factor=proj_factor, act_fn="gelu"),
             ),
             context_length=48,  # Num of (hourly) input timesteps. Changed from "256".
-            num_blocks=7,
+            num_blocks=num_blocks,
             embedding_dim=num_of_features,  # Number of features. Changed from "128"
-            slstm_at=[1],
+            slstm_at=[1, (num_blocks-1)],
         )
         self.xlstm_stack = xLSTMBlockStack(self.cfg)
 
         # Adding additional dense layers
         self.lambdaLayer = Take_last_n_sequence_elements(24)  # Custom layer to slice last 24 timesteps
         self.activation = nn.ReLU()
-        self.dense1 = nn.Linear(self.cfg.embedding_dim, 10)
-        self.dense2 = nn.Linear(10, 10)
-        self.output_dim = 1
-        self.output_layer = nn.Linear(10, self.output_dim)
+        self.dense1 = nn.Linear(self.cfg.embedding_dim, 30)
+        self.dense2 = nn.Linear(30, 20)
+        self.output_layer = nn.Linear(20, 1)
         
     def forward(self, x):
         x = self.xlstm_stack(x)
@@ -238,18 +258,27 @@ class xLSTM(nn.Module):
 
 
 class LSTM(nn.Module):
-    def __init__(self, num_of_features, modelAdapter=None):
+    def __init__(self, model_size, num_of_features, modelAdapter=None):
         super(LSTM, self).__init__()
-        self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=50, batch_first=True, bidirectional=True)
-        self.lstm2 = nn.LSTM(input_size=100, hidden_size=10, batch_first=True, bidirectional=True)
+        
+        if model_size == "SMALL":
+            self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=28, batch_first=True, bidirectional=True)
+            self.lstm2 = nn.LSTM(input_size=56, hidden_size=10, batch_first=True, bidirectional=True)
+        elif model_size == "MEDIUM":
+            self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=55, batch_first=True, bidirectional=True)
+            self.lstm2 = nn.LSTM(input_size=110, hidden_size=10, batch_first=True, bidirectional=True)
+        elif model_size == "LARGE":
+            self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=95, batch_first=True, bidirectional=True)
+            self.lstm2 = nn.LSTM(input_size=190, hidden_size=10, batch_first=True, bidirectional=True)
+        else:
+            assert False, f"Unimplemented model_size parameter given: {model_size}"
 
         # Adding additional dense layers
         self.lambdaLayer = Take_last_n_sequence_elements(24)  # Custom layer to slice last 24 timesteps
         self.activation = nn.ReLU()
-        self.dense1 = nn.Linear(num_of_features, 10)
-        self.dense2 = nn.Linear(10, 10)
-        self.output_dim = 1
-        self.output_layer = nn.Linear(10, self.output_dim)        
+        self.dense1 = nn.Linear(num_of_features, 30)
+        self.dense2 = nn.Linear(30, 20)
+        self.output_layer = nn.Linear(20, 1)          
         
     def forward(self, x):
         x, _ = self.lstm1(x)
@@ -262,34 +291,42 @@ class LSTM(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, num_of_features, modelAdapter=None):
-        super(Transformer, self).__init__()
-        num_heads=4
-        num_layers=1
+    def __init__(self, model_size, num_of_features, modelAdapter=None):
+        super(Transformer, self).__init__()     
+        self.num_of_features = num_of_features
+        self.forecast_horizon = 24
         
-        # Transformer Encoder Layers
-        encoder_layer = nn.TransformerEncoderLayer(d_model=num_of_features, nhead=num_heads, batch_first=True)
+        if model_size == "SMALL":
+            num_heads=4
+            num_layers=1
+            dim_feedforward=175
+        elif model_size == "MEDIUM":
+            num_heads=4
+            num_layers=1
+            dim_feedforward=512
+        elif model_size == "LARGE":
+            num_heads=5
+            num_layers=2
+            dim_feedforward=600
+        else:
+            assert False, f"Unimplemented model_size parameter given: {model_size}"
+        
+        # Transformer Encoder and Decoder Layers
+        encoder_layer = nn.TransformerEncoderLayer(d_model=num_of_features, nhead=num_heads, dim_feedforward=dim_feedforward, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        
-        # Additional dense layers
-        self.lambdaLayer = Take_last_n_sequence_elements(24)  # Custom layer to slice last 24 timesteps
-        self.activation = nn.ReLU()
-        self.dense1 = nn.Linear(num_of_features, 10)
-        self.dense2 = nn.Linear(10, 10)
-        self.output_dim = 1
-        self.output_layer = nn.Linear(10, self.output_dim)
+        decoder_layer = nn.TransformerDecoderLayer(d_model=num_of_features, nhead=num_heads, dim_feedforward=dim_feedforward, batch_first=True)
+        self.transformer_decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
+        self.output_layer = nn.Linear(num_of_features, 1)
 
-    def forward(self, x):        
-        x = self.transformer_encoder(x)
-        x = self.lambdaLayer(x)
-        x = self.activation(self.dense1(x))
-        x = self.activation(self.dense2(x))
-        x = self.output_layer(x)
-        return x
-
+    def forward(self, x):
+        encoder_output = self.transformer_encoder(x)
+        decoder_tgt_input = torch.zeros((x.size(0), self.forecast_horizon, self.num_of_features))
+        decoder_output = self.transformer_decoder(decoder_tgt_input, encoder_output)
+        output = self.output_layer(decoder_output)
+        return output
 
 class KNN(nn.Module):
-    def __init__(self, num_of_features, modelAdapter=None):
+    def __init__(self, model_size, num_of_features, modelAdapter=None):
         super(KNN, self).__init__()
         self.X_train = None
         self.Y_train = None
@@ -330,7 +367,7 @@ class KNN(nn.Module):
 
 
 class PersistencePrediction(nn.Module):
-    def __init__(self, num_of_features, modelAdapter=None):
+    def __init__(self, model_size, num_of_features, modelAdapter=None):
         super(PersistencePrediction, self).__init__()
         self.num_of_features = num_of_features
         self.modelAdapter = modelAdapter

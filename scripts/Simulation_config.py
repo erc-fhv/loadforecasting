@@ -7,10 +7,14 @@ class DoPretraining():
     YES = True      # <= Baseline
     NO = False
 
+class DoTransferLearning():
+    YES = True      # <= Baseline
+    NO = False
+
 class ModelSize():
-    SMALL = 1
-    MEDIUM = 2      # <= Baseline
-    LARGE = 3
+    SMALL = "SMALL"
+    MEDIUM = "MEDIUM"      # <= Baseline
+    LARGE = "LARGE"
 
 class Aggregation_Count():
     _1_HOUSEHOLD    = 'data/london_loadprofiles_1household_each.pkl'
@@ -29,12 +33,8 @@ class TrainingHistory():
     _18_MONTH = 4      # <= Baseline
 
 class InputSequenceLength():
-    _48_HOURS = 1      # <= Baseline
-    _7_DAYS = 2
-
-class DoTransferLearning():
-    YES = True      # <= Baseline
-    NO = False
+    _48_HOURS = 48      # <= Baseline
+    _7_DAYS = 24*7
 
 class UsedModels():
     ALL = ('xLSTM', 'LSTM', 'Transformer', 'KNN', 'PersistencePrediction')
@@ -44,23 +44,16 @@ all_above_classes = [name for name, obj in globals().items() if isinstance(obj, 
 Config_of_one_simulation = namedtuple('Config_of_one_simulation', all_above_classes)
 
 # Create test config for all simulation runs
-configs = [
-    
+configs = [    
     # Baseline:
-    Config_of_one_simulation(DoPretraining.YES, ModelSize.MEDIUM, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20,
-                             TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, DoTransferLearning.YES, UsedModels.ALL),
+    Config_of_one_simulation(DoPretraining.YES, DoTransferLearning.YES, ModelSize.MEDIUM, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20,
+                             TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, UsedModels.ALL),
     
     # Variations:
-    # Config_of_one_simulation(DoPretraining.YES, ModelSize.MEDIUM, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20,
-    #                          TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, DoTransferLearning.YES, UsedModels.ALL),
-    # Config_of_one_simulation(DoPretraining.YES, ModelSize.MEDIUM, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20,
-    #                          TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, DoTransferLearning.YES, UsedModels.ALL),
-    # Config_of_one_simulation(DoPretraining.YES, ModelSize.MEDIUM, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20,
-    #                          TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, DoTransferLearning.YES, UsedModels.ALL),
-    # Config_of_one_simulation(DoPretraining.YES, ModelSize.MEDIUM, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20,
-    #                          TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, DoTransferLearning.YES, UsedModels.ALL),
-    # Config_of_one_simulation(DoPretraining.YES, ModelSize.MEDIUM, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20,
-    #                          TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, DoTransferLearning.YES, UsedModels.ALL),
+    # Config_of_one_simulation(DoPretraining.YES, DoTransferLearning.YES, ModelSize.MEDIUM, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20,
+    #                          TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, UsedModels.ALL),
+    # Config_of_one_simulation(DoPretraining.YES, DoTransferLearning.YES, ModelSize.MEDIUM, Aggregation_Count._10_HOUSEHOLDS, NrOfComunities._20,
+    #                          TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, UsedModels.ALL),
+    # Config_of_one_simulation(DoPretraining.YES, DoTransferLearning.YES, ModelSize.MEDIUM, Aggregation_Count._1_HOUSEHOLD, NrOfComunities._20,
+    #                          TrainingHistory._18_MONTH, InputSequenceLength._48_HOURS, UsedModels.ALL),
 ]
-
-print(configs[0].DoPretraining == DoPretraining.YES)

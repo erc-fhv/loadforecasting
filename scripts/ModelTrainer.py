@@ -120,7 +120,7 @@ class ModelTrainer:
             # Do model pretraining
             for model_type in sim_config.UsedModels:
                 print(f"\nPretraining {model_type} model.", flush=True)
-                myModel = model.Model(model_type, modelAdapter)
+                myModel = model.Model(model_type, sim_config.ModelSize, modelAdapter)
                 myModel.train_model(X['train'], Y['train'], pretrain_now=True, finetune_now=False, verbose=0)
 
         return loadProfiles_filenames              
@@ -140,7 +140,7 @@ def optimize_model(model_type, load_profile, sim_config):
         (X, Y, modelAdapter) = pickle.load(f)
 
     # Train and evaluate the model
-    myModel = model.Model(model_type, modelAdapter=modelAdapter)
+    myModel = model.Model(model_type, sim_config.ModelSize, modelAdapter=modelAdapter)
     history = myModel.train_model(X['train'], Y['train'], X['test'], Y['test'], 
                                   pretrain_now=False, finetune_now=sim_config.DoTransferLearning, verbose=0)
     history = myModel.evaluate(X['test'], Y['test'], history)
