@@ -265,9 +265,9 @@ class ModelAdapter:
 
         # Optionally shuffle all indices
         total_samples = X_all.shape[0]
-        self.indices = np.arange(total_samples)
+        self.shuffeled_indices = np.arange(total_samples)
         if self.shuffle_data == True:
-            np.random.shuffle(self.indices)
+            np.random.shuffle(self.shuffeled_indices)
 
         # Do train-dev-test data split
         #
@@ -283,23 +283,23 @@ class ModelAdapter:
         # |       Y['all'] (entire timeseries)              |
         # -------------------------------------------------- 
         X, Y = {}, {}
-        total_size = X_all.shape[0]
-        test_start = total_size - self.test_size
-        dev_start = test_start - self.dev_size
-        train_start = dev_start - self.train_size
+        self.total_set_size = X_all.shape[0]
+        self.test_set_start = self.total_set_size - self.test_size
+        self.dev_set_start = self.test_set_start - self.dev_size
+        self.train_set_start = self.dev_set_start - self.train_size
         
-        X['test'] = X_all[self.indices[test_start:]]
-        X['dev'] = X_all[self.indices[dev_start:test_start]]
-        X['train'] = X_all[self.indices[train_start:dev_start]]
+        X['test'] = X_all[self.shuffeled_indices[self.test_set_start:]]
+        X['dev'] = X_all[self.shuffeled_indices[self.dev_set_start:self.test_set_start]]
+        X['train'] = X_all[self.shuffeled_indices[self.train_set_start:self.dev_set_start]]
         X['all'] = X_all[:]
         
-        Y['test'] = Y_all[self.indices[test_start:]]
-        Y['dev'] = Y_all[self.indices[dev_start:test_start]]
-        Y['train'] = Y_all[self.indices[train_start:dev_start]]
+        Y['test'] = Y_all[self.shuffeled_indices[self.test_set_start:]]
+        Y['dev'] = Y_all[self.shuffeled_indices[self.dev_set_start:self.test_set_start]]
+        Y['train'] = Y_all[self.shuffeled_indices[self.train_set_start:self.dev_set_start]]
         Y['all'] = Y_all[:]
 
         return X, Y
-    
+
     # Return the unshuffled index in all data that corresponds to the given
     # dataset_tye and index.
     #
@@ -307,16 +307,16 @@ class ModelAdapter:
 
         # Shuffled data
         if dataset_type == 'train':
-            unshuffled_index = self.shuffeled_indices[index]
+            unshuffled_index = self.shuffeled_indices[index + self.train_set_start]
         elif dataset_type == 'dev':
-            unshuffled_index = self.shuffeled_indices[index + self.train_size]
+            unshuffled_index = self.shuffeled_indices[index + self.dev_set_start]
         elif dataset_type == 'test':
-            unshuffled_index = self.shuffeled_indices[index+self.train_size+self.dev_size]
+            unshuffled_index = self.shuffeled_indices[index + self.test_set_start]
         else:
             assert False, "Unexpected 'dataset_type' parameter received."
 
-        return unshuffled_index 
-    
+        return unshuffled_index
+
     # Return the prediction date that corresponds to the given
     # dataset_tye and index.
     #
@@ -333,12 +333,16 @@ class ModelAdapter:
 
         shuffled_index = np.where(self.shuffeled_indices == unshuffeled_index)[0]
 
-        if shuffled_index < self.train_size:
-            dataset_type = 'train'
-        elif shuffled_index < self.train_size + self.dev_size:
-            dataset_type = 'dev'
-        else:
+        if shuffled_index >= self.total_set_size:
+            dataset_type = 'unknown (error)'
+        elif shuffled_index >= self.test_set_start:
             dataset_type = 'test'
+        elif shuffled_index >= self.dev_size:
+            dataset_type = 'dev'
+        elif shuffled_index >= self.train_size:
+            dataset_type = 'train'
+        else:
+            dataset_type = 'un-used'
 
         return dataset_type
 

@@ -49,7 +49,7 @@ run_settings = ['modelSize', 'doPretraining', 'doTransferLearning', 'aggregation
 Config_of_one_run = namedtuple('Config_of_one_run', run_settings)
 
 # Create test config for all simulation runs
-configs = [ 
+configs = [
     Config_of_one_run(ModelSize.SMALL, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._74_HOUSEHOLDS,
             NrOfComunities._20, TrainingHistory._15_MONTH, InputSequenceLength._48_HOURS, UsedModels.ALL, Epochs.DEFAULT),
     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._74_HOUSEHOLDS,

@@ -86,10 +86,9 @@ class PlotlyApp:
         elif selected_date >= self.Y_plot[selected_dataset].shape[0] - 1:
             selected_date = self.Y_plot[selected_dataset].shape[0] - 1
 
-        available_days = self.Y_plot[selected_dataset].shape[0] - 1
-        subset = self.modelAdapter.getDatasetTypeFromIndex(selected_date)
-
+        # Get the currently choosen data subset (train, dev or test)
         if selected_dataset == 'all':
+            subset = self.modelAdapter.getDatasetTypeFromIndex(selected_date)
             subset_text = f" Subset: {subset}."
         else:
             subset_text = ""
@@ -99,6 +98,8 @@ class PlotlyApp:
         weekday_one_hot = self.X_plot[selected_dataset][selected_date, prediction_timestep, :7]
         weekday_str = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][np.argmax(weekday_one_hot)]
 
+        # Display information about the currently chosen date
+        available_days = self.Y_plot[selected_dataset].shape[0] - 1
         returnValue = f"   ... selected day from [1 ... {available_days}]. Weekday of the prediction timestep: {weekday_str}." + subset_text
 
         return returnValue
