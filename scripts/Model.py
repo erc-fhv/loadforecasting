@@ -30,16 +30,16 @@ class Model():
     def forward(self, x):
         return self.my_model.forward(x)
     
-    def train_model(self, 
-                    X_train, 
-                    Y_train, 
-                    X_dev = np.array([]), 
+    def train_model(self,
+                    X_train,
+                    Y_train,
+                    X_dev = np.array([]),
                     Y_dev = np.array([]),
                     pretrain_now = False,
                     finetune_now = True,
                     epochs=100,
-                    loss_fn= nn.MSELoss(), 
-                    set_learning_rates=[0.01, 0.005, 0.001, 0.0005], 
+                    loss_fn= nn.MSELoss(),
+                    set_learning_rates=[0.01, 0.005, 0.001, 0.0005],
                     batch_size=256,
                     verbose=0):
         
@@ -196,6 +196,7 @@ class Model():
 class xLSTM(nn.Module):
     def __init__(self, model_size, num_of_features, modelAdapter=None):
         super(xLSTM, self).__init__()
+        self.forecast_horizon = 24
         
         # The following xLSTM config variables are as as provided by NX-AI.
         conv1d_kernel_size=4
@@ -204,17 +205,16 @@ class xLSTM(nn.Module):
         proj_factor=1.3
         num_blocks=7
         
-        if model_size == "MEDIUM":
-            # For the "MEDIUM" model: Take the default xLSTM from NX-AI.
-            pass
-        elif model_size == "SMALL":
+        # Finetune the config variables
+        if model_size == "SMALL":
             num_blocks=3
+            d_model=num_of_features
+        elif model_size == "MEDIUM":
+            num_blocks=4
+            d_model=num_of_features
         elif model_size == "LARGE":
-            conv1d_kernel_size=24
-            num_heads=10
-            qkv_proj_blocksize=8
-            proj_factor=2.0
-            num_blocks=10
+            num_blocks=5
+            d_model=num_of_features*2
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
         
@@ -236,21 +236,22 @@ class xLSTM(nn.Module):
             ),
             context_length=48,  # Num of (hourly) input timesteps. Changed from "256".
             num_blocks=num_blocks,
-            embedding_dim=num_of_features,  # Number of features. Changed from "128"
-            slstm_at=[1, (num_blocks-1)],
+            embedding_dim=d_model,  # Number of features. Changed from "128"
+            slstm_at=[1,],
         )
         self.xlstm_stack = xLSTMBlockStack(self.cfg)
 
-        # Adding additional dense layers
-        self.lambdaLayer = Take_last_n_sequence_elements(24)  # Custom layer to slice last 24 timesteps
+        # Adding none-xlstm layers
+        self.input_projection = nn.Linear(num_of_features, d_model)
         self.activation = nn.ReLU()
-        self.dense1 = nn.Linear(self.cfg.embedding_dim, 30)
+        self.dense1 = nn.Linear(d_model, 30)
         self.dense2 = nn.Linear(30, 20)
         self.output_layer = nn.Linear(20, 1)
         
     def forward(self, x):
+        x = self.input_projection(x)
         x = self.xlstm_stack(x)
-        x = self.lambdaLayer(x)
+        x = x[:, -self.forecast_horizon:, :]  # Output only the last 24 timesteps
         x = self.activation(self.dense1(x))
         x = self.activation(self.dense2(x))
         x = self.output_layer(x)
@@ -260,6 +261,7 @@ class xLSTM(nn.Module):
 class LSTM(nn.Module):
     def __init__(self, model_size, num_of_features, modelAdapter=None):
         super(LSTM, self).__init__()
+        self.forecast_horizon = 24
         
         if model_size == "SMALL":
             self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=28, batch_first=True, bidirectional=True)
@@ -274,7 +276,6 @@ class LSTM(nn.Module):
             assert False, f"Unimplemented model_size parameter given: {model_size}"
 
         # Adding additional dense layers
-        self.lambdaLayer = Take_last_n_sequence_elements(24)  # Custom layer to slice last 24 timesteps
         self.activation = nn.ReLU()
         self.dense1 = nn.Linear(num_of_features, 30)
         self.dense2 = nn.Linear(30, 20)
@@ -283,7 +284,7 @@ class LSTM(nn.Module):
     def forward(self, x):
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
-        x = self.lambdaLayer(x)
+        x = x[:, -self.forecast_horizon:, :]  # Output only the last 24 timesteps
         x = self.activation(self.dense1(x))
         x = self.activation(self.dense2(x))
         x = self.output_layer(x)
@@ -299,31 +300,39 @@ class Transformer(nn.Module):
         if model_size == "SMALL":
             num_heads=4
             num_layers=1
-            dim_feedforward=175
+            dim_feedforward=512
+            d_model=num_of_features
         elif model_size == "MEDIUM":
             num_heads=4
             num_layers=1
             dim_feedforward=512
+            d_model=num_of_features*2
         elif model_size == "LARGE":
-            num_heads=5
+            num_heads=10
             num_layers=2
             dim_feedforward=600
+            d_model=num_of_features*2
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
-        
-        # Transformer Encoder and Decoder Layers
-        encoder_layer = nn.TransformerEncoderLayer(d_model=num_of_features, nhead=num_heads, dim_feedforward=dim_feedforward, batch_first=True)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        decoder_layer = nn.TransformerDecoderLayer(d_model=num_of_features, nhead=num_heads, dim_feedforward=dim_feedforward, batch_first=True)
-        self.transformer_decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
-        self.output_layer = nn.Linear(num_of_features, 1)
+
+        # Transformer Encoder Layers
+        self.input_projection = nn.Linear(num_of_features, d_model)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=num_heads, 
+                                                   dim_feedforward=dim_feedforward, batch_first=True)
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        self.activation = nn.ReLU()
+        self.dense1 = nn.Linear(d_model, 30)
+        self.dense2 = nn.Linear(30, 20)
+        self.output_layer = nn.Linear(20, 1)    
 
     def forward(self, x):
-        encoder_output = self.transformer_encoder(x)
-        decoder_tgt_input = torch.zeros((x.size(0), self.forecast_horizon, self.num_of_features))
-        decoder_output = self.transformer_decoder(decoder_tgt_input, encoder_output)
-        output = self.output_layer(decoder_output)
-        return output
+        x = self.input_projection(x)
+        x = self.transformer(x)
+        x = x[:, -self.forecast_horizon:, :]  # Output only the last 24 timesteps
+        x = self.activation(self.dense1(x))
+        x = self.activation(self.dense2(x))
+        x = self.output_layer(x)        
+        return x
 
 class KNN(nn.Module):
     def __init__(self, model_size, num_of_features, modelAdapter=None):
@@ -434,14 +443,3 @@ class CustomLRScheduler:
         # Update the optimizer's learning rate
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = new_lr
-
-
-# Custom layer
-class Take_last_n_sequence_elements(nn.Module):
-    def __init__(self, n):
-        super(Take_last_n_sequence_elements, self).__init__()
-        self.n = n
-
-    def forward(self, x):
-        return x[:, -self.n:, :]
-    

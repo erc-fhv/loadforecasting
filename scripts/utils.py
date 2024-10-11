@@ -118,7 +118,8 @@ class Deserialize:
         reloaded_models = {}        
         for serialized_key, state_dict in serialized_dict.items():
             deserialize_key = Deserialize.deserialize_key(serialized_key)
-            model = scripts.Model.Model(model_type=deserialize_key[0])
+            model = scripts.Model.Model(model_type=deserialize_key[0], 
+                                        model_size=deserialize_key[2].modelSize)
             model.my_model.load_state_dict(state_dict)            
             reloaded_models[deserialize_key] = model
         
@@ -128,7 +129,7 @@ class Deserialize:
     #
     @staticmethod
     def dict_to_named_tuple(**kwargs):
-        return config.Config_of_one_simulation(**kwargs)
+        return config.Config_of_one_run(**kwargs)
 
     # If the named tuple includes lists, convert it to a tuples.
     #

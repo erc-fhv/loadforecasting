@@ -17,7 +17,7 @@ import scripts.utils as utils
 
 class ModelTrainer:
 
-    def run(self, use_multiprocessing = False):
+    def run(self):
         
         # Run every single config
         all_train_histories, all_trained_models = {}, {}
@@ -26,20 +26,12 @@ class ModelTrainer:
             # Fetch and prepare all needed data
             loadprofiles = self.preprocess_data(sim_config)
             
-            if use_multiprocessing:
-                with mp.Pool() as pool:
-                    # Prepare input arguments as a list of tuples and exectue them.
-                    tasks = [(model_type, load_profile, sim_config)
-                            for model_type in sim_config.UsedModels
-                            for load_profile in loadprofiles]
-                    results = list(pool.map(self.optimize_model_wrapper, tasks))
-
-            else:   # Single Process
-                results = []
-                for model_type in sim_config.UsedModels:
-                    for load_profile in loadprofiles:
-                        result = optimize_model(model_type, load_profile, sim_config)
-                        results.append(result)
+            # Train and test the given models
+            results = []
+            for model_type in sim_config.usedModels:
+                for load_profile in loadprofiles:
+                    result = optimize_model(model_type, load_profile, sim_config)
+                    results.append(result)
 
             # Store the results into dicts
             model_types, load_profiles, sim_configs, histories, returnedModels = zip(*results)
@@ -56,12 +48,12 @@ class ModelTrainer:
 
     def preprocess_data(self, sim_config):
         
-        print(f"Do Data Preprocessing.", flush=True)
+        print(f"\n\nDo Data Preprocessing for run config={sim_config}.", flush=True)
         
         # Readout the power profiles, bring them to the format needed by the model and store those profiles
         #
-        loadProfiles = pd.read_pickle(sim_config.Aggregation_Count)
-        loadProfiles = loadProfiles[:sim_config.NrOfComunities]
+        loadProfiles = pd.read_pickle(sim_config.aggregation_Count)
+        loadProfiles = loadProfiles[:sim_config.nrOfComunities]
 
         # Readout the weather data
         #
@@ -86,7 +78,7 @@ class ModelTrainer:
         # Bring the power profiles to the model shape of (nr_of_batches, timesteps, features)
         #
         loadProfiles_filenames = []
-        for i, powerProfile in enumerate(loadProfiles[:sim_config.NrOfComunities]):
+        for i, powerProfile in enumerate(loadProfiles[:sim_config.nrOfComunities]):
             
             # Preprocess data to get X and Y for the model
             out_filename = 'scripts/outputs/file_' + str(i) + '.pkl'
@@ -99,7 +91,7 @@ class ModelTrainer:
             loadProfiles_filenames.append(out_filename)
         
         # If required, do pretraing
-        if sim_config.DoPretraining:
+        if sim_config.doPretraining:
 
             # Load the BDEW standard load profiles for the desired datetime range
             standard_loadprofiles = []
@@ -118,10 +110,11 @@ class ModelTrainer:
                 pickle.dump((X, Y, modelAdapter), file)
             
             # Do model pretraining
-            for model_type in sim_config.UsedModels:
+            for model_type in sim_config.usedModels:
                 print(f"\nPretraining {model_type} model.", flush=True)
-                myModel = model.Model(model_type, sim_config.ModelSize, modelAdapter)
-                myModel.train_model(X['train'], Y['train'], pretrain_now=True, finetune_now=False, verbose=0)
+                myModel = model.Model(model_type, sim_config.modelSize, modelAdapter)
+                myModel.train_model(X['train'], Y['train'], pretrain_now=True, 
+                                    finetune_now=False, epochs=sim_config.epochs)
 
         return loadProfiles_filenames              
     
@@ -140,9 +133,9 @@ def optimize_model(model_type, load_profile, sim_config):
         (X, Y, modelAdapter) = pickle.load(f)
 
     # Train and evaluate the model
-    myModel = model.Model(model_type, sim_config.ModelSize, modelAdapter=modelAdapter)
-    history = myModel.train_model(X['train'], Y['train'], X['test'], Y['test'], 
-                                  pretrain_now=False, finetune_now=sim_config.DoTransferLearning, verbose=0)
+    myModel = model.Model(model_type, sim_config.modelSize, modelAdapter=modelAdapter)
+    history = myModel.train_model(X['train'], Y['train'], X['test'], Y['test'], pretrain_now=False,
+                                  finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
     history = myModel.evaluate(X['test'], Y['test'], history)
     
     # Return the results
