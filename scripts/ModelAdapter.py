@@ -13,7 +13,7 @@ class ModelAdapter:
                  test_size,
                  prediction_history,
                  dev_size = 0,
-                 addLaggedPower=False,
+                 addLaggedPower=True,
                  shuffle_data=False,
                  seed=None,
                  sampling_time = pd.Timedelta(hours=1, minutes=0),
@@ -24,7 +24,7 @@ class ModelAdapter:
         self.prediction_rate = prediction_rate
         self.prediction_horizon = prediction_horizon
         self.sampling_time = sampling_time
-        self.prediction_history = pd.Timedelta(hours=prediction_history, unit='hours'),
+        self.prediction_history = pd.Timedelta(hours=prediction_history)
         self.public_holidays = public_holidays
         self.addLaggedPower = addLaggedPower
         self.shuffle_data = shuffle_data
@@ -151,7 +151,7 @@ class ModelAdapter:
             if self.addLaggedPower == True:
                 for day in range(1, 4):
                     start = next_prediction_date - pd.Timedelta(days=day*7+1, hours=0)
-                    end = start + pd.Timedelta(days=0, hours=47)
+                    end = start + self.prediction_history + self.prediction_horizon
                     prev_day = powerProfiles.loc[start:end]                    
                     X_all[batch_id, :, index]  = np.array(prev_day.values)
                     index += 1

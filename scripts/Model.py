@@ -350,9 +350,9 @@ class KNN(nn.Module):
             Y_train = torch.tensor(Y_train, dtype=torch.float32)
 
         # Store the training data as flattened tensors
+        self.nr_of_timesteps = X_train.shape[1]    
         self.X_train = X_train.view(X_train.shape[0], -1)  # Flatten X_train from (nr_of_batches, timesteps, features) to (nr_of_batches, timesteps * features)
         self.Y_train = Y_train  # Y_train remains unchanged in shape (nr_of_days, timesteps, 1)
-        self.nr_of_timesteps = Y_train.shape[1]    
     
     # Given an input x, find the closest neighbor from the training data X_train
     # and return the corresponding Y_train.
