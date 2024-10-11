@@ -82,8 +82,11 @@ class ModelTrainer:
             
             # Preprocess data to get X and Y for the model
             out_filename = 'scripts/outputs/file_' + str(i) + '.pkl'
-            modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps, train_size = 466,
-                                                    addLaggedPower=True, shuffle_data=False)
+            test_set_size_days = 131    # Size of the testset is fixed to 131 days ~ 4 month
+            modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps, 
+                                                     train_size = sim_config.trainingHistory,
+                                                     test_size = test_set_size_days, 
+                                                     prediction_history = sim_config.inputSequenceLength)
 
             X, Y = modelAdapter.transformData(powerProfile, weatherData)
             with open(out_filename, 'wb') as file:
@@ -102,8 +105,9 @@ class ModelTrainer:
             all_standard_loadprofiles = all_standard_loadprofiles[(all_standard_loadprofiles.index >= startDate) & (all_standard_loadprofiles.index <= endDate)]
             
             # Preprocess data to get X and Y for the model
-            modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps, train_size = len(all_standard_loadprofiles), 
-                                                    dev_size = 0, addLaggedPower=True, shuffle_data=False)
+            modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps, 
+                                                     train_size=len(all_standard_loadprofiles),
+                                                     prediction_history = sim_config.inputSequenceLength)
             X, Y = modelAdapter.transformData(all_standard_loadprofiles, weatherData=None)
             pretraining_filename = 'scripts/outputs/standard_loadprofile.pkl'
             with open(pretraining_filename, 'wb') as file:

@@ -234,7 +234,7 @@ class xLSTM(nn.Module):
                 ),
                 feedforward=FeedForwardConfig(proj_factor=proj_factor, act_fn="gelu"),
             ),
-            context_length=48,  # Num of (hourly) input timesteps. Changed from "256".
+            context_length=256,  # Num of (hourly) input timesteps. Changed from "256".
             num_blocks=num_blocks,
             embedding_dim=d_model,  # Number of features. Changed from "128"
             slstm_at=[1,],
@@ -352,7 +352,7 @@ class KNN(nn.Module):
         # Store the training data as flattened tensors
         self.X_train = X_train.view(X_train.shape[0], -1)  # Flatten X_train from (nr_of_batches, timesteps, features) to (nr_of_batches, timesteps * features)
         self.Y_train = Y_train  # Y_train remains unchanged in shape (nr_of_days, timesteps, 1)
-    
+        self.nr_of_timesteps = Y_train.shape[1]    
     
     # Given an input x, find the closest neighbor from the training data X_train
     # and return the corresponding Y_train.
@@ -361,8 +361,8 @@ class KNN(nn.Module):
         
         batch_size = x.size(0)
         x_flat = x.view(batch_size, -1)  # Flatten input to (batch_size, 24*num_of_features)
-        assert x_flat.shape == torch.Size([batch_size, 48 * self.num_of_features]), \
-            f"Shape mismatch: got {x_flat.shape}, expected ({batch_size}, {48 * self.num_of_features})"
+        assert x_flat.shape == torch.Size([batch_size, self.nr_of_timesteps * self.num_of_features]), \
+            f"Shape mismatch: got {x_flat.shape}, expected ({batch_size}, {self.nr_of_timesteps * self.num_of_features})"
         distances = torch.cdist(x_flat, self.X_train)  # Compute pairwise distances
         assert distances.shape == torch.Size([batch_size, self.X_train.shape[0]]), \
             f"Shape mismatch: got {distances.shape}, expected ({batch_size}, {self.Y_train.shape[0]})"
@@ -388,9 +388,9 @@ class PersistencePrediction(nn.Module):
         """
         
         batch_size = x.size(0)
-        assert x.shape == (batch_size, 48, self.num_of_features), \
-            f"Shape mismatch: got {x.shape}, expected ({batch_size}, 48, {self.num_of_features})" \
-            + "Please check the the following feature dimension."
+        timesteps = x.size(1)
+        assert x.shape == (batch_size, timesteps, self.num_of_features), \
+            f"Shape mismatch: got {x.shape}, expected ({batch_size}, 48, {self.num_of_features})"
         
         x = self.modelAdapter.deNormalizeX(x)    # de-normalize the lagged power feature
         y_pred = x[:,-24:,11]

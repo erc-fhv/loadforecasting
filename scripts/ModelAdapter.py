@@ -10,11 +10,12 @@ class ModelAdapter:
     def __init__(self,
                  public_holidays,
                  train_size,
+                 test_size,
+                 prediction_history,
                  dev_size = 0,
                  addLaggedPower=False,
                  shuffle_data=False,
                  seed=None,
-                 prediction_history = pd.Timedelta(days=1, hours=0),
                  sampling_time = pd.Timedelta(hours=1, minutes=0),
                  prediction_rate = pd.Timedelta(days=1),
                  prediction_horizon = pd.Timedelta(days=0, hours=23, minutes=0),
@@ -23,12 +24,13 @@ class ModelAdapter:
         self.prediction_rate = prediction_rate
         self.prediction_horizon = prediction_horizon
         self.sampling_time = sampling_time
-        self.prediction_history = prediction_history
+        self.prediction_history = pd.Timedelta(hours=prediction_history, unit='hours'),
         self.public_holidays = public_holidays
         self.addLaggedPower = addLaggedPower
         self.shuffle_data = shuffle_data
         self.train_size = train_size
-        self.dev_size = dev_size       
+        self.test_size = test_size
+        self.dev_size = dev_size
 
         # Optionally: Fix the random-seed for reproducibility
         if seed != None:
@@ -263,20 +265,37 @@ class ModelAdapter:
 
         # Optionally shuffle all indices
         total_samples = X_all.shape[0]
-        self.shuffeled_indices = np.arange(total_samples)
+        self.indices = np.arange(total_samples)
         if self.shuffle_data == True:
-            np.random.shuffle(self.shuffeled_indices)
+            np.random.shuffle(self.indices)
 
-        # Split up data
+        # Do train-dev-test data split
+        #
+        # --------------> time axis
+        #
+        #  -------------------------------------------------
+        # | un-used |      train  |   dev   |    test       |
+        # |-----------------------|---------|---------------|
+        # |         |  X['train'] | X['dev']|  X['test']    |
+        # |         |  Y['train'] | Y['dev']|  Y['test']    |
+        # ---------------------------------------------------
+        # |       X['all'] (entire timeseries)              |
+        # |       Y['all'] (entire timeseries)              |
+        # -------------------------------------------------- 
         X, Y = {}, {}
-        X['train'] = X_all[self.shuffeled_indices[:self.train_size]]
-        X['dev'] = X_all[self.shuffeled_indices[self.train_size:self.train_size+self.dev_size]]
-        X['test'] = X_all[self.shuffeled_indices[self.train_size+self.dev_size:]]
+        total_size = X_all.shape[0]
+        test_start = total_size - self.test_size
+        dev_start = test_start - self.dev_size
+        train_start = dev_start - self.train_size
+        
+        X['test'] = X_all[self.indices[test_start:]]
+        X['dev'] = X_all[self.indices[dev_start:test_start]]
+        X['train'] = X_all[self.indices[train_start:dev_start]]
         X['all'] = X_all[:]
-
-        Y['train'] = Y_all[self.shuffeled_indices[:self.train_size]]
-        Y['dev'] = Y_all[self.shuffeled_indices[self.train_size:self.train_size+self.dev_size]]
-        Y['test'] = Y_all[self.shuffeled_indices[self.train_size+self.dev_size:]]
+        
+        Y['test'] = Y_all[self.indices[test_start:]]
+        Y['dev'] = Y_all[self.indices[dev_start:test_start]]
+        Y['train'] = Y_all[self.indices[train_start:dev_start]]
         Y['all'] = Y_all[:]
 
         return X, Y
