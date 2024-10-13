@@ -10,7 +10,7 @@ It uses transfer learning from standard load profiles together with state of the
 The basic code design is as follows.
 ```
 +-----------------------------+           +------------------------------+
-|         config.py           |           |        ModelTrainer          |
+| config.py                   |           | ModelTrainer                 |
 |-----------------------------|           |------------------------------|
 | configs: list               |           | + run()                      |
 | # Parameterize the run      |---------> | # Trains all models          |           
@@ -20,7 +20,7 @@ The basic code design is as follows.
                                                       |
                                                       |
                                           +-----------v------------------+
-                                          |        Model                 |
+                                          | Model                        |
                                           |------------------------------|
                                           | my_model: (xLSTM to KNN)     |
                                           | + train_model()              |
