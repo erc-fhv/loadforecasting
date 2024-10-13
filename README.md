@@ -20,7 +20,7 @@ The basic code design is as follows.
                                                       |
                                                       |
                                           +-----------v------------------+
-                                          |               Model          |
+                                          |        Model                 |
                                           |------------------------------|
                                           | my_model: (xLSTM to KNN)     |
                                           | + train_model()              |
