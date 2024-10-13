@@ -62,7 +62,7 @@ If you use this codebase, or find our work valuable please cite the following pa
 ```
 @article{
   title={Transfer learning for short-term prediction of electrical loads for domestic households and energy communities: a deep learning approach using xLSTM},
-  author={Lukas Moosbruggera, Valentin Seilera, Sebastian Hegenbartc, Philipp Wohlgenannta, Sashko Ristovb, Peter Kepplinger},
+  author={Lukas Moosbrugger, Valentin Seiler, Sebastian Hegenbart, Philipp Wohlgenannt, Sashko Ristov, Peter Kepplinger},
   journal={arXiv preprint},
   year={2024}
 }
