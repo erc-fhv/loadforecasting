@@ -235,7 +235,7 @@ class xLSTM(nn.Module):
                 ),
                 feedforward=FeedForwardConfig(proj_factor=proj_factor, act_fn="gelu"),
             ),
-            context_length=1024,
+            context_length=600,
             num_blocks=num_blocks,
             embedding_dim=d_model,
             slstm_at=[1,],
@@ -267,19 +267,19 @@ class LSTM(nn.Module):
         
         if model_size == "SMALL":
             self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=28, batch_first=True, bidirectional=True)
-            self.lstm2 = nn.LSTM(input_size=56, hidden_size=int(num_of_features/2), batch_first=True, bidirectional=True)
+            self.lstm2 = nn.LSTM(input_size=56, hidden_size=10, batch_first=True, bidirectional=True)
         elif model_size == "MEDIUM":
             self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=55, batch_first=True, bidirectional=True)
-            self.lstm2 = nn.LSTM(input_size=110, hidden_size=int(num_of_features/2), batch_first=True, bidirectional=True)
+            self.lstm2 = nn.LSTM(input_size=110, hidden_size=10, batch_first=True, bidirectional=True)
         elif model_size == "LARGE":
             self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=95, batch_first=True, bidirectional=True)
-            self.lstm2 = nn.LSTM(input_size=190, hidden_size=int(num_of_features/2), batch_first=True, bidirectional=True)
+            self.lstm2 = nn.LSTM(input_size=190, hidden_size=10, batch_first=True, bidirectional=True)
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
 
         # Adding additional dense layers
         self.activation = nn.ReLU()
-        self.dense1 = nn.Linear(num_of_features, 30)
+        self.dense1 = nn.Linear(20, 30)
         self.dense2 = nn.Linear(30, 20)
         self.output_layer = nn.Linear(20, 1)          
         
@@ -301,20 +301,20 @@ class Transformer(nn.Module):
         self.forecast_horizon = 24
         
         if model_size == "SMALL":
-            num_heads=6
+            num_heads=4
             num_layers=1
             dim_feedforward=512
-            d_model=num_of_features
+            d_model=20
         elif model_size == "MEDIUM":
-            num_heads=6
+            num_heads=4
             num_layers=1
             dim_feedforward=512
-            d_model=num_of_features*2
+            d_model=40
         elif model_size == "LARGE":
-            num_heads=9
+            num_heads=10
             num_layers=2
             dim_feedforward=600
-            d_model=num_of_features*2
+            d_model=40
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
 
