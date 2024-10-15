@@ -12,6 +12,7 @@ class ModelAdapter:
                  train_size,
                  test_size,
                  prediction_history,
+                 measurement_delay,
                  dev_size = 0,
                  addLaggedPower=True,
                  shuffle_data=False,
@@ -25,6 +26,7 @@ class ModelAdapter:
         self.prediction_horizon = prediction_horizon
         self.sampling_time = sampling_time
         self.prediction_history = pd.Timedelta(hours=prediction_history)
+        self.measurement_delay = pd.Timedelta(hours=measurement_delay)
         self.public_holidays = public_holidays
         self.addLaggedPower = addLaggedPower
         self.shuffle_data = shuffle_data
@@ -35,12 +37,6 @@ class ModelAdapter:
         # Optionally: Fix the random-seed for reproducibility
         if seed != None:
             np.random.seed(seed)
-
-        # Set the maximum power lag needed by the input features
-        if self.addLaggedPower == True:
-            self.max_needed_power_lag = pd.Timedelta(days=22, hours=0)
-        else:
-            self.max_needed_power_lag = pd.Timedelta(days=0, hours=0)
 
     def transformData(self, 
                       powerProfiles, 
@@ -70,7 +66,7 @@ class ModelAdapter:
     def getFirstPredictionTimestamp(self, powerProfiles, first_prediction_clocktime):
 
         # Calculate the first possible prediction timestamp
-        first_timestamp = powerProfiles.index[0] + max(self.prediction_history, self.max_needed_power_lag)
+        first_timestamp = powerProfiles.index[0] + self.prediction_history
 
         # Choose a prediction datetime, which is on the same day as the 'first_timestamp'.
         target_timestamp = pd.Timestamp.combine(first_timestamp.date(), first_prediction_clocktime) \
@@ -95,7 +91,7 @@ class ModelAdapter:
         # Calculate/define the number of features of X
         nr_of_features = 11
         if self.addLaggedPower == True:
-            nr_of_features += 3
+            nr_of_features += 1
         if weatherData is None:
             num_of_weather_features = 6 # Default weather features
         else:
@@ -148,13 +144,15 @@ class ModelAdapter:
             index += 1
 
             # Optionally add lagged profiles
-            if self.addLaggedPower == True:
-                for day in range(1, 4):
-                    start = next_prediction_date - pd.Timedelta(days=day*7+1, hours=0)
-                    end = start + self.prediction_history + self.prediction_horizon
-                    prev_day = powerProfiles.loc[start:end]                    
-                    X_all[batch_id, :, index]  = np.array(prev_day.values)
-                    index += 1
+            if self.addLaggedPower == True:                
+                start = next_prediction_date - self.prediction_history
+                end = next_prediction_date - self.measurement_delay
+                lagged_power = powerProfiles.loc[start:end]
+                X_all[batch_id, :len(lagged_power), index]  = np.array(lagged_power.values)
+                prediction_horizon_steps = int(self.prediction_horizon/self.sampling_time)
+                assert np.all(np.isclose(X_all[batch_id, -prediction_horizon_steps:, index], 0.0)), \
+                    "(Close to) Future lagged load values must be zero!"
+                index += 1
 
             # If available: Add past weather measurmenents to the LSTM input
             if weatherData is not None:

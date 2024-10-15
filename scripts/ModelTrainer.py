@@ -30,7 +30,7 @@ class ModelTrainer:
             results = []
             for model_type in sim_config.usedModels:
                 for load_profile in loadprofiles:
-                    result = optimize_model(model_type, load_profile, sim_config)
+                    result = self.optimize_model(model_type, load_profile, sim_config)
                     results.append(result)
 
             # Store the results into dicts
@@ -86,7 +86,9 @@ class ModelTrainer:
             modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps, 
                                                      train_size = sim_config.trainingHistory,
                                                      test_size = test_set_size_days, 
-                                                     prediction_history = sim_config.predictionHistory)
+                                                     prediction_history = sim_config.modelInputHistory,
+                                                     measurement_delay = sim_config.measurementDelay,
+                                                     )
 
             X, Y = modelAdapter.transformData(powerProfile, weatherData)
             with open(out_filename, 'wb') as file:
@@ -108,7 +110,9 @@ class ModelTrainer:
             modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps, 
                                                      train_size=len(all_standard_loadprofiles),
                                                      test_size=0,
-                                                     prediction_history = sim_config.predictionHistory)
+                                                     prediction_history = sim_config.modelInputHistory,
+                                                     measurement_delay = sim_config.measurementDelay,
+                                                     )
             X, Y = modelAdapter.transformData(all_standard_loadprofiles, weatherData=None)
             pretraining_filename = 'scripts/outputs/standard_loadprofile.pkl'
             with open(pretraining_filename, 'wb') as file:
@@ -117,34 +121,32 @@ class ModelTrainer:
             # Do model pretraining
             for model_type in sim_config.usedModels:
                 print(f"\nPretraining {model_type} model.", flush=True)
-                myModel = model.Model(model_type, sim_config.modelSize, modelAdapter)
+                num_of_features = X['train'].shape[2]
+                myModel = model.Model(model_type, sim_config.modelSize, num_of_features, modelAdapter)
                 myModel.train_model(X['train'], Y['train'], pretrain_now=True, 
                                     finetune_now=False, epochs=sim_config.epochs)
 
-        return loadProfiles_filenames              
+        return loadProfiles_filenames
     
-    def optimize_model_wrapper(self, args):
-        return optimize_model(*args)
+    # Do Model training and evaluation
+    # 
+    def optimize_model(self, model_type, load_profile, sim_config):
+        
+        print(f"\nProcessing model {model_type} with load profile {load_profile}", flush=True)
 
-# The following optimization method is defined outside an instance 
-# in order to avoid problems with multiprocessing.
-# 
-def optimize_model(model_type, load_profile, sim_config):
-    
-    print(f"\nProcessing model {model_type} with load profile {load_profile}", flush=True)
+        # Load a new powerprofile
+        with open(load_profile, 'rb') as f:
+            (X, Y, modelAdapter) = pickle.load(f)
 
-    # Load a new powerprofile
-    with open(load_profile, 'rb') as f:
-        (X, Y, modelAdapter) = pickle.load(f)
-
-    # Train and evaluate the model
-    myModel = model.Model(model_type, sim_config.modelSize, modelAdapter=modelAdapter)
-    history = myModel.train_model(X['train'], Y['train'], X['test'], Y['test'], pretrain_now=False,
-                                  finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
-    history = myModel.evaluate(X['test'], Y['test'], history)
-    
-    # Return the results
-    return (model_type, load_profile, sim_config, history, myModel.my_model)
+        # Train and evaluate the model
+        num_of_features = X['train'].shape[2]
+        myModel = model.Model(model_type, sim_config.modelSize, num_of_features, modelAdapter=modelAdapter)
+        history = myModel.train_model(X['train'], Y['train'], X['test'], Y['test'], pretrain_now=False,
+                                    finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
+        history = myModel.evaluate(X['test'], Y['test'], history)
+        
+        # Return the results
+        return (model_type, load_profile, sim_config, history, myModel.my_model)
 
 if __name__ == "__main__":    
     ModelTrainer().run()

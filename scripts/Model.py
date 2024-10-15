@@ -16,7 +16,7 @@ from xlstm import (
 
 
 class Model():
-    def __init__(self, model_type, model_size, modelAdapter=None):
+    def __init__(self, model_type, model_size, num_of_features, modelAdapter=None):
         
         if model_type not in globals():
             # No class with name model_type is implemented below
@@ -24,7 +24,6 @@ class Model():
         else:
             # Instantiate the model
             my_model_class = globals()[model_type]        
-            num_of_features = 20    # For this application the number of features is fixed at 20.
             self.my_model = my_model_class(model_size, num_of_features, modelAdapter=modelAdapter)
 
     def forward(self, x):
@@ -43,18 +42,18 @@ class Model():
                     batch_size=256,
                     verbose=0):
         
-        if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:            
-            history = {}
-            history['loss'] = [0.0]
+        if self.my_model.isPytorchModel == False:   # Simple, parameter free models    
             
+            history = {}
+            history['loss'] = [0.0]            
             if pretrain_now:
                 # No pretraining possible for these parameter-free models
-                pass
+                pass    
             else:
                 # These models don't need to be optimized, as they are parameter-free.
                 self.my_model.train_model(X_train, Y_train)
         
-        else:
+        else:   # Pytorch models            
             
             # Prepare Optimization
             train_dataset = SequenceDataset(X_train, Y_train)
@@ -196,6 +195,7 @@ class Model():
 class xLSTM(nn.Module):
     def __init__(self, model_size, num_of_features, modelAdapter=None):
         super(xLSTM, self).__init__()
+        self.isPytorchModel = True
         self.forecast_horizon = 24
         
         # The following xLSTM config variables are as as provided by NX-AI.
@@ -207,14 +207,15 @@ class xLSTM(nn.Module):
         
         # Finetune the config variables
         if model_size == "SMALL":
+            qkv_proj_blocksize=4
             num_blocks=3
-            d_model=num_of_features
+            d_model=20
         elif model_size == "MEDIUM":
             num_blocks=4
-            d_model=num_of_features
+            d_model=20
         elif model_size == "LARGE":
             num_blocks=5
-            d_model=num_of_features*2
+            d_model=40
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
         
@@ -234,9 +235,9 @@ class xLSTM(nn.Module):
                 ),
                 feedforward=FeedForwardConfig(proj_factor=proj_factor, act_fn="gelu"),
             ),
-            context_length=256,  # Num of (hourly) input timesteps. Changed from "256".
+            context_length=1024,
             num_blocks=num_blocks,
-            embedding_dim=d_model,  # Number of features. Changed from "128"
+            embedding_dim=d_model,
             slstm_at=[1,],
         )
         self.xlstm_stack = xLSTMBlockStack(self.cfg)
@@ -261,17 +262,18 @@ class xLSTM(nn.Module):
 class LSTM(nn.Module):
     def __init__(self, model_size, num_of_features, modelAdapter=None):
         super(LSTM, self).__init__()
+        self.isPytorchModel = True
         self.forecast_horizon = 24
         
         if model_size == "SMALL":
             self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=28, batch_first=True, bidirectional=True)
-            self.lstm2 = nn.LSTM(input_size=56, hidden_size=10, batch_first=True, bidirectional=True)
+            self.lstm2 = nn.LSTM(input_size=56, hidden_size=int(num_of_features/2), batch_first=True, bidirectional=True)
         elif model_size == "MEDIUM":
             self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=55, batch_first=True, bidirectional=True)
-            self.lstm2 = nn.LSTM(input_size=110, hidden_size=10, batch_first=True, bidirectional=True)
+            self.lstm2 = nn.LSTM(input_size=110, hidden_size=int(num_of_features/2), batch_first=True, bidirectional=True)
         elif model_size == "LARGE":
             self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=95, batch_first=True, bidirectional=True)
-            self.lstm2 = nn.LSTM(input_size=190, hidden_size=10, batch_first=True, bidirectional=True)
+            self.lstm2 = nn.LSTM(input_size=190, hidden_size=int(num_of_features/2), batch_first=True, bidirectional=True)
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
 
@@ -293,22 +295,23 @@ class LSTM(nn.Module):
 
 class Transformer(nn.Module):
     def __init__(self, model_size, num_of_features, modelAdapter=None):
-        super(Transformer, self).__init__()     
+        super(Transformer, self).__init__()
+        self.isPytorchModel = True
         self.num_of_features = num_of_features
         self.forecast_horizon = 24
         
         if model_size == "SMALL":
-            num_heads=4
+            num_heads=6
             num_layers=1
             dim_feedforward=512
             d_model=num_of_features
         elif model_size == "MEDIUM":
-            num_heads=4
+            num_heads=6
             num_layers=1
             dim_feedforward=512
             d_model=num_of_features*2
         elif model_size == "LARGE":
-            num_heads=10
+            num_heads=9
             num_layers=2
             dim_feedforward=600
             d_model=num_of_features*2
@@ -337,6 +340,7 @@ class Transformer(nn.Module):
 class KNN(nn.Module):
     def __init__(self, model_size, num_of_features, modelAdapter=None):
         super(KNN, self).__init__()
+        self.isPytorchModel = False
         self.X_train = None
         self.Y_train = None
         self.num_of_features = num_of_features
@@ -378,6 +382,7 @@ class KNN(nn.Module):
 class PersistencePrediction(nn.Module):
     def __init__(self, model_size, num_of_features, modelAdapter=None):
         super(PersistencePrediction, self).__init__()
+        self.isPytorchModel = False
         self.num_of_features = num_of_features
         self.modelAdapter = modelAdapter
     
