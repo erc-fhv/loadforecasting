@@ -1,0 +1,30 @@
+name: Smoke Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  smoketest:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Miniconda
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          environment-file: scripts/env_linux.yml.yml
+          activate-environment: xlstm
+
+      # Step 3: Run Smoke Tests
+      - name: Run Smoke Tests
+        run: python tests/smoke_test.py
