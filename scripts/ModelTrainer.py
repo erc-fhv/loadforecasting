@@ -12,7 +12,7 @@ import scripts.Model as model
 import scripts.Simulation_config as config
 import data.weather_data as weather_data
 import scripts.ModelAdapter as ModelAdapter
-import scripts.utils as utils
+import scripts.Utils as Utils
 
 
 class ModelTrainer:
@@ -41,8 +41,8 @@ class ModelTrainer:
                 all_trained_models[result_key] = returnedModels[i]
         
         # Persist all results
-        utils.Serialize.store_results_with_pickle(all_train_histories)
-        utils.Serialize.store_results_with_torch(all_trained_models)
+        Utils.Serialize.store_results_with_pickle(all_train_histories)
+        Utils.Serialize.store_results_with_torch(all_trained_models)
         
         return      
 
