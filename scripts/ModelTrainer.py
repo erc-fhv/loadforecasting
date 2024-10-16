@@ -1,4 +1,3 @@
-import multiprocessing as mp
 import pandas as pd
 import holidays
 import pytz
@@ -9,7 +8,7 @@ import pickle
 # The imports are done relative to the root of the project.
 #
 import scripts.Model as model
-import scripts.Simulation_config as config
+import scripts.Simulation_config
 import data.weather_data as weather_data
 import scripts.ModelAdapter as ModelAdapter
 import scripts.Utils as Utils
@@ -17,11 +16,11 @@ import scripts.Utils as Utils
 
 class ModelTrainer:
 
-    def run(self):
+    def run(self, configs):
         
         # Run every single config
         all_train_histories, all_trained_models = {}, {}
-        for sim_config in config.configs:
+        for sim_config in configs:
             
             # Fetch and prepare all needed data
             loadprofiles = self.preprocess_data(sim_config)
@@ -148,5 +147,6 @@ class ModelTrainer:
 
         return loadProfiles_filenames
 
-if __name__ == "__main__":    
-    ModelTrainer().run()
+if __name__ == "__main__":
+    configs = scripts.Simulation_config.configs
+    ModelTrainer().run(configs)

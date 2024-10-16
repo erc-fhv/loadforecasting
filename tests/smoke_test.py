@@ -1,6 +1,10 @@
-def test_basic_functionality():
-    assert 2 + 2 == 4, "Basic math failed!"
+import scripts.Simulation_config
+import scripts.ModelTrainer as ModelTrainer
 
-if __name__ == "__main__":
-    test_basic_functionality()
+def run_smoketest():
+    configs = scripts.Simulation_config.configs
+    ModelTrainer().run(configs)
     print("Smoke test passed!")
+    
+if __name__ == "__main__":
+    run_smoketest()
