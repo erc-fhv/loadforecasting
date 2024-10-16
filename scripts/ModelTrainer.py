@@ -44,7 +44,27 @@ class ModelTrainer:
         Utils.Serialize.store_results_with_pickle(all_train_histories)
         Utils.Serialize.store_results_with_torch(all_trained_models)
         
-        return      
+        return
+    
+    # Do Model training and evaluation
+    # 
+    def optimize_model(self, model_type, load_profile, sim_config):
+        
+        print(f"\nProcessing model {model_type} with load profile {load_profile}", flush=True)
+
+        # Load a new powerprofile
+        with open(load_profile, 'rb') as f:
+            (X, Y, modelAdapter) = pickle.load(f)
+
+        # Train and evaluate the model
+        num_of_features = X['train'].shape[2]
+        myModel = model.Model(model_type, sim_config.modelSize, num_of_features, modelAdapter=modelAdapter)
+        history = myModel.train_model(X['train'], Y['train'], X['test'], Y['test'], pretrain_now=False,
+                                    finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
+        history = myModel.evaluate(X['test'], Y['test'], history)
+        
+        # Return the results
+        return (model_type, load_profile, sim_config, history, myModel.my_model)
 
     def preprocess_data(self, sim_config):
         
@@ -95,7 +115,7 @@ class ModelTrainer:
                 pickle.dump((X, Y, modelAdapter), file)   
             loadProfiles_filenames.append(out_filename)
         
-        # If required, do pretraing
+        # If required, do pretraining
         if sim_config.doPretraining:
 
             # Load the BDEW standard load profiles for the desired datetime range
@@ -127,26 +147,6 @@ class ModelTrainer:
                                     finetune_now=False, epochs=sim_config.epochs)
 
         return loadProfiles_filenames
-    
-    # Do Model training and evaluation
-    # 
-    def optimize_model(self, model_type, load_profile, sim_config):
-        
-        print(f"\nProcessing model {model_type} with load profile {load_profile}", flush=True)
-
-        # Load a new powerprofile
-        with open(load_profile, 'rb') as f:
-            (X, Y, modelAdapter) = pickle.load(f)
-
-        # Train and evaluate the model
-        num_of_features = X['train'].shape[2]
-        myModel = model.Model(model_type, sim_config.modelSize, num_of_features, modelAdapter=modelAdapter)
-        history = myModel.train_model(X['train'], Y['train'], X['test'], Y['test'], pretrain_now=False,
-                                    finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
-        history = myModel.evaluate(X['test'], Y['test'], history)
-        
-        # Return the results
-        return (model_type, load_profile, sim_config, history, myModel.my_model)
 
 if __name__ == "__main__":    
     ModelTrainer().run()
