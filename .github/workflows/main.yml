@@ -22,7 +22,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
-          environment-file: scripts/env_linux.yml
+          environment-file: envs/env_linux.yml
           activate-environment: xlstm
 
       # Step 3: Run Smoke Tests
