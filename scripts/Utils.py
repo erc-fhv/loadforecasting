@@ -118,8 +118,10 @@ class Deserialize:
         reloaded_models = {}        
         for serialized_key, state_dict in serialized_dict.items():
             deserialize_key = Deserialize.deserialize_key(serialized_key)
+            num_of_features = 18
             model = scripts.Model.Model(model_type=deserialize_key[0], 
-                                        model_size=deserialize_key[2].modelSize)
+                                        model_size=deserialize_key[2].modelSize,
+                                        num_of_features=num_of_features)
             model.my_model.load_state_dict(state_dict)            
             reloaded_models[deserialize_key] = model
         
