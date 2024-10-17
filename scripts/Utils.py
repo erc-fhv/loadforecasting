@@ -111,21 +111,25 @@ class Deserialize:
     # Get the trained models from disc and deserialize/unpack them.
     #
     @staticmethod
-    def get_trained_models(path):
+    def get_trained_model(path_to_trained_parameters, model_type, test_profile, config_id, modelAdapter):
         
-        serialized_dict = torch.load(path)
+        serialized_dict = torch.load(path_to_trained_parameters)
         
-        reloaded_models = {}        
         for serialized_key, state_dict in serialized_dict.items():
             deserialize_key = Deserialize.deserialize_key(serialized_key)
             num_of_features = 18
-            model = scripts.Model.Model(model_type=deserialize_key[0], 
-                                        model_size=deserialize_key[2].modelSize,
-                                        num_of_features=num_of_features)
-            model.my_model.load_state_dict(state_dict)            
-            reloaded_models[deserialize_key] = model
+            if model_type == deserialize_key[0] and \
+                test_profile == deserialize_key[1] and \
+                config.configs[config_id] == deserialize_key[2]:
+                model = scripts.Model.Model(model_type=deserialize_key[0], 
+                                            model_size=deserialize_key[2].modelSize,
+                                            num_of_features=num_of_features,
+                                            modelAdapter=modelAdapter
+                                            )
+                model.my_model.load_state_dict(state_dict)            
+                return model
         
-        return reloaded_models
+        assert False, "Model not found!"
 
     # Convert a dict to a named tuple
     #

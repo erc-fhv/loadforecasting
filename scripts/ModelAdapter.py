@@ -12,11 +12,11 @@ class ModelAdapter:
                  train_size,
                  test_size,
                  prediction_history,
-                 measurement_delay,
                  dev_size = 0,
                  addLaggedPower=True,
                  shuffle_data=False,
                  seed=None,
+                 measurement_delay = pd.Timedelta(days=1),
                  sampling_time = pd.Timedelta(hours=1, minutes=0),
                  prediction_rate = pd.Timedelta(days=1),
                  prediction_horizon = pd.Timedelta(days=0, hours=23, minutes=0),
@@ -26,7 +26,7 @@ class ModelAdapter:
         self.prediction_horizon = prediction_horizon
         self.sampling_time = sampling_time
         self.prediction_history = pd.Timedelta(hours=prediction_history)
-        self.measurement_delay = pd.Timedelta(hours=measurement_delay)
+        self.measurement_delay = measurement_delay
         self.public_holidays = public_holidays
         self.addLaggedPower = addLaggedPower
         self.shuffle_data = shuffle_data
@@ -66,7 +66,7 @@ class ModelAdapter:
     def getFirstPredictionTimestamp(self, powerProfiles, first_prediction_clocktime):
 
         # Calculate the first possible prediction timestamp
-        first_timestamp = powerProfiles.index[0] + self.prediction_history
+        first_timestamp = powerProfiles.index[0] + self.prediction_history + self.prediction_horizon + self.measurement_delay
 
         # Choose a prediction datetime, which is on the same day as the 'first_timestamp'.
         target_timestamp = pd.Timestamp.combine(first_timestamp.date(), first_prediction_clocktime) \
@@ -145,13 +145,10 @@ class ModelAdapter:
 
             # Optionally add lagged profiles
             if self.addLaggedPower == True:                
-                start = next_prediction_date - self.prediction_history
+                start = next_prediction_date - self.prediction_history - self.prediction_horizon - self.measurement_delay
                 end = next_prediction_date - self.measurement_delay
                 lagged_power = powerProfiles.loc[start:end]
-                X_all[batch_id, :len(lagged_power), index]  = np.array(lagged_power.values)
-                prediction_horizon_steps = int(self.prediction_horizon/self.sampling_time)
-                assert np.all(np.isclose(X_all[batch_id, -prediction_horizon_steps:, index], 0.0)), \
-                    "(Close to) Future lagged load values must be zero!"
+                X_all[batch_id, :, index]  = np.array(lagged_power.values)
                 index += 1
 
             # If available: Add past weather measurmenents to the LSTM input

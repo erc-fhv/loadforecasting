@@ -4,6 +4,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torch.autograd import Variable
 import numpy as np
+import scripts.Simulation_config as config
 from xlstm import (
     xLSTMBlockStack,
     xLSTMBlockStackConfig,
@@ -399,20 +400,26 @@ class PersistencePrediction(nn.Module):
         Estimate the upcoming profile accord to the last profiles.
         This is done with the un-normalized lagged power features.
         """
+
+        x = self.modelAdapter.deNormalizeX(x)    # de-normalize especially the lagged power feature
+
+        # Do loead prediction.
+        # 
+        lagged_load = x[:,:,11]
+        lagged_load_len = lagged_load.size(1)
+        if lagged_load_len < 2*24:
+            assert False, f"Got unexpected lagged load feature size: {lagged_load_len.shape}"
+        elif lagged_load_len < 7*24:
+            y_pred = lagged_load[:,-24:]   # Take the latest available lagged loads as predictions
+        else:
+            y_pred = lagged_load[:,-7*24:-6*24]   # Take the load profile 7 days ago as prediction
         
-        batch_size = x.size(0)
-        timesteps = x.size(1)
-        assert x.shape == (batch_size, timesteps, self.num_of_features), \
-            f"Shape mismatch: got {x.shape}, expected ({batch_size}, 48, {self.num_of_features})"
-        
-        x = self.modelAdapter.deNormalizeX(x)    # de-normalize the lagged power feature
-        y_pred = x[:,-24:,11]
-        # optional: y_pred = (x[:,-24:,11] + x[:,-24:,12] + x[:,-24:,13]) / 3.0
-        y_pred = y_pred[:,:,np.newaxis]  # Get Shape: (batch_size, 24, 1)
-        y_pred = self.modelAdapter.normalizeY(y_pred)    # normalize the output, to compare it to other models.
-        
-        assert y_pred.shape == (batch_size, 24, 1), \
-            f"Shape mismatch: got {y_pred.shape}, expected ({batch_size}, 24, 1)"
+        # Add axis and normalize y_pred again, to compare it to other models.
+        #
+        y_pred = y_pred[:,:,np.newaxis]
+        y_pred = self.modelAdapter.normalizeY(y_pred)        
+        assert y_pred.shape == (lagged_load.size(0), 24, 1), \
+            f"Shape mismatch: got {y_pred.shape}, expected ({lagged_load.size(0)}, 24, 1)"
         
         return y_pred
     

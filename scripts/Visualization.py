@@ -186,7 +186,6 @@ class PlotlyApp:
         
         except:
             print("hoi!")
-
             return px.line(), px.line()
         
 
