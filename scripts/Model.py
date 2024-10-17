@@ -37,7 +37,7 @@ class Model():
                     pretrain_now = False,
                     finetune_now = True,
                     epochs=100,
-                    loss_fn= nn.MSELoss(),
+                    loss_fn= nn.L1Loss(),
                     set_learning_rates=[0.01, 0.005, 0.001, 0.0005],
                     batch_size=256,
                     verbose=0):
@@ -132,30 +132,38 @@ class Model():
         smape_value = torch.mean(numerator / (denominator + eps)) * 2 * 100
         return smape_value.item()
 
-    def evaluate(self, X_dev, Y_dev, results={}, loss_fn=nn.MSELoss(), batch_size=256):
+    # Compute the Mean Absolute Percentage Error (MAPE).
+    #
+    def mape(self, y_true, y_pred):
+        y_true, y_pred = torch.tensor(y_true), torch.tensor(y_pred)
+        epsilon = 1e-8   # To avoid division by zero
+        mape = torch.mean(torch.abs((y_true - y_pred) / (y_true + epsilon))) * 100
+        return mape
+
+    def evaluate(self, X_test, Y_test, results={}, loss_fn=nn.L1Loss(), batch_size=256):
 
         if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
             
             # Predict
-            output = self.my_model(torch.Tensor(X_dev))
-            assert output.shape == Y_dev.shape, \
-                f"Shape mismatch: got {output.shape}, expected {Y_dev.shape})"
+            output = self.my_model(torch.Tensor(X_test))
+            assert output.shape == Y_test.shape, \
+                f"Shape mismatch: got {output.shape}, expected {Y_test.shape})"
             
             # Compute Loss
-            loss = loss_fn(output, torch.Tensor(Y_dev))
+            loss = loss_fn(output, torch.Tensor(Y_test))
             results['test_loss'] = [loss.item()]
-            smape_val = self.smape(torch.Tensor(Y_dev), output)
-            results['test_sMAPE'] = [smape_val]
+            metric = self.mape(torch.Tensor(Y_test), output)
+            results['test_MAPE'] = [metric]
             
         else:
             
             # Initialize metrics
             loss_sum = 0
-            smape_sum = 0
+            mape_sum = 0
             total_samples = 0
             
             # Create DataLoader
-            val_dataset = SequenceDataset(X_dev, Y_dev)
+            val_dataset = SequenceDataset(X_test, Y_test)
             val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
             self.my_model.eval()       # Switch off the training flags
@@ -168,17 +176,17 @@ class Model():
                     # Compute Metrics
                     loss = loss_fn(output, batch_y.float())
                     loss_sum += loss.item() * batch_x.size(0)
-                    smape_val = self.smape(batch_y.float(), output)
-                    smape_sum += smape_val * batch_x.size(0)
+                    mape_val = self.mape(batch_y.float(), output)
+                    mape_sum += mape_val * batch_x.size(0)
                     total_samples += batch_x.size(0)
 
-            # Calculate average loss and sMAPE
+            # Calculate average loss and MAPE
             if total_samples > 0:
                 results['test_loss'] = [loss_sum / total_samples]
-                results['test_sMAPE'] = [smape_sum / total_samples]
+                results['test_MAPE'] = [mape_sum / total_samples]
             else:
                 results['test_loss'] = [0.0]
-                results['test_sMAPE'] = [0.0]
+                results['test_MAPE'] = [0.0]
         
         return results
     
@@ -405,7 +413,7 @@ class PersistencePrediction(nn.Module):
         
         assert y_pred.shape == (batch_size, 24, 1), \
             f"Shape mismatch: got {y_pred.shape}, expected ({batch_size}, 24, 1)"
-            
+        
         return y_pred
     
     def train_model(self, X_train, Y_train):        
