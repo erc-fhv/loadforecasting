@@ -133,14 +133,6 @@ class Model():
         smape_value = torch.mean(numerator / (denominator + eps)) * 2 * 100
         return smape_value.item()
 
-    # Compute the Mean Absolute Percentage Error (MAPE).
-    #
-    def mape(self, y_true, y_pred):
-        y_true, y_pred = torch.tensor(y_true), torch.tensor(y_pred)
-        epsilon = 1e-8   # To avoid division by zero
-        mape = torch.mean(torch.abs((y_true - y_pred) / (y_true + epsilon))) * 100
-        return mape
-
     def evaluate(self, X_test, Y_test, results={}, loss_fn=nn.L1Loss(), batch_size=256):
 
         if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
@@ -153,14 +145,14 @@ class Model():
             # Compute Loss
             loss = loss_fn(output, torch.Tensor(Y_test))
             results['test_loss'] = [loss.item()]
-            metric = self.mape(torch.Tensor(Y_test), output)
-            results['test_MAPE'] = [metric]
+            metric = self.smape(torch.Tensor(Y_test), output)
+            results['test_sMAPE'] = [metric]
             
         else:
             
             # Initialize metrics
             loss_sum = 0
-            mape_sum = 0
+            smape_sum = 0
             total_samples = 0
             
             # Create DataLoader
@@ -177,17 +169,17 @@ class Model():
                     # Compute Metrics
                     loss = loss_fn(output, batch_y.float())
                     loss_sum += loss.item() * batch_x.size(0)
-                    mape_val = self.mape(batch_y.float(), output)
-                    mape_sum += mape_val * batch_x.size(0)
+                    smape_val = self.smape(batch_y.float(), output)
+                    smape_sum += smape_val * batch_x.size(0)
                     total_samples += batch_x.size(0)
 
-            # Calculate average loss and MAPE
+            # Calculate average loss and sMAPE
             if total_samples > 0:
                 results['test_loss'] = [loss_sum / total_samples]
-                results['test_MAPE'] = [mape_sum / total_samples]
+                results['test_sMAPE'] = [smape_sum / total_samples]
             else:
                 results['test_loss'] = [0.0]
-                results['test_MAPE'] = [0.0]
+                results['test_sMAPE'] = [0.0]
         
         return results
     
@@ -403,7 +395,7 @@ class PersistencePrediction(nn.Module):
 
         x = self.modelAdapter.deNormalizeX(x)    # de-normalize especially the lagged power feature
 
-        # Do loead prediction.
+        # Do load prediction.
         # 
         lagged_load = x[:,:,11]
         lagged_load_len = lagged_load.size(1)

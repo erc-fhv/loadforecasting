@@ -50,7 +50,7 @@ class ModelTrainer:
     # 
     def optimize_model(self, model_type, load_profile, configs, act_sim_config_index):
         
-        print(f"\nProcessing model {model_type} with load profile {load_profile} and sim_config {act_sim_config_index}/{len(configs)}.", flush=True)
+        print(f"\nProcessing model {model_type} with load profile {load_profile} and sim_config {act_sim_config_index+1}/{len(configs)}.", flush=True)
 
         # Load a new powerprofile
         with open(load_profile, 'rb') as f:
@@ -142,7 +142,7 @@ class ModelTrainer:
             
             # Do model pretraining
             for model_type in sim_config.usedModels:
-                print(f"\nPretraining {model_type} model and and sim_config {act_sim_config_index}/{len(configs)}.", flush=True)
+                print(f"\nPretraining {model_type} model and and sim_config {act_sim_config_index+1}/{len(configs)}.", flush=True)
                 num_of_features = X['train'].shape[2]
                 myModel = model.Model(model_type, sim_config.modelSize, num_of_features, modelAdapter)
                 myModel.train_model(X['train'], Y['train'], pretrain_now=True, 
