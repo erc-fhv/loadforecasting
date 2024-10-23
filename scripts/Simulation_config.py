@@ -55,58 +55,58 @@ Config_of_one_run = namedtuple('Config_of_one_run', run_settings)
 #########################################################################################################################
 configs = [
     # Baseline
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
+    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+            TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
     
     # Vary the model sizes
-    Config_of_one_run(ModelSize.SMALL, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
-    Config_of_one_run(ModelSize.LARGE, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
+    Config_of_one_run(ModelSize.SMALL, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+            TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
+    Config_of_one_run(ModelSize.LARGE, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+            TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
 
     # Vary the community sizes
     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._1_HOUSEHOLD, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
+            TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._10_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
+            TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
+    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
+            TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
     
     # Vary the train set size
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._2_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._6_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._12_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
+    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+            TrainingHistory._2_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
+    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+            TrainingHistory._6_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
+    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+            TrainingHistory._12_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
     
     
     # Without transfer learning:
     #
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
+#     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+#             TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
     
-    # Vary the model sizes
-    Config_of_one_run(ModelSize.SMALL, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
-    Config_of_one_run(ModelSize.LARGE, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
+#     # Vary the model sizes
+#     Config_of_one_run(ModelSize.SMALL, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+#             TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
+#     Config_of_one_run(ModelSize.LARGE, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+#             TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
 
-    # Vary the community sizes
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._1_HOUSEHOLD, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._10_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
+#     # Vary the community sizes
+#     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._1_HOUSEHOLD, NrOfComunities._20, 
+#             TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
+#     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._10_HOUSEHOLDS, NrOfComunities._20, 
+#             TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
+#     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
+#             TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
     
-    # Vary the train set size
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._2_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._6_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._74_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._12_MONTH, ModelInputHistory._1_DAY, UsedModels.ALL, Epochs.DEFAULT),
+#     # Vary the train set size
+#     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+#             TrainingHistory._2_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
+#     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+#             TrainingHistory._6_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
+#     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.NO, DoTransferLearning.NO, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+#             TrainingHistory._12_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),
     
 ]
 #########################################################################################################################

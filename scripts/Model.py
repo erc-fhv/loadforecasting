@@ -404,8 +404,8 @@ class PersistencePrediction(nn.Module):
         elif lagged_load_len < 7*24:
             y_pred = lagged_load[:,-24:]   # Take the latest available lagged loads as predictions
         else:
-            y_pred = lagged_load[:,-7*24:-6*24]   # Take the load profile 7 days ago as prediction
-        
+            y_pred = lagged_load[:,-6*24:-5*24]   # Take the load profile 7 days ago as prediction
+            
         # Add axis and normalize y_pred again, to compare it to other models.
         #
         y_pred = y_pred[:,:,np.newaxis]
