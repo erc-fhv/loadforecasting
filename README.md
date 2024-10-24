@@ -12,7 +12,7 @@ The basic code design is as follows.
 +-----------------------------+           +------------------------------+
 | Data                        |           | ModelAdapter                 |
 |-----------------------------|           |------------------------------|
-| # Weather and Loadprofiles  |           | + preprocess_data()          |
+| # Weather and Loadprofiles  |           | + transformData()            |
 |                             |---------->| # Preprocesses the data      |
 +-----------------------------+           +------------+-----------------+
                                                        |
