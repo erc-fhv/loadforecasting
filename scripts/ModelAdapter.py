@@ -128,16 +128,16 @@ class ModelAdapter:
             X_all[batch_id, :, :index] = one_hot_encoding
 
             # Convert clock_time to cyclical features
-            hour_sin = np.sin(2 * np.pi * total_input_range.hour / 23.0)
-            hour_cos = np.cos(2 * np.pi * total_input_range.hour / 23.0)
+            hour_sin = np.sin(2 * np.pi * total_input_range.hour / 24.0)
+            hour_cos = np.cos(2 * np.pi * total_input_range.hour / 24.0)
             X_all[batch_id, :, index]  = hour_sin
             index += 1
             X_all[batch_id, :, index]  = hour_cos
             index += 1
 
             # Convert day-of-year to cyclical features
-            day_of_year_sin = np.sin(2 * np.pi * total_input_range.day_of_year / 365)
-            day_of_year_cos = np.cos(2 * np.pi * total_input_range.day_of_year / 365)
+            day_of_year_sin = np.sin(2 * np.pi * total_input_range.day_of_year / 366)
+            day_of_year_cos = np.cos(2 * np.pi * total_input_range.day_of_year / 366)
             X_all[batch_id, :, index]  = day_of_year_sin
             index += 1
             X_all[batch_id, :, index]  = day_of_year_cos
