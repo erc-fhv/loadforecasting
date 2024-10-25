@@ -10,21 +10,20 @@ It uses transfer learning from standard load profiles together with state of the
 The basic code design is as follows.
 ```
 +-----------------------------+           +------------------------------+
+| Data                        |           | ModelAdapter                 |
+|-----------------------------|           |------------------------------|
+| # Weather and Loadprofiles  |           | + transformData()            |
+|                             |---------->| # Preprocesses the data      |
++-----------------------------+           +------------+-----------------+
+                                                       |
+                                                       |
++-----------------------------+           +------------v-----------------+
 | Simulation_config.py        |           | ModelTrainer                 |
 |-----------------------------|           |------------------------------|
 | configs: list               |           | + run()                      |
 | # Parameterize the run      |---------> | # Trains all models          |
 | # loop.                     |           | # and persists the results.  |
 +-----------------------------+           +------------------------------+
-                                                       |
-                                                       |
-                                                       |
-                                          +------------v-----------------+
-+-----------------------------+           | ModelAdapter                 |
-| Data                        |           |------------------------------|
-|-----------------------------|           | + preprocess_data()          |
-| Weather and Loadprofiles    |---------->| # Preprocesses the data      |
-+-----------------------------+           +------------+-----------------+
                                                        |
                                                        |
                                           +------------v-----------------+
