@@ -6,6 +6,12 @@ import pickle
 import pytz
 import scripts.Simulation_config as config
 import scripts.Model
+from collections import defaultdict
+from itertools import islice
+from pprint import pprint
+import numpy as np
+import plotly.express as px
+import pandas as pd
 
 # Persist dicts with complex keys.
 # The dict keys are converted from multi-class into json format.
@@ -86,8 +92,8 @@ class Serialize:
     # Return a current timestamp.
     #
     @staticmethod
-    def get_act_timestamp():
-        return datetime.now(pytz.timezone('Europe/Vienna')).strftime("_%Y%m%d_%H%M")
+    def get_act_timestamp(tz='Europe/Vienna'):
+        return datetime.now(pytz.timezone(tz)).strftime("_%Y%m%d_%H%M")
 
 # Get the trained models and train history from disc.
 #
@@ -162,3 +168,157 @@ class Deserialize:
             config_rebuilt
         )
 
+# Evaluate the stored training results 
+#
+class Evaluate_Models:
+
+    # Get all training results as nested dicts
+    #
+    @staticmethod
+    def get_training_results(path_to_train_histories, 
+                             skip_first_n_configs=None, 
+                             skip_last_n_configs=None,                              
+                             ):
+        
+        all_train_histories = Deserialize.get_training_histories(path_to_train_histories)
+
+        # Create a nested dictionary of the results
+        result_per_config = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))))
+        for key, value in all_train_histories.items():
+            model_type = key[0]
+            load_profile = key[1]
+            sim_config = key[2]
+            results = value
+            result_per_config[sim_config][model_type][load_profile]['loss'] = float(results['loss'][-1])
+            result_per_config[sim_config][model_type][load_profile]['test_loss'] = float(results['test_loss'][-1])
+            result_per_config[sim_config][model_type][load_profile]['test_sMAPE'] = float(results['test_sMAPE'][-1])
+
+        # Optionally: Skip given configs
+        result_per_config = dict(islice(result_per_config.items(), skip_first_n_configs, skip_last_n_configs))
+
+        return result_per_config
+
+    # Get the best models per energy community (i.e. the "winners")
+    #
+    @staticmethod
+    def get_winner_models(path_to_train_histories):
+        
+        result_per_config = Evaluate_Models.get_training_results(path_to_train_histories)
+              
+        # Calculate the best model ("winner") for each profile
+        winner_per_config = {}
+        winner_per_model = {}
+        for config, result_per_model in result_per_config.items():
+                
+            # Initialize the used dict values with 0
+            winner_per_config[config] = {model_type: 0 for model_type in result_per_model.keys()}
+            for model_type in result_per_model:
+                winner_per_model.setdefault(model_type, 0)
+                
+            # Loop through each load_profile within the model data
+            for load_profile in next(iter(result_per_model.values())).keys():
+                
+                # Determine the model type with the best performance for the current load profile
+                best_model = min(result_per_model, key = lambda model: result_per_model[model][load_profile]['test_sMAPE'])
+                
+                # Increment the count for the winning model type
+                winner_per_config[config][best_model] += 1
+                winner_per_model[best_model] += 1
+
+        # Summarize the wins per model
+        #
+        print(f'Total Winner per model:\n  Models:', end=" ")
+        counts = ""
+        for model, count in winner_per_model.items():
+            print(f'{model}', end=" ")
+            counts += f'& {count} '
+        print(f'{  counts}')
+        
+        return winner_per_config, winner_per_model
+
+    # Calculate and print results for each config and model_type
+    #
+    @staticmethod
+    def print_results(path_to_train_histories, print_for_latex = True):
+
+        result_per_config = Evaluate_Models.get_training_results(path_to_train_histories)
+
+        for config, result_per_model in result_per_config.items():
+            
+            pprint(f'Configuration: {config}')            
+            latex_string = ''
+            
+            for model_type, result_per_profile in result_per_model.items():
+                
+                # Get al list of all losses of the current config and modeltype
+                train_losses, test_MAE, test_sMAPE  = [], [], []
+                for load_profile, results in result_per_profile.items():
+                    train_losses.append(results['loss'])
+                    test_MAE.append(results['test_loss'])
+                    test_sMAPE.append(results['test_sMAPE'])        
+                assert len(result_per_profile) == config.nrOfComunities
+                
+                decimal_points_MAE = 4
+                decimal_points_sMAPE = 2
+                mean_test_MAE = f'{np.mean(test_MAE):.{decimal_points_MAE}f}'
+                mean_test_sMAPE = f'{np.mean(test_sMAPE):.{decimal_points_sMAPE}f}'
+                std_dev_test_MAE = f'{np.std(test_MAE):.{decimal_points_MAE}f}'
+                std_dev_test_sMAPE = f'{np.std(test_sMAPE):.{decimal_points_sMAPE}f}'
+                mean_train_MAE = f'{np.mean(train_losses):.{decimal_points_MAE}f}'
+
+                if print_for_latex:
+                    latex_string += f' & {mean_test_sMAPE} ({std_dev_test_sMAPE})'
+                else:
+                    # Print the results of the current config and modeltype
+                    print(f'    Model: {model_type}')
+                    print(f'      Mean Test MAE: {mean_test_MAE}')
+                    print(f'      Mean Test MAPE: {mean_test_sMAPE}')
+                    print(f'      Standard Deviation Test MAE: {std_dev_test_MAE}')
+                    print(f'      Standard Deviation Test MAPE: {std_dev_test_sMAPE}')
+                    print(f'      Mean Train MAE: {mean_train_MAE}\n')
+
+            if print_for_latex == True:
+                print(f'Latex Summary for this Configuration: {latex_string}')
+
+    # Calculate and print results for each config and model_type
+    #
+    @staticmethod
+    def plot_training_losses_over_epochs(path_to_train_histories, 
+                                         plot_only_single_config = False,
+                                         plotted_config = None):
+        
+        all_train_histories = Deserialize.get_training_histories(path_to_train_histories)
+
+        # Target config(s) to plot
+        if plot_only_single_config:
+            print(f"Plotted Config:")
+            pprint(f"{plotted_config}")
+        filtered_train_histories = dict(
+            (key, value) for key, value in all_train_histories.items() 
+            if plot_only_single_config == False or key[2] == plotted_config
+        )
+
+        # Create a combined list of loss values and corresponding run names
+        combined_loss_data = []
+        for run_id, history in filtered_train_histories.items():
+            
+            # Define the labels of the following graph
+            model_type, load_profile, act_config = run_id
+            label = (model_type, act_config.aggregation_Count, act_config.modelSize)    
+            combined_loss_data.extend([(label, epoch + 1, loss) 
+                                       for epoch, loss in enumerate(history['loss'])])
+
+        # Create a DataFrame from the combined loss data
+        df = pd.DataFrame(combined_loss_data, columns=['Run', 'Epoch', 'Loss'])
+
+        # Use plotly express to plot the scatter graph
+        fig = px.scatter(df, x='Epoch', y='Loss', color='Run', 
+                        labels={'Loss': 'Training Loss', 'Epoch': 'Epoch'},
+                        title='Training Loss Over Epochs for Different Runs')
+        fig.update_yaxes(range=[0, 1])
+        fig.update_traces(marker=dict(size=5))
+        fig.update_layout(showlegend=False)
+        fig.show()
+        
+        
+        

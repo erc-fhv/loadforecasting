@@ -135,7 +135,7 @@ class Model():
 
     def evaluate(self, X_test, Y_test, results={}, loss_fn=nn.L1Loss(), batch_size=256):
 
-        if type(self.my_model) == KNN or type(self.my_model) == PersistencePrediction:
+        if self.my_model.isPytorchModel == False:   # Simple, parameter free models    
             
             # Predict
             output = self.my_model(torch.Tensor(X_test))
@@ -148,8 +148,8 @@ class Model():
             metric = self.smape(torch.Tensor(Y_test), output)
             results['test_sMAPE'] = [metric]
             
-        else:
-            
+        else:   # Pytorch models            
+                        
             # Initialize metrics
             loss_sum = 0
             smape_sum = 0
