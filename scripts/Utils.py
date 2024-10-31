@@ -25,7 +25,7 @@ class Serialize:
     def store_results_with_torch(all_trained_models):      
         
         # Squeeze the dict keys
-        all_trained_models = Serialize.get_serialized_dicts(all_trained_models)
+        all_trained_models = Serialize.get_serialized_dicts(all_trained_models, isModel = True)
 
         # Save the total model with torch.save
         timestamp = Serialize.get_act_timestamp()
@@ -35,10 +35,10 @@ class Serialize:
     # Use pickle to save a dictionary with training results to disc.
     #
     @staticmethod
-    def store_results_with_pickle(all_train_histories):      
+    def store_results_with_pickle(all_train_histories):
         
         # Squeeze the dict keys
-        all_train_histories = Serialize.get_serialized_dicts(all_train_histories)
+        all_train_histories = Serialize.get_serialized_dicts(all_train_histories, isModel = False)
         
         # Store the variables in a persistent files with the timestamp
         timestamp = Serialize.get_act_timestamp()
@@ -46,19 +46,20 @@ class Serialize:
             pickle.dump(all_train_histories, f)
         with open(f"scripts/outputs/all_train_histories.pkl", 'wb') as f:
             pickle.dump(all_train_histories, f)
-        
+
     # Serialize the given dicts.
     #
     @staticmethod
-    def get_serialized_dicts(dict_with_komplex_keys):            
+    def get_serialized_dicts(dict_with_komplex_keys, isModel):
         serialized_models = {}
-        for key, model in dict_with_komplex_keys.items():
+        for key, data in dict_with_komplex_keys.items():
             serialized_key = Serialize.serialize_complex_key(key)
-            if isinstance(model, torch.nn.Module):
-                # Not the whole torch model shall be saved, but only its parameters.
+            if isModel:
+                # Not the whole models shall be saved, but only its parameters.
+                model = data
                 serialized_models[serialized_key] = model.state_dict()
-            else:                    
-                serialized_models[serialized_key] = model
+            else:
+                serialized_models[serialized_key] = data
 
         return serialized_models
     
@@ -117,7 +118,7 @@ class Deserialize:
     # Get the trained models from disc and deserialize/unpack them.
     #
     @staticmethod
-    def get_trained_model(path_to_trained_parameters, model_type, test_profile, chosenConfig, modelAdapter, num_of_features):
+    def get_trained_model(path_to_trained_parameters, model_type, test_profile, chosenConfig, num_of_features):
         
         serialized_dict = torch.load(path_to_trained_parameters)
         
@@ -129,9 +130,8 @@ class Deserialize:
                 model = scripts.Model.Model(model_type=deserialize_key[0], 
                                             model_size=deserialize_key[2].modelSize,
                                             num_of_features=num_of_features,
-                                            modelAdapter=modelAdapter
                                             )
-                model.my_model.load_state_dict(state_dict)            
+                model.my_model.load_state_dict(state_dict)
                 return model
         
         assert False, "Model not found!"

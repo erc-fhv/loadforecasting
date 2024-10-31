@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader, Dataset
 from torch.autograd import Variable
 import numpy as np
 import scripts.Simulation_config as config
+import pickle
 from xlstm import (
     xLSTMBlockStack,
     xLSTMBlockStackConfig,
@@ -17,7 +18,7 @@ from xlstm import (
 
 
 class Model():
-    def __init__(self, model_type, model_size, num_of_features, modelAdapter=None):
+    def __init__(self, model_type, model_size, num_of_features):
         
         if model_type not in globals():
             # No class with name model_type is implemented below
@@ -25,16 +26,28 @@ class Model():
         else:
             # Instantiate the model
             my_model_class = globals()[model_type]        
-            self.my_model = my_model_class(model_size, num_of_features, modelAdapter=modelAdapter)
+            self.my_model = my_model_class(model_size, num_of_features)
 
-    def forward(self, x):
-        return self.my_model.forward(x)
+    # Predict Y from the given X.
+    #
+    def predict(self, X, Y):
+        if self.my_model.isPytorchModel == True:    # Machine Learning Model            
+            self.my_model.eval()  
+            with torch.no_grad():
+                output = self.my_model.forward(X)
+        else:   # Simple models
+            if isinstance(self.my_model, PersistencePrediction):
+                # Only the Persistence prediction model needs target variables for prediction
+                output = self.my_model.forward(X, Y)
+            else:
+                output = self.my_model.forward(X)
+        return output
     
     def train_model(self,
                     X_train,
                     Y_train,
-                    X_dev = np.array([]),
-                    Y_dev = np.array([]),
+                    X_dev = torch.Tensor([]),
+                    Y_dev = torch.Tensor([]),
                     pretrain_now = False,
                     finetune_now = True,
                     epochs=100,
@@ -51,7 +64,6 @@ class Model():
                 # No pretraining possible for these parameter-free models
                 pass    
             else:
-                # These models don't need to be optimized, as they are parameter-free.
                 self.my_model.train_model(X_train, Y_train)
         
         else:   # Pytorch models            
@@ -106,23 +118,14 @@ class Model():
                         f"LR = {my_optimizer.param_groups[0]['lr']}", 
                         flush=True)
                 else:
-                    print(".", end="", flush=True)                    
-                    
+                    print(".", end="", flush=True)
+                
             # Save the trained weights
             if pretrain_now:
                 pretrained_weights_path = f'scripts/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
                 torch.save(self.my_model.state_dict(), pretrained_weights_path)
 
         return history
-
-    # Predict Y from the given X. 
-    #
-    def predict(self, X):
-        self.my_model.eval()  # Set the model to evaluation mode
-        with torch.no_grad():
-            X = Variable(torch.Tensor(X))
-            output = self.my_model.forward(X)
-        return output.numpy()
     
     # Compute the Symmetric Mean Absolute Percentage Error (sMAPE).
     #
@@ -138,14 +141,14 @@ class Model():
         if self.my_model.isPytorchModel == False:   # Simple, parameter free models    
             
             # Predict
-            output = self.my_model(torch.Tensor(X_test))
+            output = self.predict(X_test, Y_test)
             assert output.shape == Y_test.shape, \
                 f"Shape mismatch: got {output.shape}, expected {Y_test.shape})"
             
             # Compute Loss
-            loss = loss_fn(output, torch.Tensor(Y_test))
+            loss = loss_fn(output, Y_test)
             results['test_loss'] = [loss.item()]
-            metric = self.smape(torch.Tensor(Y_test), output)
+            metric = self.smape(Y_test, output)
             results['test_sMAPE'] = [metric]
             
         else:   # Pytorch models            
@@ -194,7 +197,7 @@ class Model():
 
 
 class xLSTM(nn.Module):
-    def __init__(self, model_size, num_of_features, modelAdapter=None):
+    def __init__(self, model_size, num_of_features):
         super(xLSTM, self).__init__()
         self.isPytorchModel = True
         self.forecast_horizon = 24
@@ -261,7 +264,7 @@ class xLSTM(nn.Module):
 
 
 class LSTM(nn.Module):
-    def __init__(self, model_size, num_of_features, modelAdapter=None):
+    def __init__(self, model_size, num_of_features):
         super(LSTM, self).__init__()
         self.isPytorchModel = True
         self.forecast_horizon = 24
@@ -295,7 +298,7 @@ class LSTM(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, model_size, num_of_features, modelAdapter=None):
+    def __init__(self, model_size, num_of_features):
         super(Transformer, self).__init__()
         self.isPytorchModel = True
         self.num_of_features = num_of_features
@@ -335,11 +338,12 @@ class Transformer(nn.Module):
         x = x[:, -self.forecast_horizon:, :]  # Output only the last 24 timesteps
         x = self.activation(self.dense1(x))
         x = self.activation(self.dense2(x))
-        x = self.output_layer(x)        
+        x = self.output_layer(x)
         return x
 
-class KNN(nn.Module):
-    def __init__(self, model_size, num_of_features, modelAdapter=None):
+
+class KNN():
+    def __init__(self, model_size, num_of_features):
         super(KNN, self).__init__()
         self.isPytorchModel = False
         self.X_train = None
@@ -347,15 +351,8 @@ class KNN(nn.Module):
         self.num_of_features = num_of_features
     
     def train_model(self, X_train, Y_train):
-        
-        # Check if the input is a NumPy array and convert it to a torch.Tensor if necessary
-        if isinstance(X_train, np.ndarray):
-            X_train = torch.tensor(X_train, dtype=torch.float32)
-        if isinstance(Y_train, np.ndarray):
-            Y_train = torch.tensor(Y_train, dtype=torch.float32)
 
         # Store the training data as flattened tensors
-        self.nr_of_timesteps = X_train.shape[1]    
         self.X_train = X_train.view(X_train.shape[0], -1)  # Flatten X_train from (nr_of_batches, timesteps, features) to (nr_of_batches, timesteps * features)
         self.Y_train = Y_train  # Y_train remains unchanged in shape (nr_of_days, timesteps, 1)
     
@@ -365,9 +362,10 @@ class KNN(nn.Module):
     def forward(self, x):
         
         batch_size = x.size(0)
+        nr_of_timesteps = x.size(1)
         x_flat = x.view(batch_size, -1)  # Flatten input to (batch_size, 24*num_of_features)
-        assert x_flat.shape == torch.Size([batch_size, self.nr_of_timesteps * self.num_of_features]), \
-            f"Shape mismatch: got {x_flat.shape}, expected ({batch_size}, {self.nr_of_timesteps * self.num_of_features})"
+        assert x_flat.shape == torch.Size([batch_size, nr_of_timesteps * self.num_of_features]), \
+            f"Shape mismatch: got {x_flat.shape}, expected ({batch_size}, {nr_of_timesteps * self.num_of_features})"
         distances = torch.cdist(x_flat, self.X_train)  # Compute pairwise distances
         assert distances.shape == torch.Size([batch_size, self.X_train.shape[0]]), \
             f"Shape mismatch: got {distances.shape}, expected ({batch_size}, {self.Y_train.shape[0]})"
@@ -378,45 +376,95 @@ class KNN(nn.Module):
         assert y_pred.shape == torch.Size([batch_size, 24, 1]), \
             f"Shape mismatch: got {y_pred.shape}, expected ({torch.Size([batch_size, 24, 1])})"
         return y_pred
+    
+    def state_dict(self):
+        state_dict = {}
+        state_dict['X_train'] = self.X_train
+        state_dict['Y_train'] = self.Y_train
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        self.X_train = state_dict['X_train']
+        self.Y_train = state_dict['Y_train']
 
 
-class PersistencePrediction(nn.Module):
-    def __init__(self, model_size, num_of_features, modelAdapter=None):
-        super(PersistencePrediction, self).__init__()
+# Prediction with open-access synthetic load profiles.
+#
+class SyntheticLoadProfile():
+    def __init__(self, model_size, num_of_features):
+        super(SyntheticLoadProfile, self).__init__()
         self.isPytorchModel = False
-        self.num_of_features = num_of_features
-        self.modelAdapter = modelAdapter
+
+        # Load standard loadprofile
+        pretraining_filename = 'scripts/outputs/standard_loadprofile.pkl'
+        with open(pretraining_filename, 'rb') as f:
+            (_, self.Y_standardload, _) = pickle.load(f)
+    
+    def train_model(self, X_train, Y_train):
+        pass
     
     def forward(self, x):
-        """
-        Estimate the upcoming profile accord to the last profiles.
-        This is done with the un-normalized lagged power features.
-        """
-
-        x = self.modelAdapter.deNormalizeX(x)    # de-normalize especially the lagged power feature
-
-        # Do load prediction.
-        # 
-        lagged_load = x[:,:,11]
-        lagged_load_len = lagged_load.size(1)
-        if lagged_load_len < 2*24:
-            assert False, f"Got unexpected lagged load feature size: {lagged_load_len.shape}"
-        elif lagged_load_len < 7*24:
-            y_pred = lagged_load[:,-24:]   # Take the latest available lagged loads as predictions
-        else:
-            y_pred = lagged_load[:,-6*24:-5*24]   # Take the load profile 7 days ago as prediction
-            
-        # Add axis and normalize y_pred again, to compare it to other models.
+        
+        # Predict the next days, using the standard profile
+        # The predicted testset has the same shape as standard-load-profile.
         #
-        y_pred = y_pred[:,:,np.newaxis]
-        y_pred = self.modelAdapter.normalizeY(y_pred)        
-        assert y_pred.shape == (lagged_load.size(0), 24, 1), \
-            f"Shape mismatch: got {y_pred.shape}, expected ({lagged_load.size(0)}, 24, 1)"
+        nr_of_days = x.shape[0]
+        if nr_of_days == self.Y_standardload['all'].shape[0]:
+            y_pred = self.Y_standardload['all']
+        elif nr_of_days == self.Y_standardload['test'].shape[0]:
+            y_pred = self.Y_standardload['test']
+        elif nr_of_days == self.Y_standardload['dev'].shape[0]:
+            y_pred = self.Y_standardload['dev']
+        elif nr_of_days == self.Y_standardload['train'].shape[0]:
+            y_pred = self.Y_standardload['train']
+        else:
+            assert False, f"Unexpected shape received: {nr_of_days}"
         
         return y_pred
     
-    def train_model(self, X_train, Y_train):        
-        pass
+    def state_dict(self):
+        state_dict = {}
+        state_dict['Y_standardload'] = self.Y_standardload
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        self.Y_standardload = state_dict['Y_standardload']
+
+
+class PersistencePrediction():
+    def __init__(self, model_size, num_of_features):
+        super(PersistencePrediction, self).__init__()
+        self.isPytorchModel = False
+        self.num_of_features = num_of_features
+    
+    def forward(self, x, y):
+        """
+        Estimate the upcoming profile accord to the last profiles.
+        This is done with the shifted target variable y.
+        """
+
+        # Do load prediction.
+        #
+        (batch_size, nr_of_timesteps, nr_of_features) = y.shape
+        assert batch_size > 7, f"This predictor expects to get all days at once, instead of shape: {x.shape}"
+        y = torch.cat([self.Y_train, y], dim=0)
+        assert self.Y_train.shape[1:] == (nr_of_timesteps, nr_of_features), f"Got unexpected input shape: {y.shape}"        
+        y_pred = y[-batch_size-7:-7,:,:]
+        assert y_pred.shape == (batch_size, 24, 1), \
+            f"Shape mismatch: got {y_pred.shape}, expected ({batch_size}, 24, 1)"
+        
+        return y_pred
+    
+    def train_model(self, X_train, Y_train):
+        self.Y_train = Y_train
+    
+    def state_dict(self):
+        state_dict = {}
+        state_dict['Y_train'] = self.Y_train
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        self.Y_train = state_dict['Y_train']
 
 
 class SequenceDataset(Dataset):

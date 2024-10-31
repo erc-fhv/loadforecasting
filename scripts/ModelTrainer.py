@@ -59,7 +59,7 @@ class ModelTrainer:
         # Train and evaluate the model
         sim_config = configs[act_sim_config_index]
         num_of_features = X['train'].shape[2]
-        myModel = model.Model(model_type, sim_config.modelSize, num_of_features, modelAdapter=modelAdapter)
+        myModel = model.Model(model_type, sim_config.modelSize, num_of_features)
         history = myModel.train_model(X['train'], Y['train'], X['test'], Y['test'], pretrain_now=False,
                                     finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
         history = myModel.evaluate(X['test'], Y['test'], history)
@@ -115,37 +115,38 @@ class ModelTrainer:
 
             X, Y = modelAdapter.transformData(powerProfile, weatherData)
             with open(out_filename, 'wb') as file:
-                pickle.dump((X, Y, modelAdapter), file)   
+                pickle.dump((X, Y, modelAdapter), file)
             loadProfiles_filenames.append(out_filename)
+
+        # Load the BDEW standard load profiles for the desired datetime range
+        standard_loadprofiles = []
+        for year in range(startDate.year, endDate.year + 1):
+            load_profile = bdew.ElecSlp(year, holidays=public_holidays_timestamps).get_profile({"h0": 1000})
+            standard_loadprofiles.append(load_profile)
+        all_standard_loadprofiles = pd.concat(standard_loadprofiles)['h0']
+        all_standard_loadprofiles = all_standard_loadprofiles[(all_standard_loadprofiles.index >= startDate)
+                                                                & (all_standard_loadprofiles.index <= endDate)]
+        
+        # Preprocess data to get X and Y for the model
+        modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps,
+                                                    train_size = sim_config.trainingHistory,
+                                                    test_size=test_set_size_days,
+                                                    prediction_history = sim_config.modelInputHistory
+                                                    )
+        X, Y = modelAdapter.transformData(all_standard_loadprofiles, weatherData=None)
+        pretraining_filename = 'scripts/outputs/standard_loadprofile.pkl'
+        with open(pretraining_filename, 'wb') as file:
+            pickle.dump((X, Y, modelAdapter), file)
         
         # If required, do pretraining
         if sim_config.doPretraining:
-
-            # Load the BDEW standard load profiles for the desired datetime range
-            standard_loadprofiles = []
-            for year in range(startDate.year, endDate.year + 1):
-                load_profile = bdew.ElecSlp(year, holidays=public_holidays_timestamps).get_profile({"h0": 1000})
-                standard_loadprofiles.append(load_profile)
-            all_standard_loadprofiles = pd.concat(standard_loadprofiles)['h0']
-            all_standard_loadprofiles = all_standard_loadprofiles[(all_standard_loadprofiles.index >= startDate) & (all_standard_loadprofiles.index <= endDate)]
-            
-            # Preprocess data to get X and Y for the model
-            modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps, 
-                                                     train_size=len(all_standard_loadprofiles),
-                                                     test_size=0,
-                                                     prediction_history = sim_config.modelInputHistory,
-                                                     )
-            X, Y = modelAdapter.transformData(all_standard_loadprofiles, weatherData=None)
-            pretraining_filename = 'scripts/outputs/standard_loadprofile.pkl'
-            with open(pretraining_filename, 'wb') as file:
-                pickle.dump((X, Y, modelAdapter), file)
             
             # Do model pretraining
             for model_type in sim_config.usedModels:
                 print(f"\nPretraining {model_type} model and and sim_config {act_sim_config_index+1}/{len(configs)}.", flush=True)
-                num_of_features = X['train'].shape[2]
-                myModel = model.Model(model_type, sim_config.modelSize, num_of_features, modelAdapter)
-                myModel.train_model(X['train'], Y['train'], pretrain_now=True, 
+                num_of_features = X['all'].shape[2]
+                myModel = model.Model(model_type, sim_config.modelSize, num_of_features)
+                myModel.train_model(X['all'], Y['all'], pretrain_now=True, 
                                     finetune_now=False, epochs=sim_config.epochs)
 
         return loadProfiles_filenames

@@ -123,12 +123,13 @@ class PlotlyApp:
 
             # Get the predicted power profile of the selected day
             X_selected = self.X_plot[selected_dataset]
+            Y_selected = self.Y_plot[selected_dataset]
             if self.predictions is not None:
                 Y_pred = self.predictions[selected_date][0,:,0]
                 if selected_dataset != 'all':
                     print("Warning: Without given model, the visualiation only works for the 'all' dataset", flush=True)
             else:
-                Y_pred = self.model_plot.predict(X_selected)
+                Y_pred = self.model_plot.predict(X_selected, Y_selected)
                 Y_pred = Y_pred[selected_date,:,0]
             Y_pred = self.modelAdapter.deNormalizeY(Y_pred)
 
@@ -184,9 +185,8 @@ class PlotlyApp:
 
             return fig_Y, fig_X
         
-        except:
-            print("hoi!")
-            return px.line(), px.line()
+        except Exception as e:
+            raise RuntimeError("An error occurred during visualization!") from e
         
 
     def run(self, myport=8050):

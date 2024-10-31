@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import datetime
-
+import torch
 
 # Bring the data into the data format needed by the model
 #
@@ -41,7 +41,6 @@ class ModelAdapter:
     def transformData(self, 
                       powerProfiles, 
                       weatherData, 
-                      training=True,
                       first_prediction_clocktime = datetime.time(0, 0),
                       ):
 
@@ -56,13 +55,19 @@ class ModelAdapter:
         Y_all = self.formattingY(powerProfiles)
 
         # Convert the input features to a nd-array with format (nr_of_batches, timesteps, features)
-        X_all = self.formattingX(weatherData, powerProfiles, training=training)
+        X_all = self.formattingX(weatherData, powerProfiles)
 
         # Split up the data into train, dev, test and modeldata
-        X, Y = self.splitUpData(X_all, Y_all)
+        X_all, Y_all = self.splitUpData(X_all, Y_all)
 
-        return X, Y
+        # Normalize all input data and target value
+        X_all, Y_all = self.normalizeAll(X_all, Y_all)
         
+        # Convert from ndarray to torch tensor
+        X_all, Y_all = self.convertToTorchTensor(X_all, Y_all)        
+        
+        return X_all, Y_all
+
     def getFirstPredictionTimestamp(self, powerProfiles, first_prediction_clocktime):
 
         # Calculate the first possible prediction timestamp
@@ -80,10 +85,10 @@ class ModelAdapter:
 
         return first_prediction_timestamp
 
-    # Convert the input data to the LSTM format.
-    # For more informations regarding the shape see LSTM design for this project.
+    # Convert the input data to the model format.
+    # For more informations regarding the shape see model design for this project.
     #
-    def formattingX(self, weatherData, powerProfiles=None, training=True):
+    def formattingX(self, weatherData, powerProfiles=None):
 
         batch_id = 0
         next_prediction_date = self.first_prediction_date
@@ -151,7 +156,7 @@ class ModelAdapter:
                 X_all[batch_id, :, index]  = np.array(lagged_power.values)
                 index += 1
 
-            # If available: Add past weather measurmenents to the LSTM input
+            # If available: Add past weather measurmenents to the model input
             if weatherData is not None:
                 weatherData_slice = weatherData.loc[start_datetime:next_prediction_date]
                 weather_seq_len = weatherData_slice.shape[0]
@@ -166,13 +171,10 @@ class ModelAdapter:
             next_prediction_date += self.prediction_rate
             batch_id += 1
 
-        # Normalize LSTM input data
-        X_all = self.normalizeX(X_all, training=training)
-
         return X_all
     
-    # Convert the given power profiles to the LSTM format.
-    # For more informations regarding the shape see LSTM design for this project.
+    # Convert the given power profiles to the model format.
+    # For more informations regarding the shape see model design for this project.
     #
     def formattingY(self, df):
         
@@ -201,12 +203,36 @@ class ModelAdapter:
             next_prediction_date += self.prediction_rate
             batch_id += 1
 
-        # Do a normalisation of the target values
-        Y_all = self.normalizeY(Y_all, training=True)
-
         return Y_all
 
-    # Z-Normalize the input data of the LSTM.
+    # Convert from nd-array to torch tensor
+    #
+    def convertToTorchTensor(self, X_all, Y_all):        
+        
+        for dataset in X_all:
+            X_all[dataset] = torch.tensor(X_all[dataset])       
+             
+        for dataset in Y_all:
+            Y_all[dataset] = torch.tensor(Y_all[dataset])
+            
+        return X_all, Y_all
+        
+    # Normalize all the inputs and targets of the model.
+    #
+    def normalizeAll(self, X_all, Y_all):
+        
+        X_all['train'] = self.normalizeX(X_all['train'], training=True)
+        Y_all['train'] = self.normalizeY(Y_all['train'], training=True)
+        X_all['dev'] = self.normalizeX(X_all['dev'], training=False)
+        Y_all['dev'] = self.normalizeY(Y_all['dev'], training=False)
+        X_all['test'] = self.normalizeX(X_all['test'], training=False)
+        Y_all['test'] = self.normalizeY(Y_all['test'], training=False)
+        X_all['all'] = self.normalizeX(X_all['all'], training=False)
+        Y_all['all'] = self.normalizeY(Y_all['all'], training=False)
+        
+        return X_all, Y_all
+        
+    # Z-Normalize the input data of the model.
     #
     def normalizeX(self, X, training=False):
 
@@ -215,9 +241,9 @@ class ModelAdapter:
             self.meanX = np.mean(X, axis=(0, 1))
             self.stdX = np.std(X, axis=(0, 1))
         
-        if np.isclose(self.stdX, 0).any():
-            # Avoid a division by zero (which can occur for constant features)
-            self.stdX = np.where(np.isclose(self.stdX, 0), 1e-8, self.stdX)
+            if np.isclose(self.stdX, 0).any():
+                # Avoid a division by zero (which can occur for constant features)
+                self.stdX = np.where(np.isclose(self.stdX, 0), 1e-8, self.stdX)
 
         X_normalized = (X - self.meanX) / self.stdX
 
@@ -231,7 +257,7 @@ class ModelAdapter:
 
         return X_denormalized
 
-    # Normalize the output data of the LSTM.    
+    # Normalize the output data of the model.    
     #
     def normalizeY(self, Y, training=False):
 
@@ -281,7 +307,10 @@ class ModelAdapter:
         self.total_set_size = X_all.shape[0]
         self.test_set_start = self.total_set_size - self.test_size
         self.dev_set_start = self.test_set_start - self.dev_size
-        self.train_set_start = self.dev_set_start - self.train_size
+        if self.train_size != -1:
+            self.train_set_start = self.dev_set_start - self.train_size
+        else:
+            self.train_set_start = None # Set train length to max
         
         X['test'] = X_all[self.shuffeled_indices[self.test_set_start:]]
         X['dev'] = X_all[self.shuffeled_indices[self.dev_set_start:self.test_set_start]]
@@ -326,15 +355,15 @@ class ModelAdapter:
     #
     def getDatasetTypeFromIndex(self, unshuffeled_index):
 
-        shuffled_index = np.where(self.shuffeled_indices == unshuffeled_index)[0]
+        shuffled_index = np.where(self.shuffeled_indices == unshuffeled_index)[0][0]
 
         if shuffled_index >= self.total_set_size:
             dataset_type = 'unknown (error)'
         elif shuffled_index >= self.test_set_start:
             dataset_type = 'test'
-        elif shuffled_index >= self.dev_size:
+        elif shuffled_index >= self.dev_set_start:
             dataset_type = 'dev'
-        elif shuffled_index >= self.train_size:
+        elif shuffled_index >= self.train_set_start:
             dataset_type = 'train'
         else:
             dataset_type = 'un-used'
