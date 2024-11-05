@@ -129,7 +129,8 @@ class ModelTrainer:
         
         # Add timezone (without any changes to the pandas series).
         # The german loadprofile shall be used without any modification (i.e. time-shifting, etc.) for London.
-        all_standard_loadprofiles = all_standard_loadprofiles.tz_localize("Europe/London").tz_convert("UTC")
+        all_standard_loadprofiles = all_standard_loadprofiles.tz_localize("Europe/London", nonexistent='shift_forward', ambiguous=True)
+        all_standard_loadprofiles = all_standard_loadprofiles.tz_convert("UTC")
         
         # Preprocess data to get X and Y for the model
         modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps,
