@@ -20,9 +20,9 @@ class WeatherMeasurements:
 
         # Specify sampling periode
         if sample_periode == 'hourly':
-            self.data = Hourly(location, startDate, endDate)
+            self.data = Hourly(location, startDate, endDate, tz)
         elif sample_periode == 'daily':
-            self.data = Daily(location, startDate, endDate)
+            self.data = Daily(location, startDate, endDate, tz)
         else:
             raise ValueError("Invalid sample_periode chosen.")
 
@@ -32,7 +32,7 @@ class WeatherMeasurements:
         # Replace NaN values with zero (if there are any)
         self.data.fillna(0, inplace=True)
 
-        # Set timezone
-        self.data.index = self.data.index.tz_localize('UTC').tz_convert(tz)
+        # Check the timezone
+        assert str(self.data.index.tz) == str(tz), f"Expected tz = {tz}, received tz = {self.data.index.tz}"
 
         return self.data

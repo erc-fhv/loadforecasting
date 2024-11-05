@@ -17,7 +17,7 @@ class PlotlyApp:
             model,
             modelAdapter,
             predictions = None,
-            timezone = 'UTC+00:00',
+            timezone = 'UTC',
             Y_model_pretrain = None,
             modelAdapter_pretrain = None
                  ):
