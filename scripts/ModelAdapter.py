@@ -350,7 +350,7 @@ class ModelAdapter:
             index = self.getUnshuffeledIndex(dataset_type, index)
 
         return self.first_prediction_date + index * self.prediction_rate
-    
+
     # Return the dataset-type (train, test, ...) from the given unshuffeled index
     #
     def getDatasetTypeFromIndex(self, unshuffeled_index):

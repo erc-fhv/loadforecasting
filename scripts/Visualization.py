@@ -11,15 +11,15 @@ os.environ['HOST'] = '127.0.0.1'
 
 class PlotlyApp:
     def __init__(
-            self,
-            X_model,
-            Y_model,
-            model,
-            modelAdapter,
-            predictions = None,
-            timezone = 'UTC',
-            Y_model_pretrain = None,
-            modelAdapter_pretrain = None
+                self,
+                X_model,
+                Y_model,
+                model,
+                modelAdapter,
+                predictions = None,
+                timezone = 'UTC',
+                Y_model_pretrain = None,
+                modelAdapter_pretrain = None
                  ):
         
         # Initialize the Dash app
