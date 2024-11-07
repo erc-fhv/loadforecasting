@@ -239,11 +239,12 @@ class Evaluate_Models:
     # Calculate and print results for each config and model_type
     #
     @staticmethod
-    def print_results(path_to_train_histories, print_for_latex = True):
+    def print_results(path_to_train_histories, print_style = 'latex'):
 
         result_per_config = Evaluate_Models.get_training_results(path_to_train_histories)
+        df = pd.DataFrame()
 
-        for config, result_per_model in result_per_config.items():
+        for config_id, (config, result_per_model) in enumerate(result_per_config.items()):
             
             pprint(f'Configuration: {config}')            
             latex_string = ''
@@ -266,9 +267,12 @@ class Evaluate_Models:
                 std_dev_test_sMAPE = f'{np.std(test_sMAPE):.{decimal_points_sMAPE}f}'
                 mean_train_MAE = f'{np.mean(train_losses):.{decimal_points_MAE}f}'
 
-                if print_for_latex:
+                if print_style == 'latex':
                     latex_string += f' & {mean_test_sMAPE} ({std_dev_test_sMAPE})'
-                else:
+                elif print_style == 'pandas_df':
+                    df[config_id, model_type] = mean_test_sMAPE
+                    df[config_id, model_type + '_std_dev'] = std_dev_test_sMAPE
+                elif print_style == 'shell':
                     # Print the results of the current config and modeltype
                     print(f'    Model: {model_type}')
                     print(f'      Mean Test MAE: {mean_test_MAE}')
@@ -276,9 +280,13 @@ class Evaluate_Models:
                     print(f'      Standard Deviation Test MAE: {std_dev_test_MAE}')
                     print(f'      Standard Deviation Test MAPE: {std_dev_test_sMAPE}')
                     print(f'      Mean Train MAE: {mean_train_MAE}\n')
+                else:
+                    assert "Please choose correct 'print_style' argument."
 
-            if print_for_latex == True:
+            if print_style == 'latex':
                 print(f'Latex Summary for this Configuration: {latex_string}')
+        
+        return df
 
     # Calculate and print results for each config and model_type
     #
@@ -300,25 +308,28 @@ class Evaluate_Models:
 
         # Create a combined list of loss values and corresponding run names
         combined_loss_data = []
-        for run_id, history in filtered_train_histories.items():
-            
+        for run_id, (run_config, history) in enumerate(filtered_train_histories.items()):
             # Define the labels of the following graph
-            model_type, load_profile, act_config = run_id
-            label = (model_type, act_config.aggregation_Count, act_config.modelSize)    
-            combined_loss_data.extend([(label, epoch + 1, loss) 
-                                       for epoch, loss in enumerate(history['loss'])])
+            model_type, load_profile, act_config = run_config
+            label = (model_type, act_config.aggregation_Count, act_config.modelSize)
+
+            # Add each epoch's loss for the current run's history
+            for epoch, loss_value in enumerate(history['loss']):
+                combined_loss_data.append((f"{label}_{run_id}", epoch + 1, loss_value))
 
         # Create a DataFrame from the combined loss data
-        df = pd.DataFrame(combined_loss_data, columns=['Run', 'Epoch', 'Loss'])
+        df = pd.DataFrame(combined_loss_data, columns=['Run_History', 'Epoch', 'Loss'])
 
-        # Use plotly express to plot the scatter graph
-        fig = px.scatter(df, x='Epoch', y='Loss', color='Run', 
-                        labels={'Loss': 'Training Loss', 'Epoch': 'Epoch'},
-                        title='Training Loss Over Epochs for Different Runs')
+        # Use plotly express to plot the line graph
+        fig = px.line(df, x='Epoch', y='Loss', color='Run_History', line_group='Run_History',
+                    labels={'Loss': 'Training Loss', 'Epoch': 'Epoch'},
+                    title='Training Loss Over Epochs for Different Runs and Histories')
         fig.update_yaxes(range=[0, 1])
         fig.update_traces(marker=dict(size=5))
         fig.update_layout(showlegend=False)
         fig.show()
-        
+
+
+                
         
         
