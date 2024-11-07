@@ -34,7 +34,7 @@ class Model():
         if self.my_model.isPytorchModel == True:    # Machine Learning Model            
             self.my_model.eval()  
             with torch.no_grad():
-                output = self.my_model.forward(X)
+                output = self.my_model.forward(X.float())
         else:   # Simple models
             if isinstance(self.my_model, PersistencePrediction):
                 # Only the Persistence prediction model needs target variables for prediction
@@ -405,14 +405,14 @@ class SyntheticLoadProfile():
     
     def forward(self, x):
         
-        # Predict the next days, using the standard profile
+        # Predict the next days, using the standard profile.
         # The predicted testset has the same shape as standard-load-profile.
         #
         nr_of_days = x.shape[0]
-        if nr_of_days == self.Y_standardload['all'].shape[0]:
-            y_pred = self.Y_standardload['all']
-        elif nr_of_days == self.Y_standardload['test'].shape[0]:
+        if nr_of_days == self.Y_standardload['test'].shape[0]:
             y_pred = self.Y_standardload['test']
+        elif nr_of_days == self.Y_standardload['all'].shape[0]:
+            y_pred = self.Y_standardload['all']
         elif nr_of_days == self.Y_standardload['dev'].shape[0]:
             y_pred = self.Y_standardload['dev']
         elif nr_of_days == self.Y_standardload['train'].shape[0]:
