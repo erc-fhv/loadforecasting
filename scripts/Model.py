@@ -411,14 +411,8 @@ class SyntheticLoadProfile():
         nr_of_days = x.shape[0]
         if nr_of_days == self.Y_standardload['test'].shape[0]:
             y_pred = self.Y_standardload['test']
-        elif nr_of_days == self.Y_standardload['all'].shape[0]:
-            y_pred = self.Y_standardload['all']
-        elif nr_of_days == self.Y_standardload['dev'].shape[0]:
-            y_pred = self.Y_standardload['dev']
-        elif nr_of_days == self.Y_standardload['train'].shape[0]:
-            y_pred = self.Y_standardload['train']
         else:
-            assert False, f"Unexpected shape received: {nr_of_days}"
+            y_pred = np.zeros(shape=(nr_of_days, *self.Y_standardload['test'].shape[1:]))
         
         return y_pred
     

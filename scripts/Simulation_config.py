@@ -83,8 +83,8 @@ configs = [
     # Vary the input history size
     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
             TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT),    
-    Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
-            TrainingHistory._15_MONTH, ModelInputHistory._20_DAYS, UsedModels.ALL, Epochs.DEFAULT),    
+#     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._37_HOUSEHOLDS, NrOfComunities._20, 
+#             TrainingHistory._15_MONTH, ModelInputHistory._20_DAYS, UsedModels.ALL, Epochs.DEFAULT),    
     
     # Without transfer learning:
     #
@@ -118,4 +118,3 @@ configs = [
             TrainingHistory._15_MONTH, ModelInputHistory._6_DAYS, UsedModels.ALL, Epochs.DEFAULT), 
 ]
 #########################################################################################################################
-
