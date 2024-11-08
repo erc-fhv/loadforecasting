@@ -240,13 +240,14 @@ class Evaluate_Models:
     #
     @staticmethod
     def print_results(path_to_train_histories, print_style = 'latex'):
-
+        
         result_per_config = Evaluate_Models.get_training_results(path_to_train_histories)
-        df = pd.DataFrame()
+        result_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))))
 
         for config_id, (config, result_per_model) in enumerate(result_per_config.items()):
             
-            pprint(f'Configuration: {config}')            
+            if print_style != 'pandas_df':
+                pprint(f'Configuration: {config}')            
             latex_string = ''
             
             for model_type, result_per_profile in result_per_model.items():
@@ -262,16 +263,18 @@ class Evaluate_Models:
                 decimal_points_MAE = 4
                 decimal_points_sMAPE = 2
                 mean_test_MAE = f'{np.mean(test_MAE):.{decimal_points_MAE}f}'
+                median_test_sMAPE = f'{np.median(test_sMAPE):.{decimal_points_sMAPE}f}'
                 mean_test_sMAPE = f'{np.mean(test_sMAPE):.{decimal_points_sMAPE}f}'
                 std_dev_test_MAE = f'{np.std(test_MAE):.{decimal_points_MAE}f}'
                 std_dev_test_sMAPE = f'{np.std(test_sMAPE):.{decimal_points_sMAPE}f}'
+                siqr_test_sMAPE = f'{(np.percentile(test_sMAPE,75)-np.percentile(test_sMAPE,25))/2.0:.{decimal_points_sMAPE}f}'
                 mean_train_MAE = f'{np.mean(train_losses):.{decimal_points_MAE}f}'
 
                 if print_style == 'latex':
-                    latex_string += f' & {mean_test_sMAPE} ({std_dev_test_sMAPE})'
+                    latex_string += f' & {median_test_sMAPE} ({siqr_test_sMAPE})'
                 elif print_style == 'pandas_df':
-                    df[config_id, model_type] = mean_test_sMAPE
-                    df[config_id, model_type + '_std_dev'] = std_dev_test_sMAPE
+                    result_dict['error'][config_id][model_type] = median_test_sMAPE
+                    result_dict['deviation'][config_id][model_type] = siqr_test_sMAPE
                 elif print_style == 'shell':
                     # Print the results of the current config and modeltype
                     print(f'    Model: {model_type}')
@@ -286,7 +289,7 @@ class Evaluate_Models:
             if print_style == 'latex':
                 print(f'Latex Summary for this Configuration: {latex_string}')
         
-        return df
+        return result_dict
 
     # Calculate and print results for each config and model_type
     #
