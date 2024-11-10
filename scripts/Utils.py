@@ -273,9 +273,7 @@ class Evaluate_Models:
                 if print_style == 'latex':
                     latex_string += f' & {median_test_sMAPE} ({siqr_test_sMAPE})'
                 elif print_style == 'pandas_df':
-                    result_dict['median'][config_id][model_type] = median_test_sMAPE
-                    result_dict['first quartil'][config_id][model_type] = np.percentile(test_sMAPE,25)
-                    result_dict['third quartil'][config_id][model_type] = np.percentile(test_sMAPE,75)
+                    result_dict['list'][config_id][model_type] = test_sMAPE
                 elif print_style == 'shell':
                     # Print the results of the current config and modeltype
                     print(f'    Model: {model_type}')
