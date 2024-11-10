@@ -242,9 +242,9 @@ class Evaluate_Models:
     def print_results(path_to_train_histories, print_style = 'latex'):
         
         result_per_config = Evaluate_Models.get_training_results(path_to_train_histories)
-        result_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))))
+        result_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
 
-        for config_id, (config, result_per_model) in enumerate(result_per_config.items()):
+        for config, result_per_model in result_per_config.items():
             
             if print_style != 'pandas_df':
                 pprint(f'Configuration: {config}')            
@@ -273,7 +273,7 @@ class Evaluate_Models:
                 if print_style == 'latex':
                     latex_string += f' & {median_test_sMAPE} ({siqr_test_sMAPE})'
                 elif print_style == 'pandas_df':
-                    result_dict['list'][config_id][model_type] = test_sMAPE
+                    result_dict[config][model_type] = test_sMAPE
                 elif print_style == 'shell':
                     # Print the results of the current config and modeltype
                     print(f'    Model: {model_type}')
