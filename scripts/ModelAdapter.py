@@ -262,13 +262,14 @@ class ModelAdapter:
     def normalizeY(self, Y, training=False):
 
         if training:
-            # Estimate the standard deviation of the data during training
+            # Estimate the mean and standard deviation of the data during training
+            self.meanY = np.mean(Y, axis=(0, 1))
             self.stdY = np.std(Y)
         
         if np.isclose(self.stdY, 0):
             assert False, "Normalization leads to division by zero."
 
-        Y_normalized = Y / self.stdY
+        Y_normalized = (Y - self.meanY) / self.stdY
 
         return Y_normalized
 
@@ -276,7 +277,7 @@ class ModelAdapter:
     #
     def deNormalizeY(self, Y):
 
-        Y_denormalized = Y * self.stdY
+        Y_denormalized = (Y * self.stdY) + self.meanY
 
         return Y_denormalized
     
