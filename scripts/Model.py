@@ -398,7 +398,8 @@ class SyntheticLoadProfile():
         # Load standard loadprofile
         pretraining_filename = 'scripts/outputs/standard_loadprofile.pkl'
         with open(pretraining_filename, 'rb') as f:
-            (_, self.Y_standardload, _) = pickle.load(f)
+            (_, Y_standardload, _) = pickle.load(f)
+            self.Y_standardload_test = Y_standardload['test']
     
     def train_model(self, X_train, Y_train):
         pass
@@ -409,20 +410,20 @@ class SyntheticLoadProfile():
         # The predicted testset has the same shape as standard-load-profile.
         #
         nr_of_days = x.shape[0]
-        if nr_of_days == self.Y_standardload['test'].shape[0]:
-            y_pred = self.Y_standardload['test']
+        if nr_of_days == self.Y_standardload_test.shape[0]:
+            y_pred = self.Y_standardload_test
         else:
-            y_pred = np.zeros(shape=(nr_of_days, *self.Y_standardload['test'].shape[1:]))
+            y_pred = np.zeros(shape=(nr_of_days, *self.Y_standardload_test.shape[1:]))
         
         return y_pred
     
     def state_dict(self):
         state_dict = {}
-        state_dict['Y_standardload'] = self.Y_standardload
+        state_dict['Y_standardload_test'] = self.Y_standardload_test
         return state_dict
 
     def load_state_dict(self, state_dict):
-        self.Y_standardload = state_dict['Y_standardload']
+        self.Y_standardload_test = state_dict['Y_standardload_test']
 
 
 class PersistencePrediction():
