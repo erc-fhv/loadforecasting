@@ -129,12 +129,16 @@ class Model():
     
     # Compute the Symmetric Mean Absolute Percentage Error (sMAPE).
     #
-    def smape(self, y_true, y_pred):
+    def smape(self, y_true, y_pred, dim=None):
         numerator = torch.abs(y_pred - y_true)
         denominator = (torch.abs(y_true) + torch.abs(y_pred))
         eps = 1e-8 # To avoid division by zero
-        smape_value = torch.mean(numerator / (denominator + eps)) * 2 * 100
-        return smape_value.item()
+        if dim == None: #  Calculate sMAPE over each dimension
+            smape_value = torch.mean(numerator / (denominator + eps), dim=dim) * 2 * 100
+            return smape_value.item()
+        else:   #  Calculate sMAPE over given dimension
+            smape_values = torch.mean(numerator / (denominator + eps), dim=dim) * 2 * 100
+            return smape_values
 
     def evaluate(self, X_test, Y_test, results={}, deNormalize=False, 
                  modelAdapter=None, loss_fn=nn.L1Loss(), batch_size=256):
