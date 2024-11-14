@@ -129,21 +129,28 @@ class Model():
     
     # Compute the Symmetric Mean Absolute Percentage Error (sMAPE).
     #
-    def smape(self, y_true, y_pred):        
+    def smape(self, y_true, y_pred):
         numerator = torch.abs(y_pred - y_true)
         denominator = (torch.abs(y_true) + torch.abs(y_pred))
         eps = 1e-8 # To avoid division by zero
         smape_value = torch.mean(numerator / (denominator + eps)) * 2 * 100
         return smape_value.item()
 
-    def evaluate(self, X_test, Y_test, results={}, loss_fn=nn.L1Loss(), batch_size=256):
-
+    def evaluate(self, X_test, Y_test, results={}, deNormalize=False, 
+                 modelAdapter=None, loss_fn=nn.L1Loss(), batch_size=256):
+        
         if self.my_model.isPytorchModel == False:   # Simple, parameter free models    
             
             # Predict
             output = self.predict(X_test, Y_test)
             assert output.shape == Y_test.shape, \
                 f"Shape mismatch: got {output.shape}, expected {Y_test.shape})"
+            
+            # Unnormalize the target variable, if wished.
+            if deNormalize == True:
+                assert modelAdapter != None, "No modelAdapter given."
+                Y_test = modelAdapter.deNormalizeY(Y_test)
+                output = modelAdapter.deNormalizeY(output)
             
             # Compute Loss
             loss = loss_fn(output, Y_test)
@@ -152,11 +159,16 @@ class Model():
             results['test_sMAPE'] = [metric]
             
         else:   # Pytorch models            
-                        
+            
             # Initialize metrics
             loss_sum = 0
             smape_sum = 0
             total_samples = 0
+        
+            # Unnormalize the target variable, if wished.
+            if deNormalize == True:
+                assert modelAdapter != None, "No modelAdapter given."
+                Y_test = modelAdapter.deNormalizeY(Y_test)
             
             # Create DataLoader
             val_dataset = SequenceDataset(X_test, Y_test)
@@ -168,6 +180,10 @@ class Model():
 
                     # Predict
                     output = self.my_model(batch_x.float())
+                    
+                    # Unnormalize the target variable, if wished.
+                    if deNormalize == True:
+                        output = modelAdapter.deNormalizeY(output)
                     
                     # Compute Metrics
                     loss = loss_fn(output, batch_y.float())
@@ -442,9 +458,9 @@ class PersistencePrediction():
         #
         (batch_size, nr_of_timesteps, nr_of_features) = y.shape
         assert batch_size > 7, f"This predictor expects to get all days at once, instead of shape: {x.shape}"
-        y = torch.cat([self.Y_train, y], dim=0)
-        assert self.Y_train.shape[1:] == (nr_of_timesteps, nr_of_features), f"Got unexpected input shape: {y.shape}"        
-        y_pred = y[-batch_size-7:-7,:,:]
+        y_pred = torch.cat([self.Y_train, y], dim=0)
+        assert self.Y_train.shape[1:] == (nr_of_timesteps, nr_of_features), f"Got unexpected input shape: {y_pred.shape}"        
+        y_pred = y_pred[-batch_size-7:-7,:,:]
         assert y_pred.shape == (batch_size, 24, 1), \
             f"Shape mismatch: got {y_pred.shape}, expected ({batch_size}, 24, 1)"
         

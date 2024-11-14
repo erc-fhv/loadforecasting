@@ -66,7 +66,7 @@ class ModelTrainer:
         myModel = model.Model(model_type, sim_config.modelSize, num_of_features)
         history = myModel.train_model(X['train'], Y['train'], X['test'], Y['test'], pretrain_now=False,
                                     finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
-        history = myModel.evaluate(X['test'], Y['test'], history)
+        history = myModel.evaluate(X['test'], Y['test'], results=history, deNormalize=True, modelAdapter=modelAdapter)
         
         # Return the results
         return (model_type, load_profile, sim_config, history, myModel.my_model)
