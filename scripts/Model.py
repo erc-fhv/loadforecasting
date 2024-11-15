@@ -427,7 +427,7 @@ class SyntheticLoadProfile():
     def forward(self, x):
         
         # Predict the next days, using the standard profile.
-        # The predicted testset has the same shape as standard-load-profile.
+        # In this project the predicted testset has the same shape as standard-load-profile.
         #
         nr_of_days = x.shape[0]
         if nr_of_days == self.Y_standardload_test.shape[0]:
@@ -452,18 +452,19 @@ class PersistencePrediction():
         self.isPytorchModel = False
         self.num_of_features = num_of_features
     
-    def forward(self, x, y):
+    def forward(self, x_test, y_test):
         """
-        Estimate the upcoming profile accord to the last profiles.
-        This is done with the shifted target variable y.
+        Upcoming load profile = load profile 7 days ago.
+        Assumption: The training load profile immediately precedes the given test load profile (to ensure accurate 
+        prediction of the initial days in the test set).
         """
 
         # Do load prediction.
         #
-        (batch_size, nr_of_timesteps, nr_of_features) = y.shape
-        assert batch_size > 7, f"This predictor expects to get all days at once, instead of shape: {x.shape}"
-        y_pred = torch.cat([self.Y_train, y], dim=0)
-        assert self.Y_train.shape[1:] == (nr_of_timesteps, nr_of_features), f"Got unexpected input shape: {y_pred.shape}"        
+        (batch_size, nr_of_timesteps, nr_of_features) = y_test.shape
+        assert batch_size > 7, f"This predictor expects to get all days at once, instead of shape: {y_test.shape}"
+        assert self.Y_train.shape[1:] == (nr_of_timesteps, nr_of_features), f"Got unexpected input shape: {y_pred.shape}"
+        y_pred = torch.cat([self.Y_train, y_test], dim=0)      
         y_pred = y_pred[-batch_size-7:-7,:,:]
         assert y_pred.shape == (batch_size, 24, 1), \
             f"Shape mismatch: got {y_pred.shape}, expected ({batch_size}, 24, 1)"

@@ -51,8 +51,8 @@ class PlotlyApp:
             dcc.Input(
                 id='date-picker',
                 type='number',
-                value=1,
-                min=1,
+                value=0,
+                min=0,
                 style={'width': '7%', 'fontSize': 13, 'padding': '10px', 'marginBottom': 10}
             ),
 
@@ -152,8 +152,6 @@ class PlotlyApp:
                                 plot_bgcolor='white', legend=dict(x=0, y=1, xanchor='left', yanchor='top'),
                                 margin=dict(l=20, r=20, t=20, b=20),
                                 )
-            fig_Y.update_xaxes(showline = True, linewidth = 1, linecolor = 'black', )
-            fig_Y.update_yaxes(showline = True, linewidth = 1, linecolor = 'black', )
             fig_Y.update_xaxes(showline = True, linewidth = 1, linecolor = 'black', mirror = True)
             fig_Y.update_yaxes(showline = True, linewidth = 1, linecolor = 'black', mirror = True)
             if self.Y_model_pretrain is not None:
@@ -180,8 +178,8 @@ class PlotlyApp:
             fig_X.update_yaxes(showgrid=True, gridcolor='lightgrey')
 
             # Store the create figure
-            fig_Y.write_image('scripts/outputs/plotly_profile_Y.pdf', format='pdf')
-            fig_X.write_image('scripts/outputs/plotly_profile_X.pdf', format='pdf')
+            fig_Y.write_image('scripts/outputs/figs/plotly_profile_Y.pdf', format='pdf')
+            fig_X.write_image('scripts/outputs/figs/plotly_profile_X.pdf', format='pdf')
 
             return fig_Y, fig_X
         

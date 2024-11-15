@@ -3,6 +3,7 @@ import holidays
 import pytz
 from demandlib import bdew
 import pickle
+from datetime import timedelta, date
 
 # Imports own modules.
 # The imports are done relative to the root of the project.
@@ -160,6 +161,12 @@ class ModelTrainer:
         # Load the public holiday calendar
         #
         public_holidays_dict = holidays.CountryHoliday('GB', prov='ENG', years=range(startDate.year, endDate.year + 1))
+        
+        # Add Christmas holidays from Dec 24 to Dec 31 for each year
+        for year in range(startDate.year, endDate.year + 1): 
+            for day in range(8):  # 9 days from Dec 24 to Dec 31 inclusive
+                public_holidays_dict[date(year, 12, 24) + timedelta(days=day)] = "Christmas Holidays"
+                
         public_holidays_timestamps = [pd.Timestamp(date, tzinfo=pytz.utc) for date in public_holidays_dict.keys()]
 
         return loadProfiles, weatherData, public_holidays_timestamps
