@@ -465,6 +465,7 @@ class PersistencePrediction():
         (batch_size, nr_of_timesteps, nr_of_features) = y_test.shape
         if batch_size == self.test_set_size:
             
+            # Currently only the test-set can be predicted by the PersistencePrediction model.            
             assert self.Y_train.shape[1:] == (nr_of_timesteps, nr_of_features), f"Got unexpected input shape: {y_pred.shape}"            
             y_pred = torch.cat([self.Y_train, y_test], dim=0)      
             y_pred = y_pred[-batch_size-7:-7,:,:]
@@ -472,8 +473,8 @@ class PersistencePrediction():
             
         else:            
             
-            print("Only the test-set can be predicted by the PersistencePrediction.")
-            y_pred = torch.zeros(size = y_test.size)
+            print("Currently only the test-set can be predicted by the PersistencePrediction model.")
+            y_pred = torch.full(size = y_test.size, fill_value=-np.inf)
         
         return y_pred
     
