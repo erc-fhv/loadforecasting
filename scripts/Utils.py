@@ -202,45 +202,6 @@ class Evaluate_Models:
 
         return result_per_config
 
-    # Get the best models per energy community (i.e. the "winners")
-    #
-    @staticmethod
-    def get_winner_models(path_to_train_histories, do_print=False):
-        
-        result_per_config = Evaluate_Models.get_training_results(path_to_train_histories)
-        
-        # Calculate the best model ("winner") for each profile
-        winner_per_config = {}
-        winner_per_model = {}
-        for config, result_per_model in result_per_config.items():
-                
-            # Initialize the used dict values with 0
-            winner_per_config[config] = {model_type: 0 for model_type in result_per_model.keys()}
-            for model_type in result_per_model:
-                winner_per_model.setdefault(model_type, 0)
-                
-            # Loop through each load_profile within the model data
-            for load_profile in next(iter(result_per_model.values())).keys():
-                
-                # Determine the model type with the best performance for the current load profile
-                best_model = min(result_per_model, key = lambda model: result_per_model[model][load_profile]['test_sMAPE'])
-                
-                # Increment the count for the winning model type
-                winner_per_config[config][best_model] += 1
-                winner_per_model[best_model] += 1
-
-        # Summarize the wins per model
-        #
-        if do_print:
-            print(f'Total Winner per model:\n  Models:', end=" ")
-            counts = ""
-            for model, count in winner_per_model.items():
-                print(f'{model}', end=" ")
-                counts += f'& {count} '
-            print(f'{  counts}')
-        
-        return winner_per_config, winner_per_model
-
     # Calculate and print results for each config and model_type
     #
     @staticmethod
@@ -493,6 +454,35 @@ class Evaluate_Models:
 
         plt.savefig("scripts/outputs/figs/calendar_plot.pdf", format="pdf", bbox_inches="tight", pad_inches=0.1)
         plt.show()
+
+    # Get the best models per energy community (i.e. the "winners")
+    #
+    @staticmethod
+    def get_winner_models(result_per_config, do_print=True):
+        
+        # Calculate the best model ("winner") for each profile
+        winner_per_config = {}
+        winner_per_model = {}
+        for config, result_per_model in result_per_config.items():
+                
+            # Initialize the used dict values with 0
+            winner_per_config[config] = {model_type: 0 for model_type in result_per_model.keys()}
+            for model_type in result_per_model:
+                winner_per_model.setdefault(model_type, 0)
+                
+            # Determine the model type with the best performance for the current load profile
+            best_model = min(result_per_model, key = lambda model_type: result_per_model[model_type])
+            
+            winner_per_model[best_model] += 1
+
+        # Summarize the wins per model
+        #
+        if do_print:
+            latex_string = '\\hline\n'
+            latex_string += f'\\multirow{{1}}{{*}}{{\\textbf{{Total Winner per model}}}} \n'
+            for model, count in winner_per_model.items():
+                latex_string += f'& {count} \n'
+            print(latex_string)
 
     @staticmethod
     def print_latex_table(result_dict, configs_to_print, config_groups, config_names):
