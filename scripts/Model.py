@@ -18,7 +18,7 @@ from xlstm import (
 
 
 class Model():
-    def __init__(self, model_type, model_size, num_of_features):
+    def __init__(self, model_type, model_size, num_of_features, test_set_size):
         
         if model_type not in globals():
             # No class with name model_type is implemented below
@@ -26,7 +26,7 @@ class Model():
         else:
             # Instantiate the model
             my_model_class = globals()[model_type]        
-            self.my_model = my_model_class(model_size, num_of_features)
+            self.my_model = my_model_class(model_size, num_of_features, test_set_size)
 
     # Predict Y from the given X.
     #
@@ -217,7 +217,7 @@ class Model():
 
 
 class xLSTM(nn.Module):
-    def __init__(self, model_size, num_of_features):
+    def __init__(self, model_size, num_of_features, test_set_size):
         super(xLSTM, self).__init__()
         self.isPytorchModel = True
         self.forecast_horizon = 24
@@ -284,7 +284,7 @@ class xLSTM(nn.Module):
 
 
 class LSTM(nn.Module):
-    def __init__(self, model_size, num_of_features):
+    def __init__(self, model_size, num_of_features, test_set_size):
         super(LSTM, self).__init__()
         self.isPytorchModel = True
         self.forecast_horizon = 24
@@ -318,7 +318,7 @@ class LSTM(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, model_size, num_of_features):
+    def __init__(self, model_size, num_of_features, test_set_size):
         super(Transformer, self).__init__()
         self.isPytorchModel = True
         self.num_of_features = num_of_features
@@ -363,7 +363,7 @@ class Transformer(nn.Module):
 
 
 class KNN():
-    def __init__(self, model_size, num_of_features):
+    def __init__(self, model_size, num_of_features, test_set_size):
         super(KNN, self).__init__()
         self.isPytorchModel = False
         self.X_train = None
@@ -411,7 +411,7 @@ class KNN():
 # Prediction with open-access synthetic load profiles.
 #
 class SyntheticLoadProfile():
-    def __init__(self, model_size, num_of_features):
+    def __init__(self, model_size, num_of_features, test_set_size):
         super(SyntheticLoadProfile, self).__init__()
         self.isPytorchModel = False
 
@@ -447,10 +447,11 @@ class SyntheticLoadProfile():
 
 
 class PersistencePrediction():
-    def __init__(self, model_size, num_of_features):
+    def __init__(self, model_size, num_of_features, test_set_size):
         super(PersistencePrediction, self).__init__()
         self.isPytorchModel = False
         self.num_of_features = num_of_features
+        self.test_set_size = test_set_size
     
     def forward(self, x_test, y_test):
         """
@@ -459,15 +460,20 @@ class PersistencePrediction():
         prediction of the initial days in the test set).
         """
 
-        # Do load prediction.
+        # Do load prediction  
         #
         (batch_size, nr_of_timesteps, nr_of_features) = y_test.shape
-        assert batch_size > 7, f"This predictor expects to get all days at once, instead of shape: {y_test.shape}"
-        assert self.Y_train.shape[1:] == (nr_of_timesteps, nr_of_features), f"Got unexpected input shape: {y_pred.shape}"
-        y_pred = torch.cat([self.Y_train, y_test], dim=0)      
-        y_pred = y_pred[-batch_size-7:-7,:,:]
-        assert y_pred.shape == (batch_size, 24, 1), \
-            f"Shape mismatch: got {y_pred.shape}, expected ({batch_size}, 24, 1)"
+        if batch_size == self.test_set_size:
+            
+            assert self.Y_train.shape[1:] == (nr_of_timesteps, nr_of_features), f"Got unexpected input shape: {y_pred.shape}"            
+            y_pred = torch.cat([self.Y_train, y_test], dim=0)      
+            y_pred = y_pred[-batch_size-7:-7,:,:]
+            assert y_pred.shape == (batch_size, 24, 1), f"Shape mismatch: got {y_pred.shape}, expected ({batch_size}, 24, 1)"
+            
+        else:            
+            
+            print("Only the test-set can be predicted by the PersistencePrediction.")
+            y_pred = torch.zeros(size = y_test.size)
         
         return y_pred
     

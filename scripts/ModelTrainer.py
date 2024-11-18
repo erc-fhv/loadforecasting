@@ -129,7 +129,8 @@ class ModelTrainer:
             for model_type in sim_config.usedModels:
                 print(f"\nPretraining {model_type} model and and sim_config {act_sim_config_index+1}/{len(configs)}.", flush=True)
                 num_of_features = X['all'].shape[2]
-                myModel = model.Model(model_type, sim_config.modelSize, num_of_features)
+                test_set_size = X['test'].shape[0]
+                myModel = model.Model(model_type, sim_config.modelSize, num_of_features, test_set_size)
                 myModel.train_model(X['all'], Y['all'], pretrain_now=True, 
                                     finetune_now=False, epochs=sim_config.epochs)
 
