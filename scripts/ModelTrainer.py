@@ -64,10 +64,10 @@ class ModelTrainer:
         # Train and evaluate the model
         sim_config = configs[act_sim_config_index]
         num_of_features = X['train'].shape[2]
-        myModel = model.Model(model_type, sim_config.modelSize, num_of_features)
+        myModel = model.Model(model_type, sim_config.modelSize, num_of_features, modelAdapter=modelAdapter)
         history = myModel.train_model(X['train'], Y['train'], X['test'], Y['test'], pretrain_now=False,
                                     finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
-        history = myModel.evaluate(X['test'], Y['test'], results=history, deNormalize=True, modelAdapter=modelAdapter)
+        history = myModel.evaluate(X['test'], Y['test'], results=history, deNormalize=True)
         
         # Return the results
         return (model_type, load_profile, sim_config, history, myModel.my_model)
@@ -90,7 +90,6 @@ class ModelTrainer:
             modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps, 
                                                      train_size = sim_config.trainingHistory,
                                                      test_size = self.test_set_size_days, 
-                                                     prediction_history = sim_config.modelInputHistory,
                                                      )
             X, Y = modelAdapter.transformData(powerProfile, weatherData)
             
@@ -115,7 +114,6 @@ class ModelTrainer:
         modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps,
                                                 train_size = len(all_standard_loadprofiles)-self.test_set_size_days,
                                                 test_size=self.test_set_size_days,
-                                                prediction_history = sim_config.modelInputHistory
                                                 )
         X, Y = modelAdapter.transformData(all_standard_loadprofiles, weatherData=None)
         pretraining_filename = 'scripts/outputs/standard_loadprofile.pkl'
@@ -129,8 +127,7 @@ class ModelTrainer:
             for model_type in sim_config.usedModels:
                 print(f"\nPretraining {model_type} model and and sim_config {act_sim_config_index+1}/{len(configs)}.", flush=True)
                 num_of_features = X['all'].shape[2]
-                test_set_size = X['test'].shape[0]
-                myModel = model.Model(model_type, sim_config.modelSize, num_of_features, test_set_size)
+                myModel = model.Model(model_type, sim_config.modelSize, num_of_features)
                 myModel.train_model(X['all'], Y['all'], pretrain_now=True, 
                                     finetune_now=False, epochs=sim_config.epochs)
 

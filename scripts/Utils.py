@@ -122,7 +122,8 @@ class Deserialize:
     # Get the trained models from disc and deserialize/unpack them.
     #
     @staticmethod
-    def get_trained_model(path_to_trained_parameters, model_type, test_profile, chosenConfig, num_of_features):
+    def get_trained_model(path_to_trained_parameters, model_type, test_profile, 
+                          chosenConfig, num_of_features, modelAdapter):
         
         serialized_dict = torch.load(path_to_trained_parameters)
         
@@ -134,6 +135,7 @@ class Deserialize:
                 model = scripts.Model.Model(model_type=deserialize_key[0], 
                                             model_size=deserialize_key[2].modelSize,
                                             num_of_features=num_of_features,
+                                            modelAdapter=modelAdapter
                                             )
                 model.my_model.load_state_dict(state_dict)
                 return model

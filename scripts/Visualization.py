@@ -94,8 +94,7 @@ class PlotlyApp:
             subset_text = ""
 
         # Convert the one-hot weekday encoding to a short string representation
-        prediction_timestep = int(self.modelAdapter.prediction_history.total_seconds() / (60.0 * 60.0))
-        weekday_one_hot = self.X_plot[selected_dataset][selected_date, prediction_timestep, :7]
+        weekday_one_hot = self.X_plot[selected_dataset][selected_date, 0, :7]
         weekday_str = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][np.argmax(weekday_one_hot)]
 
         # Display information about the currently chosen date
@@ -129,7 +128,7 @@ class PlotlyApp:
                 if selected_dataset != 'all':
                     print("Warning: Without given model, the visualiation only works for the 'all' dataset", flush=True)
             else:
-                Y_pred = self.model_plot.predict(X_selected, Y_selected)
+                Y_pred = self.model_plot.predict(X_selected)
                 Y_pred = Y_pred[selected_date,:,0]
             Y_pred = self.modelAdapter.deNormalizeY(Y_pred)
 
@@ -157,9 +156,9 @@ class PlotlyApp:
             if self.Y_model_pretrain is not None:
                 fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_standardload']/1000.0, mode='lines', name='Y_standardload')
 
-            # # Additionally visualize the input Data of the LSTM
-            # # Create a dataframe
-            startdate = self.modelAdapter.getStartDateFromIndex(selected_dataset, selected_date) - self.modelAdapter.prediction_history
+            # Additionally visualize the input Data of the LSTM
+            # Create a dataframe
+            startdate = self.modelAdapter.getStartDateFromIndex(selected_dataset, selected_date)
             datetime_index = pd.date_range(start=startdate, periods=X_selected.shape[1], freq='1h')
             X_visualized = X_selected[selected_date,:,:]
             df_X = pd.DataFrame(X_visualized, index=datetime_index)

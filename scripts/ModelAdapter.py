@@ -11,12 +11,10 @@ class ModelAdapter:
                  public_holidays,
                  train_size,
                  test_size,
-                 prediction_history,
                  dev_size = 0,
                  addLaggedPower=True,
                  shuffle_data=False,
                  seed=None,
-                 measurement_delay = pd.Timedelta(days=1),
                  sampling_time = pd.Timedelta(hours=1, minutes=0),
                  prediction_rate = pd.Timedelta(days=1),
                  prediction_horizon = pd.Timedelta(days=0, hours=23, minutes=0),
@@ -25,14 +23,13 @@ class ModelAdapter:
         self.prediction_rate = prediction_rate
         self.prediction_horizon = prediction_horizon
         self.sampling_time = sampling_time
-        self.prediction_history = pd.Timedelta(hours=prediction_history)
-        self.measurement_delay = measurement_delay
         self.public_holidays = public_holidays
         self.addLaggedPower = addLaggedPower
         self.shuffle_data = shuffle_data
         self.train_size = train_size
         self.test_size = test_size
         self.dev_size = dev_size
+        self.nr_of_lagged_days = 3
 
         # Optionally: Fix the random-seed for reproducibility
         if seed != None:
@@ -64,14 +61,14 @@ class ModelAdapter:
         X_all, Y_all = self.normalizeAll(X_all, Y_all)
         
         # Convert from ndarray to torch tensor
-        X_all, Y_all = self.convertToTorchTensor(X_all, Y_all)        
+        X_all, Y_all = self.convertToTorchTensor(X_all, Y_all)
         
         return X_all, Y_all
 
     def getFirstPredictionTimestamp(self, powerProfiles, first_prediction_clocktime):
 
         # Calculate the first possible prediction timestamp
-        first_timestamp = powerProfiles.index[0] + self.prediction_history + self.prediction_horizon + self.measurement_delay
+        first_timestamp = powerProfiles.index[0] + pd.Timedelta(days=1+7*(self.nr_of_lagged_days))
 
         # Choose a prediction datetime, which is on the same day as the 'first_timestamp'.
         target_timestamp = pd.Timestamp.combine(first_timestamp.date(), first_prediction_clocktime) \
@@ -96,14 +93,14 @@ class ModelAdapter:
         # Calculate/define the number of features of X
         nr_of_features = 11
         if self.addLaggedPower == True:
-            nr_of_features += 1
+            nr_of_features += 3
         if weatherData is None:
             num_of_weather_features = 6 # Default weather features
         else:
             num_of_weather_features = weatherData.shape[1]
         nr_of_features += num_of_weather_features
 
-        seq_start_time = self.first_prediction_date - self.prediction_history
+        seq_start_time = self.first_prediction_date
         seq_end_time = self.first_prediction_date + self.prediction_horizon
         nr_of_timesteps = len(pd.date_range(start=seq_start_time, end=seq_end_time, freq=self.sampling_time))
         X_all = np.zeros(shape=(0, nr_of_timesteps, nr_of_features))
@@ -115,9 +112,8 @@ class ModelAdapter:
             X_all = np.concatenate((X_all, new_values), axis=0)
 
             # Define the current time range
-            start_datetime = next_prediction_date - self.prediction_history
             end_of_prediction = next_prediction_date + self.prediction_horizon
-            total_input_range = pd.date_range(start=start_datetime, end=end_of_prediction, freq=self.sampling_time)
+            total_input_range = pd.date_range(start=next_prediction_date, end=end_of_prediction, freq=self.sampling_time)
 
             # Get the current weekday indices [0 ... 6] of all nr_of_timesteps.
             # The shape of the following variable is (nr_of_timesteps, 1).
@@ -149,16 +145,18 @@ class ModelAdapter:
             index += 1
 
             # Optionally add lagged profiles
-            if self.addLaggedPower == True:                
-                start = next_prediction_date - self.prediction_history - self.prediction_horizon - self.measurement_delay
-                end = next_prediction_date - self.measurement_delay
-                lagged_power = powerProfiles.loc[start:end]
-                X_all[batch_id, :, index]  = np.array(lagged_power.values)
-                index += 1
+            if self.addLaggedPower == True:
+                # Add exactly the day one, two and three weeks ago.
+                for day in range(1, 1 + self.nr_of_lagged_days):                    
+                    start = next_prediction_date - pd.Timedelta(days=day*7+1, hours=0)
+                    end = start + self.prediction_horizon
+                    lagged_power = powerProfiles.loc[start:end]
+                    X_all[batch_id, :, index]  = np.array(lagged_power.values)
+                    index += 1
 
             # If available: Add past weather measurmenents to the model input
             if weatherData is not None:
-                weatherData_slice = weatherData.loc[start_datetime:next_prediction_date]
+                weatherData_slice = weatherData.loc[next_prediction_date-self.prediction_horizon:next_prediction_date]
                 weather_seq_len = weatherData_slice.shape[0]
                 for feature in weatherData_slice.columns:
                     X_all[batch_id, :weather_seq_len, index]  = weatherData_slice[feature][:]
