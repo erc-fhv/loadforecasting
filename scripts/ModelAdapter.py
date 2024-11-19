@@ -68,7 +68,7 @@ class ModelAdapter:
     def getFirstPredictionTimestamp(self, powerProfiles, first_prediction_clocktime):
 
         # Calculate the first possible prediction timestamp
-        first_timestamp = powerProfiles.index[0] + pd.Timedelta(days=1+7*(self.nr_of_lagged_days))
+        first_timestamp = powerProfiles.index[0] + pd.Timedelta(days=7*(self.nr_of_lagged_days))
 
         # Choose a prediction datetime, which is on the same day as the 'first_timestamp'.
         target_timestamp = pd.Timestamp.combine(first_timestamp.date(), first_prediction_clocktime) \
@@ -148,7 +148,7 @@ class ModelAdapter:
             if self.addLaggedPower == True:
                 # Add exactly the day one, two and three weeks ago.
                 for day in range(1, 1 + self.nr_of_lagged_days):                    
-                    start = next_prediction_date - pd.Timedelta(days=day*7+1, hours=0)
+                    start = next_prediction_date - pd.Timedelta(days=day*7)
                     end = start + self.prediction_horizon
                     lagged_power = powerProfiles.loc[start:end]
                     X_all[batch_id, :, index]  = np.array(lagged_power.values)

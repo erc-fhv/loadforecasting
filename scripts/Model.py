@@ -29,7 +29,7 @@ class Model():
             self.my_model = my_model_class(model_size, num_of_features, modelAdapter)
         
         # Member Variables
-        self.loss_fn = nn.L1Loss()   # Optional: nn.L1Loss(), nn.MSE(), self.smape, ...
+        self.loss_fn = self.smape   # Optional: nn.L1Loss(), nn.MSE(), self.smape, ...
         self.modelAdapter = modelAdapter
 
     # Predict Y from the given X.
@@ -73,7 +73,7 @@ class Model():
         else:   # Pytorch models            
             
             # Prepare Optimization
-            train_dataset = SequenceDataset(X_train.float(), Y_train)
+            train_dataset = SequenceDataset(X_train, Y_train)
             train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)            
             my_optimizer = optim.Adam(self.my_model.parameters(), lr=set_learning_rates[0])
             lr_scheduler = CustomLRScheduler(my_optimizer, set_learning_rates, epochs)
@@ -94,12 +94,12 @@ class Model():
                 # Optimize over one epoch
                 for batch_x, batch_y in train_loader:
                     my_optimizer.zero_grad()
-                    output = self.my_model(batch_x)
-                    loss = self.loss_fn(output, batch_y)
-                    batch_losses.append(loss)
+                    output = self.my_model(batch_x.float())
+                    loss = self.loss_fn(output, batch_y.float())
+                    batch_losses.append(loss.item())
                     loss.backward()
                     my_optimizer.step()
-                    loss_sum += loss * batch_x.size(0)
+                    loss_sum += loss.item() * batch_x.size(0)
                     total_samples += batch_x.size(0)
                 
                 # Adjust learning rate once per epoch
@@ -174,7 +174,7 @@ class Model():
                 Y_test = self.modelAdapter.deNormalizeY(Y_test)
             
             # Create DataLoader
-            val_dataset = SequenceDataset(X_test.float(), Y_test)
+            val_dataset = SequenceDataset(X_test, Y_test)
             val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
             self.my_model.eval()       # Switch off the training flags
@@ -182,16 +182,16 @@ class Model():
                 for batch_x, batch_y in val_loader:
 
                     # Predict
-                    output = self.my_model(batch_x)
+                    output = self.my_model(batch_x.float())
                     
                     # Unnormalize the target variable, if wished.
                     if deNormalize == True:
                         output = self.modelAdapter.deNormalizeY(output)
                     
                     # Compute Metrics
-                    loss = self.loss_fn(output, batch_y)
+                    loss = self.loss_fn(output, batch_y.float())
                     loss_sum += loss.item() * batch_x.size(0)
-                    smape_val = self.smape(batch_y, output)
+                    smape_val = self.smape(batch_y.float(), output)
                     smape_sum += smape_val * batch_x.size(0)
                     total_samples += batch_x.size(0)
 
@@ -210,7 +210,7 @@ class Model():
         total_params = sum(p.numel() for p in self.my_model.parameters())
         
         if do_print == True:
-            print(f"Total number of parameters: {total_params}")   
+            print(f"Total number of parameters: {total_params}")
             
         return total_params
 
