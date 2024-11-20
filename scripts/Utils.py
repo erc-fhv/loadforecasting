@@ -197,6 +197,7 @@ class Evaluate_Models:
             results = value
             result_per_config[sim_config][model_type][load_profile]['loss'] = float(results['loss'][-1])
             result_per_config[sim_config][model_type][load_profile]['test_loss'] = float(results['test_loss'][-1])
+            result_per_config[sim_config][model_type][load_profile]['test_loss_relative'] = float(results['test_loss_relative'][-1])
             result_per_config[sim_config][model_type][load_profile]['test_sMAPE'] = float(results['test_sMAPE'][-1])
 
         # Optionally: Skip given configs
@@ -220,10 +221,11 @@ class Evaluate_Models:
             for model_type, result_per_profile in result_per_model.items():
                 
                 # Get al list of all losses of the current config and modeltype
-                train_losses, test_MAE, test_sMAPE  = [], [], []
+                train_losses, test_MAE, test_sMAPE, test_NMAE  = [], [], [], []
                 for load_profile, results in result_per_profile.items():
                     train_losses.append(results['loss'])
                     test_MAE.append(results['test_loss'])
+                    test_NMAE.append(results['test_loss_relative'])
                     test_sMAPE.append(results['test_sMAPE'])        
                 assert len(result_per_profile) == config.nrOfComunities
                 
@@ -236,7 +238,7 @@ class Evaluate_Models:
                 mean_train_MAE = f'{np.mean(train_losses):.{decimal_points_MAE}f}'
 
                 if print_style == 'pandas_df':
-                    result_dict[config][model_type] = test_sMAPE
+                    result_dict[config][model_type] = test_NMAE
                 elif print_style == 'shell':
                     # Print the results of the current config and modeltype
                     print(f'    Model: {model_type}')
@@ -289,7 +291,7 @@ class Evaluate_Models:
             y='Loss', 
             color='Run_History', 
             line_group='Run_History',
-            labels={'Loss': 'Training Loss', 'Epoch': 'Epoch'},
+            labels={'Loss': 'Training Loss (MAE)', 'Epoch': 'Epochs'},
             color_discrete_sequence=px.colors.sequential.Blues,
         )
 

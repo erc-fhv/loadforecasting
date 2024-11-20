@@ -65,7 +65,7 @@ class ModelTrainer:
         sim_config = configs[act_sim_config_index]
         num_of_features = X['train'].shape[2]
         myModel = model.Model(model_type, sim_config.modelSize, num_of_features, modelAdapter=modelAdapter)
-        history = myModel.train_model(X['train'], Y['train'], X['test'], Y['test'], pretrain_now=False,
+        history = myModel.train_model(X['train'], Y['train'], pretrain_now=False,
                                     finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
         history = myModel.evaluate(X['test'], Y['test'], results=history, deNormalize=True)
         

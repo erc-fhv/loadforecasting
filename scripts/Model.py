@@ -29,7 +29,7 @@ class Model():
             self.my_model = my_model_class(model_size, num_of_features, modelAdapter)
         
         # Member Variables
-        self.loss_fn = self.smape   # Optional: nn.L1Loss(), nn.MSE(), self.smape, ...
+        self.loss_fn = nn.L1Loss()   # Optional: nn.L1Loss(), nn.MSE(), self.smape, ...
         self.modelAdapter = modelAdapter
 
     # Predict Y from the given X.
@@ -160,6 +160,8 @@ class Model():
             results['test_loss'] = [loss.item()]
             metric = self.smape(output, Y_test)
             results['test_sMAPE'] = [metric]
+            reference = float(torch.mean(Y_test))
+            results['test_loss_relative'] = [100.0*loss.item()/reference]
             
         else:   # Pytorch models            
             
@@ -197,10 +199,14 @@ class Model():
 
             # Calculate average loss and sMAPE
             if total_samples > 0:
-                results['test_loss'] = [loss_sum / total_samples]
+                test_loss = loss_sum / total_samples
+                reference = float(torch.mean(Y_test))
+                results['test_loss'] = [test_loss]
+                results['test_loss_relative'] = [100.0 * test_loss / reference]
                 results['test_sMAPE'] = [smape_sum / total_samples]
             else:
                 results['test_loss'] = [0.0]
+                results['test_loss_relative'] = [0.0]
                 results['test_sMAPE'] = [0.0]
         
         return results

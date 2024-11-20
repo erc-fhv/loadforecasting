@@ -23,10 +23,6 @@ class Aggregation_Count():
     _50_HOUSEHOLDS  = 'data/london_loadprofiles_50households_each.pkl'  # <= Baseline
     _100_HOUSEHOLDS  = 'data/london_loadprofiles_100households_each.pkl'
     
-    # to delete:
-    _37_HOUSEHOLDS    = 'data/london_loadprofiles_37households_each.pkl'
-    _74_HOUSEHOLDS  = 'data/london_loadprofiles_74households_each.pkl'
-
 class NrOfComunities():
     _10 = 10
     _20 = 20      # <= Baseline
@@ -59,7 +55,7 @@ configs = [
    # Baseline
     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._50_HOUSEHOLDS, NrOfComunities._20, 
             TrainingHistory._12_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    
+
     # Vary the model sizes
     Config_of_one_run(ModelSize.SMALL, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._50_HOUSEHOLDS, NrOfComunities._20, 
             TrainingHistory._12_MONTH, UsedModels.ALL, Epochs.DEFAULT),
@@ -76,7 +72,7 @@ configs = [
     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._100_HOUSEHOLDS, NrOfComunities._20, 
             TrainingHistory._12_MONTH, UsedModels.ALL, Epochs.DEFAULT),
     
-   # Vary the train set size
+    # Vary the train set size
     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._50_HOUSEHOLDS, NrOfComunities._20, 
             TrainingHistory._2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
     Config_of_one_run(ModelSize.MEDIUM, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._50_HOUSEHOLDS, NrOfComunities._20, 
