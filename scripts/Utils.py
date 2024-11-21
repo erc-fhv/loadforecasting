@@ -302,7 +302,8 @@ class Evaluate_Models:
             linecolor='black', 
             mirror=True,
             gridcolor='lightgrey',
-            gridwidth=0.5
+            gridwidth=0.5,
+            range=[0, 1]
         )
         fig.update_xaxes(
             showline=True, 
@@ -310,7 +311,8 @@ class Evaluate_Models:
             linecolor='black', 
             mirror=True,
             gridcolor='lightgrey',
-            gridwidth=0.5
+            gridwidth=0.5,
+            range=[None, 100]
         )
 
         # Additional layout customizations

@@ -261,7 +261,7 @@ class ModelAdapter:
 
         if training:
             # Estimate the mean and standard deviation of the data during training
-            self.meanY = 0.0    # np.mean(Y, axis=(0, 1))
+            self.meanY = np.mean(Y, axis=(0, 1))
             self.stdY = np.std(Y)
         
         if np.isclose(self.stdY, 0):
