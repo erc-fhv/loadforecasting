@@ -9,9 +9,10 @@ class ModelAdapter:
 
     def __init__(self,
                  public_holidays,
-                 train_size,
-                 test_size,
-                 dev_size = 0,
+                 trainHistory,
+                 testSize,
+                 devSize,
+                 trainFuture,
                  addLaggedPower=True,
                  shuffle_data=False,
                  seed=None,
@@ -26,9 +27,10 @@ class ModelAdapter:
         self.public_holidays = public_holidays
         self.addLaggedPower = addLaggedPower
         self.shuffle_data = shuffle_data
-        self.train_size = train_size
-        self.test_size = test_size
-        self.dev_size = dev_size
+        self.trainHistory = trainHistory
+        self.testSize = testSize
+        self.devSize = devSize
+        self.trainFuture = trainFuture
         self.nr_of_lagged_days = 3
 
         # Optionally: Fix the random-seed for reproducibility
@@ -293,32 +295,39 @@ class ModelAdapter:
         #
         # --------------> time axis
         #
-        #  -------------------------------------------------
-        # | un-used |      train  |   dev   |    test       |
-        # |-----------------------|---------|---------------|
-        # |         |  X['train'] | X['dev']|  X['test']    |
-        # |         |  Y['train'] | Y['dev']|  Y['test']    |
-        # ---------------------------------------------------
-        # |       X['all'] (entire timeseries)              |
-        # |       Y['all'] (entire timeseries)              |
-        # -------------------------------------------------- 
+        #  -------------------------------------------------------------------
+        # | un-used | trainHistory  |    test      |  trainFuture  |   dev    |
+        # |-------------------------|--------------|---------------|----------|
+        # |         |  X['train']   |  X['test']   |  X['train']   | X['dev'] |
+        # |         |  Y['train']   |  Y['test']   |  Y['train']   | Y['dev'] |
+        #  -------------------------------------------------------------------
+        # |                   X['all'] (entire timeseries)                    |
+        # |                   Y['all'] (entire timeseries)                    |
+        #  -------------------------------------------------------------------        
         X, Y = {}, {}
         self.total_set_size = X_all.shape[0]
-        self.test_set_start = self.total_set_size - self.test_size
-        self.dev_set_start = self.test_set_start - self.dev_size
-        if self.train_size != -1:
-            self.train_set_start = self.dev_set_start - self.train_size
+        self.dev_set_start = self.total_set_size - self.devSize
+        self.trainFuture_start = self.dev_set_start - self.trainFuture
+        self.test_set_start = self.trainFuture_start - self.testSize
+        if self.trainHistory != -1:
+            self.train_set_start = self.test_set_start - self.trainHistory
         else:
             self.train_set_start = None # Set train length to max
         
-        X['test'] = X_all[self.shuffeled_indices[self.test_set_start:]]
-        X['dev'] = X_all[self.shuffeled_indices[self.dev_set_start:self.test_set_start]]
-        X['train'] = X_all[self.shuffeled_indices[self.train_set_start:self.dev_set_start]]
+        X['dev'] = X_all[self.shuffeled_indices[self.dev_set_start:]]
+        X['test'] = X_all[self.shuffeled_indices[self.test_set_start:self.trainFuture_start]]
+        X['train'] = np.concatenate([
+                        X_all[self.shuffeled_indices[self.train_set_start:self.test_set_start]],
+                        X_all[self.shuffeled_indices[self.trainFuture_start:self.dev_set_start]]
+                    ])
         X['all'] = X_all[:]
         
-        Y['test'] = Y_all[self.shuffeled_indices[self.test_set_start:]]
-        Y['dev'] = Y_all[self.shuffeled_indices[self.dev_set_start:self.test_set_start]]
-        Y['train'] = Y_all[self.shuffeled_indices[self.train_set_start:self.dev_set_start]]
+        Y['dev'] = Y_all[self.shuffeled_indices[self.dev_set_start:]]
+        Y['test'] = Y_all[self.shuffeled_indices[self.test_set_start:self.trainFuture_start]]
+        Y['train'] = np.concatenate([
+                        Y_all[self.shuffeled_indices[self.train_set_start:self.test_set_start]],
+                        Y_all[self.shuffeled_indices[self.trainFuture_start:self.dev_set_start]]
+                    ])
         Y['all'] = Y_all[:]
 
         return X, Y
@@ -330,7 +339,12 @@ class ModelAdapter:
 
         # Shuffled data
         if dataset_type == 'train':
-            unshuffled_index = self.shuffeled_indices[index + self.train_set_start]
+            if index < self.trainHistory:
+                unshuffled_index = self.shuffeled_indices[index + self.train_set_start]
+            elif index < self.trainHistory + self.trainFuture:
+                unshuffled_index = self.shuffeled_indices[index - self.trainHistory + self.trainFuture_start]
+            else:
+                assert False, "Unexpected 'index' parameter received."
         elif dataset_type == 'dev':
             unshuffled_index = self.shuffeled_indices[index + self.dev_set_start]
         elif dataset_type == 'test':
@@ -358,10 +372,12 @@ class ModelAdapter:
 
         if shuffled_index >= self.total_set_size:
             dataset_type = 'unknown (error)'
-        elif shuffled_index >= self.test_set_start:
-            dataset_type = 'test'
         elif shuffled_index >= self.dev_set_start:
             dataset_type = 'dev'
+        elif shuffled_index >= self.trainFuture_start:
+            dataset_type = 'train'
+        elif shuffled_index >= self.test_set_start:
+            dataset_type = 'test'
         elif shuffled_index >= self.train_set_start:
             dataset_type = 'train'
         else:
