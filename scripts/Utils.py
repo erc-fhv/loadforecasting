@@ -312,7 +312,7 @@ class Evaluate_Models:
             mirror=True,
             gridcolor='lightgrey',
             gridwidth=0.5,
-            range=[None, 100]
+            range=[0, 100]
         )
 
         # Additional layout customizations

@@ -114,7 +114,7 @@ class ModelTrainer:
         
         # Preprocess data to get X and Y for the model
         modelAdapter = ModelAdapter.ModelAdapter(public_holidays_timestamps,
-                                                trainHistory = len(all_standard_loadprofiles) - sim_config.testSize,
+                                                trainHistory = sim_config.trainSize,
                                                 testSize = sim_config.testSize,
                                                 trainFuture = sim_config.trainingFuture,
                                                 devSize = sim_config.devSize, 
