@@ -233,18 +233,19 @@ class xLSTM(nn.Module):
         qkv_proj_blocksize=4
         proj_factor=1.3
         num_blocks=7
+        slstm_at=[1]
         
         # Finetune the config variables
         if model_size == "SMALL":
-            qkv_proj_blocksize=4
-            num_blocks=3
-            d_model=20
+            num_blocks=2
+            d_model=32
         elif model_size == "MEDIUM":
             num_blocks=4
-            d_model=20
+            d_model=32
         elif model_size == "LARGE":
-            num_blocks=5
+            num_blocks=4
             d_model=40
+            num_heads=8
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
         
@@ -264,10 +265,10 @@ class xLSTM(nn.Module):
                 ),
                 feedforward=FeedForwardConfig(proj_factor=proj_factor, act_fn="gelu"),
             ),
-            context_length=600,
+            context_length=256,
             num_blocks=num_blocks,
             embedding_dim=d_model,
-            slstm_at=[1,],
+            slstm_at=slstm_at,
         )
         self.xlstm_stack = xLSTMBlockStack(self.cfg)
 
@@ -294,17 +295,18 @@ class LSTM(nn.Module):
         self.forecast_horizon = 24
         
         if model_size == "SMALL":
-            self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=28, batch_first=True, bidirectional=True)
-            self.lstm2 = nn.LSTM(input_size=56, hidden_size=10, batch_first=True, bidirectional=True)
+            hidden_dimension = 30
         elif model_size == "MEDIUM":
-            self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=55, batch_first=True, bidirectional=True)
-            self.lstm2 = nn.LSTM(input_size=110, hidden_size=10, batch_first=True, bidirectional=True)
+            hidden_dimension = 52
         elif model_size == "LARGE":
-            self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=95, batch_first=True, bidirectional=True)
-            self.lstm2 = nn.LSTM(input_size=190, hidden_size=10, batch_first=True, bidirectional=True)
+            hidden_dimension = 81
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
 
+        # LSTM Layers
+        self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=hidden_dimension, batch_first=True, bidirectional=True)
+        self.lstm2 = nn.LSTM(input_size=hidden_dimension*2, hidden_size=10, batch_first=True, bidirectional=True)
+        
         # Adding additional dense layers
         self.activation = nn.ReLU()
         self.dense1 = nn.Linear(20, 30)
@@ -330,17 +332,17 @@ class Transformer(nn.Module):
         if model_size == "SMALL":
             num_heads=4
             num_layers=1
-            dim_feedforward=512
+            dim_feedforward=400
             d_model=20
         elif model_size == "MEDIUM":
             num_heads=4
             num_layers=1
-            dim_feedforward=512
+            dim_feedforward=400
             d_model=40
         elif model_size == "LARGE":
-            num_heads=10
+            num_heads=8
             num_layers=2
-            dim_feedforward=600
+            dim_feedforward=400
             d_model=40
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
