@@ -235,14 +235,24 @@ class xLSTM(nn.Module):
         num_blocks=7
         slstm_at=[1]
         
-        # Finetune the config variables
-        if model_size == "SMALL":
+        # Fixed dense, for better comparison to other models
+        hidden_dimension_dense1 = 30
+        hidden_dimension_dense2 = 20
+        
+        # Finetune the XLSTM config variables
+        if model_size == "5k":
+            num_blocks=2
+            d_model=8
+        elif model_size == "10k":
+            num_blocks=2
+            d_model=16
+        elif model_size == "20k":
             num_blocks=2
             d_model=32
-        elif model_size == "MEDIUM":
+        elif model_size == "40k":
             num_blocks=4
             d_model=32
-        elif model_size == "LARGE":
+        elif model_size == "80k":
             num_blocks=4
             d_model=40
             num_heads=8
@@ -275,9 +285,9 @@ class xLSTM(nn.Module):
         # Adding none-xlstm layers
         self.input_projection = nn.Linear(num_of_features, d_model)
         self.activation = nn.ReLU()
-        self.dense1 = nn.Linear(d_model, 30)
-        self.dense2 = nn.Linear(30, 20)
-        self.output_layer = nn.Linear(20, 1)
+        self.dense1 = nn.Linear(d_model, hidden_dimension_dense1)
+        self.dense2 = nn.Linear(hidden_dimension_dense1, hidden_dimension_dense2)
+        self.output_layer = nn.Linear(hidden_dimension_dense2, 1)
         
     def forward(self, x):
         x = self.input_projection(x)
@@ -294,24 +304,38 @@ class LSTM(nn.Module):
         self.isPytorchModel = True
         self.forecast_horizon = 24
         
-        if model_size == "SMALL":
-            hidden_dimension = 30
-        elif model_size == "MEDIUM":
-            hidden_dimension = 52
-        elif model_size == "LARGE":
-            hidden_dimension = 81
+        # Fixed dense, for better comparison
+        hidden_dimension_dense1 = 30
+        hidden_dimension_dense2 = 20
+        
+        # Define the LSTM size
+        if model_size == "5k":
+            hidden_dimension_lstm1 = 8
+            hidden_dimension_lstm2 = 9
+        elif model_size == "10k":
+            hidden_dimension_lstm1 = 10
+            hidden_dimension_lstm2 = 18
+        elif model_size == "20k":
+            hidden_dimension_lstm1 = 22
+            hidden_dimension_lstm2 = 20
+        elif model_size == "40k":
+            hidden_dimension_lstm1 = 42
+            hidden_dimension_lstm2 = 20
+        elif model_size == "80k":
+            hidden_dimension_lstm1 = 70
+            hidden_dimension_lstm2 = 21
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
 
-        # LSTM Layers
-        self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=hidden_dimension, batch_first=True, bidirectional=True)
-        self.lstm2 = nn.LSTM(input_size=hidden_dimension*2, hidden_size=10, batch_first=True, bidirectional=True)
+        # Fixed dense, for better comparison to other models
+        self.lstm1 = nn.LSTM(input_size=num_of_features, hidden_size=hidden_dimension_lstm1, batch_first=True, bidirectional=True)
+        self.lstm2 = nn.LSTM(input_size=hidden_dimension_lstm1*2, hidden_size=hidden_dimension_lstm2, batch_first=True, bidirectional=True)
         
         # Adding additional dense layers
         self.activation = nn.ReLU()
-        self.dense1 = nn.Linear(20, 30)
-        self.dense2 = nn.Linear(30, 20)
-        self.output_layer = nn.Linear(20, 1)          
+        self.dense1 = nn.Linear(hidden_dimension_lstm2*2, hidden_dimension_dense1)
+        self.dense2 = nn.Linear(hidden_dimension_dense1, hidden_dimension_dense2)
+        self.output_layer = nn.Linear(hidden_dimension_dense2, 1)          
         
     def forward(self, x):
         x, _ = self.lstm1(x)
@@ -329,17 +353,32 @@ class Transformer(nn.Module):
         self.num_of_features = num_of_features
         self.forecast_horizon = 24
         
-        if model_size == "SMALL":
+        # Fixed dense, for better comparison to other models
+        hidden_dimension_dense1 = 30
+        hidden_dimension_dense2 = 20
+        
+        # Finetune the XLSTM config variables
+        if model_size == "5k":
+            num_heads=4
+            num_layers=1
+            dim_feedforward=90
+            d_model=20
+        elif model_size == "10k":
+            num_heads=4
+            num_layers=1
+            dim_feedforward=200
+            d_model=20
+        elif model_size == "20k":
             num_heads=4
             num_layers=1
             dim_feedforward=400
             d_model=20
-        elif model_size == "MEDIUM":
+        elif model_size == "40k":
             num_heads=4
             num_layers=1
             dim_feedforward=400
             d_model=40
-        elif model_size == "LARGE":
+        elif model_size == "80k":
             num_heads=8
             num_layers=2
             dim_feedforward=400
@@ -353,9 +392,9 @@ class Transformer(nn.Module):
                                                    dim_feedforward=dim_feedforward, batch_first=True)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.activation = nn.ReLU()
-        self.dense1 = nn.Linear(d_model, 30)
-        self.dense2 = nn.Linear(30, 20)
-        self.output_layer = nn.Linear(20, 1)    
+        self.dense1 = nn.Linear(d_model, hidden_dimension_dense1)
+        self.dense2 = nn.Linear(hidden_dimension_dense1, hidden_dimension_dense2)
+        self.output_layer = nn.Linear(hidden_dimension_dense2, 1)
 
     def forward(self, x):
         x = self.input_projection(x)
