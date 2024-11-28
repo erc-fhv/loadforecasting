@@ -150,6 +150,7 @@ class PlotlyApp:
             fig_Y.update_layout(yaxis_title='Load Profile (kW)', xaxis_title='Time (HH:MM)', 
                                 plot_bgcolor='white', legend=dict(x=0, y=1, xanchor='left', yanchor='top'),
                                 margin=dict(l=20, r=20, t=20, b=20),
+                                font=dict(size=16, color='black')
                                 )
             fig_Y.update_xaxes(showline = True, linewidth = 1, linecolor = 'black', mirror = True, 
                                )

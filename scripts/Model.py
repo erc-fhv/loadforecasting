@@ -240,7 +240,16 @@ class xLSTM(nn.Module):
         hidden_dimension_dense2 = 20
         
         # Finetune the XLSTM config variables
-        if model_size == "5k":
+        if model_size == "1k":
+            num_blocks=1
+            slstm_at=[0]
+            num_heads=2
+            d_model=4
+        elif model_size == "2k":
+            num_blocks=1
+            slstm_at=[0]
+            d_model=8
+        elif model_size == "5k":
             num_blocks=2
             d_model=8
         elif model_size == "10k":
@@ -309,7 +318,13 @@ class LSTM(nn.Module):
         hidden_dimension_dense2 = 20
         
         # Define the LSTM size
-        if model_size == "5k":
+        if model_size == "1k":
+            hidden_dimension_lstm1 = 1
+            hidden_dimension_lstm2 = 1
+        elif model_size == "2k":
+            hidden_dimension_lstm1 = 4
+            hidden_dimension_lstm2 = 4
+        elif model_size == "5k":
             hidden_dimension_lstm1 = 8
             hidden_dimension_lstm2 = 9
         elif model_size == "10k":
@@ -358,7 +373,17 @@ class Transformer(nn.Module):
         hidden_dimension_dense2 = 20
         
         # Finetune the XLSTM config variables
-        if model_size == "5k":
+        if model_size == "1k":
+            num_heads=2
+            num_layers=1
+            dim_feedforward=10
+            d_model=10
+        elif model_size == "2k":
+            num_heads=2
+            num_layers=1
+            dim_feedforward=16
+            d_model=14
+        elif model_size == "5k":
             num_heads=4
             num_layers=1
             dim_feedforward=90
