@@ -449,7 +449,7 @@ class Evaluate_Models:
 
         # Add a color bar for the legend
         cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=axs, orientation='vertical', fraction=0.03, pad=0.04)
-        cbar.set_label("sMAPE (%)", fontsize=12, color="0.3")
+        cbar.set_label("nMAE (%)", fontsize=12, color="0.3")
         cbar.outline.set_edgecolor(color="lightgrey")
         cbar.outline.set_linewidth(1)
         cbar.ax.yaxis.set_tick_params(labelcolor="0.3")
