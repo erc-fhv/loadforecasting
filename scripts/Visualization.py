@@ -143,6 +143,16 @@ class PlotlyApp:
                 Y_standardload_denormalized = self.modelAdapter_pretrain.deNormalizeY(self.Y_model_pretrain[selected_dataset][selected_date,:,0])
                 df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': Y_real, 'Y_pred': Y_pred, 'Y_standardload': Y_standardload_denormalized})
 
+            # Add one hour to the last timestep, in order to have the "hold-values" till 00:00
+            last_timestep = df_Y['x'].iloc[-1]
+            last_timestep_plus_one = last_timestep + pd.Timedelta(hours=1)
+            extra_row = pd.DataFrame({
+                'x': [last_timestep_plus_one],
+                'Y_real': [df_Y['Y_real'].iloc[-1]],  # Maintain the same value
+                'Y_pred': [df_Y['Y_pred'].iloc[-1]],  # Maintain the same value
+            })
+            df_Y = pd.concat([df_Y, extra_row], ignore_index=True)
+
             # Create a line chart using Plotly Express
             fig_Y = px.line()
             fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_real']/1000.0, mode='lines', name='Real', line_color='lightgrey', line_shape='hv')
@@ -150,7 +160,7 @@ class PlotlyApp:
             fig_Y.update_layout(yaxis_title='Load Profile (kW)', xaxis_title='Time (HH:MM)', 
                                 plot_bgcolor='white', legend=dict(x=0, y=1, xanchor='left', yanchor='top'),
                                 margin=dict(l=20, r=20, t=20, b=20),
-                                font=dict(size=16, color='black')
+                                font=dict(size=16, color='black'),
                                 )
             fig_Y.update_xaxes(showline = True, linewidth = 1, linecolor = 'black', mirror = True, 
                                )
