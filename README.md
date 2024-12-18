@@ -2,8 +2,7 @@
 
 ## Summary
 
-This work is an extension of [this](https://arxiv.org/abs/2407.08434) IEEE RTSI 2024 Conference Paper.
-It uses transfer learning from standard load profiles together with state of the art models like xLSTMs and Transformers and compares them to very simple models.
+This work uses transfer learning from standard load profiles together with state of the art models like LSTMs, xLSTMs and Transformers and compares them to very simple models.
 
 ## Software Design
 
@@ -72,7 +71,7 @@ The basic code design is as follows.
     python scripts/ModelTrainer.py
     ```
 
-3. **Evaluate the results** e.g. within `scripts/model_evaluate.ipynb`
+3. **Evaluate the results** e.g. within `scripts/model_evaluate.ipynb` or within `Paper_Illustration.ipynb`.
 
 ## Citation
 
@@ -80,9 +79,9 @@ If you use this codebase, or find our work valuable please cite the following pa
 
 ```
 @article{
-  title={Transfer learning for short-term prediction of electrical loads for domestic households and energy communities: a deep learning approach using xLSTM},
-  author={Lukas Moosbrugger, Valentin Seiler, Sebastian Hegenbart, Philipp Wohlgenannt, Sashko Ristov, Peter Kepplinger},
-  journal={arXiv preprint},
+  title={Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?},
+  author={Lukas Moosbrugger, Valentin Seiler, Philipp Wohlgenannt, Sebastian Hegenbart, Sashko Ristov, Peter Kepplinger},
+  journal={preprint},
   year={2024}
 }
 ```
