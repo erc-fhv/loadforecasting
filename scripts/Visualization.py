@@ -155,7 +155,7 @@ class PlotlyApp:
 
             # Create a line chart using Plotly Express
             fig_Y = px.line()
-            fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_real']/1000.0, mode='lines', name='Real', line_color='lightgrey', line_shape='hv')
+            fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_real']/1000.0, mode='lines', name='Real', line_color='darkgrey', line_shape='hv')
             fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_pred']/1000.0, mode='lines', name='Predicted', line_color='blue', line_shape='hv')
             fig_Y.update_layout(yaxis_title='Load Profile (kW)', xaxis_title='Time (HH:MM)', 
                                 plot_bgcolor='white', legend=dict(x=0, y=1, xanchor='left', yanchor='top'),
