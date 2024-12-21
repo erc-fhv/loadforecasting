@@ -80,8 +80,8 @@ If you use this codebase, or find our work valuable please cite the following pa
 ```
 @article{
   title={Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?},
-  author={Lukas Moosbrugger, Valentin Seiler, Philipp Wohlgenannt, Sebastian Hegenbart, Sashko Ristov, Peter Kepplinger},
-  journal={preprint},
+  author={Moosbrugger, Lukas and Seiler, Valentin and Wohlgenannt, Philipp and Hegenbart, Sebastian and Ristov, Sashko and Kepplinger, Peter},
+  journal={Preprint submitted to Energy and AI},
   year={2024}
 }
 ```
