@@ -62,7 +62,7 @@ The basic code design is as follows.
 
 1. **Install the conda enviroment** on a linux system:
     ```
-    conda env create --name load_forecsting --file=envs/env_linux.yml
+    conda env create --name load_forecasting --file=envs/env_linux.yml
     conda activate load_forecasting
     ```
 
@@ -78,11 +78,14 @@ The basic code design is as follows.
 If you use this codebase, or find our work valuable please cite the following paper:
 
 ```
-@article{
-  title={Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?},
-  author={Moosbrugger, Lukas and Seiler, Valentin and Wohlgenannt, Philipp and Hegenbart, Sebastian and Ristov, Sashko and Kepplinger, Peter},
-  journal={Preprint submitted to Energy and AI},
-  year={2024}
+@misc{moosbrugger2025loadforecastinghouseholdsenergy,
+      title={Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?}, 
+      author={Lukas Moosbrugger and Valentin Seiler and Philipp Wohlgenannt and Sebastian Hegenbart and Sashko Ristov and Peter Kepplinger},
+      year={2025},
+      eprint={2501.05000},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2501.05000}, 
 }
 ```
 
