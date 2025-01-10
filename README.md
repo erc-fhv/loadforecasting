@@ -1,8 +1,8 @@
-# Shortterm Loadforecasting with xLSTM
+# Load Forecasting for Households and Energy Communities
 
 ## Summary
 
-This work uses transfer learning from standard load profiles together with state of the art models like LSTMs, xLSTMs and Transformers and compares them to very simple models.
+This study explores the use of transfer learning with standard load profiles in combination with advanced models such as LSTMs, xLSTMs, and Transformers, comparing their performance against simpler baseline models. The findings are detailed in the paper: Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?.
 
 ## Software Design
 
@@ -78,14 +78,11 @@ The basic code design is as follows.
 If you use this codebase, or find our work valuable please cite the following paper:
 
 ```
-@misc{moosbrugger2025loadforecastinghouseholdsenergy,
-      title={Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?}, 
-      author={Lukas Moosbrugger and Valentin Seiler and Philipp Wohlgenannt and Sebastian Hegenbart and Sashko Ristov and Peter Kepplinger},
-      year={2025},
-      eprint={2501.05000},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2501.05000}, 
-}
+@article{
+  title={Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?},
+  author={Moosbrugger, Lukas and Seiler, Valentin and Wohlgenannt, Philipp and Hegenbart, Sebastian and Ristov, Sashko and Kepplinger, Peter},
+  journal={Preprint submitted to Energy and AI},
+  year={2025},
+  doi={10.48550/arXiv.2501.05000}
 ```
 
