@@ -71,7 +71,7 @@ The basic code design is as follows.
     python scripts/ModelTrainer.py
     ```
 
-3. **Evaluate the results** e.g. within `scripts/model_evaluate.ipynb`.
+3. **Evaluate the results** e.g. within `scripts/model_evaluate.ipynb` or within `Paper_Illustration.ipynb`.
 
 ## Citation
 
