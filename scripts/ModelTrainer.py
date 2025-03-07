@@ -4,9 +4,17 @@ import pytz
 from demandlib import bdew
 import pickle
 from datetime import timedelta, date
+import sys
+import os
+
+# Make sure, that the root of the project is already in PYTHONPATH.
+#
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
 
 # Imports own modules.
-# The imports are done relative to the root of the project.
+# All imports are done relative to the root of the project.
 #
 import scripts.Model as model
 import scripts.Simulation_config
