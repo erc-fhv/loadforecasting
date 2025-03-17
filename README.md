@@ -3,7 +3,7 @@
 ## Summary
 
 This study explores the use of transfer learning with standard load profiles in combination with advanced models such as LSTMs, xLSTMs, and Transformers, comparing their performance against simpler baseline models. 
-The findings are detailed in the paper: [Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?](https://arxiv.org/abs/2501.05000v1)
+The findings are detailed in the paper: [Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?](https://arxiv.org/abs/2501.05000v2)
 
 ## Software Design
 
