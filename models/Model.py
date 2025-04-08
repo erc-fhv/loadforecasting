@@ -5,6 +5,10 @@ from torch.utils.data import DataLoader, Dataset
 import importlib
 import numpy as np
 
+
+# This class wraps a single machine learning or benchmark model,
+# and provides commonly used utilities and shared functionality to work with that model.
+# 
 class Model():
     
     def __init__(self, model_type, model_size, num_of_features, modelAdapter=None):
