@@ -5,7 +5,7 @@ import torch
 import pickle
 import pytz
 import scripts.Simulation_config as config
-import scripts.Model
+import models.Model
 from collections import defaultdict
 from itertools import islice
 from pprint import pprint
@@ -13,7 +13,6 @@ import numpy as np
 import plotly.express as px
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.collections import PolyCollection
 import matplotlib.colors as mcolors
 import calendar
 
@@ -132,7 +131,7 @@ class Deserialize:
             if model_type == deserialize_key[0] and \
                 test_profile == deserialize_key[1] and \
                 chosenConfig == deserialize_key[2]:
-                model = scripts.Model.Model(model_type=deserialize_key[0], 
+                model = models.Model.Model(model_type=deserialize_key[0], 
                                             model_size=deserialize_key[2].modelSize,
                                             num_of_features=num_of_features,
                                             modelAdapter=modelAdapter
@@ -531,6 +530,3 @@ class Evaluate_Models:
                             latex_string += ' & - & - & - & - & - & - \\\ \n'
             print(latex_string)
 
-                
-        
-        

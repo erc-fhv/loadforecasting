@@ -16,7 +16,7 @@ if parent_dir not in sys.path:
 # Imports own modules.
 # All imports are done relative to the root of the project.
 #
-import scripts.Model as model
+import models.Model as model
 import scripts.Simulation_config
 import data.weather_data as weather_data
 import scripts.ModelAdapter as ModelAdapter
