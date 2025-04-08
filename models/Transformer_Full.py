@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import math
 
-# Encoder-only Transformer inspired by "A Time Series is  
-# Worth 64 Words" (https://arxiv.org/abs/2211.14730)
+# Use a full pytorch transformer for timeseries prediction
 #
 class Transformer_Full(nn.Module):
     
@@ -13,68 +12,80 @@ class Transformer_Full(nn.Module):
         self.num_of_features = num_of_features
         self.forecast_horizon = 24
         
-        # Fixed dense, for better comparison to other models
-        hidden_dimension_dense1 = 30
-        hidden_dimension_dense2 = 20
-        
         # Finetune the XLSTM config variables
         if model_size == "1k":
             num_heads=2
             num_layers=1
+            dim_feedforward=6
+            d_model=6
+        elif model_size == "2k":
+            num_heads=2
+            num_layers=1
             dim_feedforward=10
             d_model=10
-        elif model_size == "2k":
+        elif model_size == "5k":
             num_heads=2
             num_layers=1
             dim_feedforward=16
             d_model=14
-        elif model_size == "5k":
+        elif model_size == "10k":
             num_heads=4
             num_layers=1
             dim_feedforward=90
             d_model=20
-        elif model_size == "10k":
-            num_heads=4
-            num_layers=1
-            dim_feedforward=200
-            d_model=20
         elif model_size == "20k":
             num_heads=4
             num_layers=1
-            dim_feedforward=400
+            dim_feedforward=200
             d_model=20
         elif model_size == "40k":
             num_heads=4
             num_layers=1
             dim_feedforward=400
-            d_model=40
+            d_model=20
         elif model_size == "80k":
-            num_heads=8
-            num_layers=2
+            num_heads=4
+            num_layers=1
             dim_feedforward=400
             d_model=40
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
 
-        # Transformer Encoder Layers
-        self.input_projection = nn.Linear(num_of_features, d_model)
+        # Project input features to transformer dimension
+        self.input_projection = nn.Linear(num_of_features, d_model)        
+        self.tgt_projection = nn.Linear(1, d_model)        
         self.positional_encoding = PositionalEncoding(d_model, timesteps=self.forecast_horizon)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=num_heads, 
-                                                   dim_feedforward=dim_feedforward, batch_first=True)
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        self.activation = nn.ReLU()
-        self.dense1 = nn.Linear(d_model, hidden_dimension_dense1)
-        self.dense2 = nn.Linear(hidden_dimension_dense1, hidden_dimension_dense2)
-        self.output_layer = nn.Linear(hidden_dimension_dense2, 1)
 
+        # Transformer Encoder-Decoder
+        self.transformer = nn.Transformer(
+            d_model=d_model,
+            nhead=num_heads,
+            num_encoder_layers=num_layers,
+            num_decoder_layers=num_layers,
+            dim_feedforward=dim_feedforward,
+            batch_first=True
+        )
+
+        # Final output projection (to 1)
+        self.output_layer = nn.Linear(d_model, 1)
+    
     def forward(self, x):
+        
+        # Take the latest available lagged loads as target-input
+        lagged_load_feature = 11
+        tgt = x[:,:, lagged_load_feature].unsqueeze(-1)
+        
+        # Input and tgt projection
         x = self.input_projection(x)
         x = self.positional_encoding(x)
-        x = self.transformer(x)
-        x = self.activation(self.dense1(x))
-        x = self.activation(self.dense2(x))
-        x = self.output_layer(x)
-        return x
+        tgt = self.tgt_projection(tgt)
+        tgt = self.positional_encoding(tgt)
+
+        # Run the full transformer model
+        out = self.transformer(x, tgt)
+        out = self.output_layer(out)
+        
+        return out
     
 
 class PositionalEncoding(nn.Module):

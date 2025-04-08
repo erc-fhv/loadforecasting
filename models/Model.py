@@ -9,9 +9,8 @@ class Model():
     
     def __init__(self, model_type, model_size, num_of_features, modelAdapter=None):
         
-        try:
-            
-            # Import and instantiate the given model            
+        # Import and instantiate the given model
+        try:                  
             model = importlib.import_module(f"models.{model_type}")
             my_model_class = getattr(model, model_type)
             self.my_model = my_model_class(model_size, num_of_features, modelAdapter)        
