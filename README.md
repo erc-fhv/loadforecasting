@@ -16,14 +16,14 @@ The repository is organized as follows:
 | Folder           | Folder or File                      | Description                                        |
 |------------------|-------------------------------------|----------------------------------------------------|
 | `data/`          |                                     |                                                    |
-|                  | `london_housholds_preprocessing.`   | Preprocessing of smartmeter dataset                |
+|                  | `london_housholds_preprocessing.ipynb`   | Preprocessing of smartmeter dataset                |
 |                  | `london_loadprofiles_*.pkl`         | 20 virtual communities with varying households     |
 |                  | `weather_data.py`                   | Script to fetch Meteostat weather data             |
 | `envs/`          |                                     |                                                    |
 |                  | `env_from_nxai.yml`                 | Conda env file from xLSTM developers (reference)   |
 |                  | `env_linux.yml`                     | Provided Conda environment file                    |
 | `models/`        |                                     |                                                    |
-|                  | `Model.py`                          | Possibly mislabeled; assumed model implementation  |
+|                  | `Model.py`                          | Model wrapper, owns exactly one model.   |
 |                  | `*.py`                              | Other deep learning/baseline model scripts         |
 | `scripts/`       |                                     |                                                    |
 |                  | `case_study/`                       | Example optimization of an energy community        |
