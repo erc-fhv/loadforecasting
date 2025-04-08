@@ -76,7 +76,10 @@ class Transformer_Encoder_Only(nn.Module):
         x = self.output_layer(x)
         return x
 
-
+# This implementation of positional encoding is based on the
+# "Attention Is All You Need" paper, and is conceptually similar to:
+# https://stackoverflow.com/questions/77444485/using-positional-encoding-in-pytorch
+#
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, timesteps=5000):
         super(PositionalEncoding, self).__init__()

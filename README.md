@@ -1,13 +1,45 @@
-# Load Forecasting for Households and Energy Communities
+# Framework for Short-Term Load Forecasting
 
 ## Summary
 
-This study explores the use of transfer learning with standard load profiles in combination with advanced models such as LSTMs, xLSTMs, and Transformers, comparing their performance against simpler baseline models. 
-The findings are detailed in the paper: [Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?](https://arxiv.org/abs/2501.05000)
+This repository supports the development of short-term load forecasting (STLF) applications by providing a flexible framework and a variety of models. It includes both advanced deep learning architectures such as LSTMs, xLSTMs, and Transformers, as well as simpler baseline models like KNN and persistence prediction.
 
-## Software Design
+More information about the models and the framework can be found in the following paper: 
 
-The basic code design is as follows.
+>  *Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?* [https://arxiv.org/abs/2501.05000](https://arxiv.org/abs/2501.05000) *Submitted to Elsevier Energy and AI, December 2024*
+
+
+## Folder Structure
+
+The repository is organized as follows:
+
+| Folder           | Folder or File                      | Description                                        |
+|------------------|-------------------------------------|----------------------------------------------------|
+| `data/`          |                                     |                                                    |
+|                  | `london_housholds_preprocessing.`   | Preprocessing of smartmeter dataset                |
+|                  | `london_loadprofiles_*.pkl`         | 20 virtual communities with varying households     |
+|                  | `weather_data.py`                   | Script to fetch Meteostat weather data             |
+| `envs/`          |                                     |                                                    |
+|                  | `env_from_nxai.yml`                 | Conda env file from xLSTM developers (reference)   |
+|                  | `env_linux.yml`                     | Provided Conda environment file                    |
+| `models/`        |                                     |                                                    |
+|                  | `Model.py`                          | Possibly mislabeled; assumed model implementation  |
+|                  | `*.py`                              | Other deep learning/baseline model scripts         |
+| `scripts/`       |                                     |                                                    |
+|                  | `case_study/`                       | Example optimization of an energy community        |
+|                  | `outputs/`                          | Auto-generated figures, results, and profiles      |
+|                  | `ModelAdapter.py`                   | Brings the data into the model format              |
+|                  | `ModelTrainer.py`                   | Big train and test loop accord to the config       |
+|                  | `Paper_Illustration.ipynb`          | Create Figures and Tables after the testrun        |
+|                  | `Simulation_config.py`              | Config for a full automated simulation run         |
+|                  | `Utils.py`                          | Helper functions for the simulation run            |
+|                  | `Visualization.py`                  | Plotly Visualization of all model in- and outputs  |
+
+
+## Code Structure
+
+The main parts of the evaluation framework are connected as follows:
+
 ```
 
 +-----------------------------+           +------------------------------+
@@ -49,8 +81,8 @@ The basic code design is as follows.
 +-------------+        |          |               |                 |
                        |          |               |                 |
 +-------------+        |   +------v------+ +------v------+ +--------v----+
-| xLSTM       <--------+   | Persistence | | KNN         | | Synthetic   |
-|             |            | Prediction  | |             | | Load        |
+| xLSTM       <--------+   | Persistence | | Synthetic   | | KNN         |
+|             |            | Prediction  | | Load        | |             |
 |-------------|            |-------------| |-------------| |-------------|
 | + forward() |            | + forward() | | + forward() | | + forward() |
 +-------------+            +-------------+ +-------------+ +-------------+
