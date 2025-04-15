@@ -13,27 +13,27 @@ More information about the models and the framework can be found in the followin
 
 The repository is organized as follows:
 
-| Folder           | Folder or File                      | Description                                        |
-|------------------|-------------------------------------|----------------------------------------------------|
-| `data/`          |                                     |                                                    |
-|                  | `london_housholds_preprocessing.ipynb`   | Preprocessing of smartmeter dataset                |
-|                  | `london_loadprofiles_*.pkl`         | 20 virtual communities with varying households     |
-|                  | `weather_data.py`                   | Script to fetch Meteostat weather data             |
-| `envs/`          |                                     |                                                    |
-|                  | `env_from_nxai.yml`                 | Conda env file from xLSTM developers (reference)   |
-|                  | `env_linux.yml`                     | Provided Conda environment file                    |
-| `models/`        |                                     |                                                    |
-|                  | `Model.py`                          | Model wrapper, owns exactly one model.   |
-|                  | `*.py`                              | Other deep learning/baseline model scripts         |
-| `scripts/`       |                                     |                                                    |
-|                  | `case_study/`                       | Example optimization of an energy community        |
-|                  | `outputs/`                          | Auto-generated figures, results, and profiles      |
-|                  | `ModelAdapter.py`                   | Brings the data into the model format              |
-|                  | `ModelTrainer.py`                   | Big train and test loop accord to the config       |
-|                  | `Paper_Illustration.ipynb`          | Create Figures and Tables after the testrun        |
-|                  | `Simulation_config.py`              | Config for a full automated simulation run         |
-|                  | `Utils.py`                          | Helper functions for the simulation run            |
-|                  | `Visualization.py`                  | Plotly Visualization of all model in- and outputs  |
+| Folder           | Folder or File                            | Description                                        |
+|------------------|-------------------------------------------|----------------------------------------------------|
+| `data/`          |                                           |                                                    |
+|                  | `london_housholds_preprocessing.ipynb`    | Preprocessing of smartmeter dataset                |
+|                  | `london_loadprofiles_*.pkl`               | 20 virtual communities with varying households     |
+|                  | `weather_data.py`                         | Script to fetch Meteostat weather data             |
+| `envs/`          |                                           |                                                    |
+|                  | `env_from_nxai.yml`                       | Conda env file from xLSTM developers (reference)   |
+|                  | `env_linux.yml`                           | Provided Conda environment file                    |
+| `models/`        |                                           |                                                    |
+|                  | `Model.py`                                | Model wrapper, owns exactly one model.             |
+|                  | `*.py`                                    | Other deep learning/baseline model scripts         |
+| `scripts/`       |                                           |                                                    |
+|                  | `case_study/`                             | Example optimization of an energy community        |
+|                  | `outputs/`                                | Auto-generated figures, results, and profiles      |
+|                  | `ModelAdapter.py`                         | Brings the data into the model format              |
+|                  | `ModelTrainer.py`                         | Big train and test loop accord to the config       |
+|                  | `Paper_Illustration.ipynb`                | Create Figures and Tables after the testrun        |
+|                  | `Simulation_config.py`                    | Config for a full automated simulation run         |
+|                  | `Utils.py`                                | Helper functions for the simulation run            |
+|                  | `Visualization.py`                        | Plotly Visualization of all model in- and outputs  |
 
 
 ## Code Structure
@@ -66,26 +66,17 @@ The main parts of the evaluation framework are connected as follows:
                                           | + train_model()              |
                                           | + evaluate()                 |
                                           +------------------------------+
-+-------------+                                        |
-| LSTM        <--------+                               |
-|             |        |                               |                 
-|-------------|        |                               |                 
-| + forward() |        |                               |                 
-+-------------+        |                               |                 
-                       |                               |                 
-+-------------+        |                               |                 
-| Transformer <--------+----------+---------------+----+------------+
-|             |        |          |               |                 |
-|-------------|        |          |               |                 |
-| + forward() |        |          |               |                 |
-+-------------+        |          |               |                 |
-                       |          |               |                 |
-+-------------+        |   +------v------+ +------v------+ +--------v----+
-| xLSTM       <--------+   | Persistence | | Synthetic   | | KNN         |
-|             |            | Prediction  | | Load        | |             |
-|-------------|            |-------------| |-------------| |-------------|
-| + forward() |            | + forward() | | + forward() | | + forward() |
-+-------------+            +-------------+ +-------------+ +-------------+
+                                                       |            
+                                                       |                 
+       +-----------------+-------------+---------------+-----------------+
+       |                 |             |               |                 |
+       |                 |             |               |                 |
++------v------+ +--------v----+ +------v------+ +------v------+ +--------v----+
+| KNN         | | Persistence | | xLSTM       | | LSTM        | | Transformer |
+|             | |             | |             | |             | |             |
+|-------------| |-------------| |-------------| |-------------| |-------------|
+| + forward() | | + forward() | | + forward() | | + forward() | | + forward() |
++-------------+ +-------------+ +-------------+ +-------------+ +-------------+
 
 ```
 

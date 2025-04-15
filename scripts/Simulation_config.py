@@ -56,7 +56,7 @@ class TrainingFuture():
     _9_MONTH = 275
     
 class UsedModels():
-    ALL = ('SyntheticLoadProfile', 'KNN', 'PersistencePrediction', 'xLSTM', 'LSTM', 'Transformer_Encoder_Only')
+    ALL = ('KNN', 'PersistencePrediction', 'xLSTM', 'LSTM', 'Transformer_Encoder_Only')
 
 class Epochs():
     SMOKE_TEST = 1
