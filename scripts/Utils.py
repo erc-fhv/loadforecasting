@@ -498,7 +498,13 @@ class Evaluate_Models:
                     expected_config_found = False
                     if config_groups[i] != '-':
                             latex_string += '\\hline\n'
-                            latex_string += f'\\multirow{{{config_groups[i][1]}}}{{*}}{{\\textbf{{{config_groups[i][0]}}}}} \n'
+                            latex_string += f"\\multirow{{{config_groups[i]['rows']}}}{{*}}"
+                            if "<br>" in config_groups[i]['name']:
+                                line1, line2 = config_groups[i]['name'].split("<br>")
+                                latex_string += f"{{\\rotatebox[origin=c]{{90}}{{\\shortstack{{\\textbf{{{line1}}} \\\\ \\textbf{{{line2}}}}}}}}} \n"
+                            else:
+                                latex_string += f"{{\\rotatebox[origin=c]{{90}}{{\\textbf{{{config_groups[i]['name']}}}}}}} \n"
+
                     latex_string += f'    & {config_names[i]}'
                     for available_config in result_dict:
                             if expected_config == available_config:
