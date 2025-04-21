@@ -4,7 +4,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 import importlib
 import numpy as np
-
+import models.Perfect
 
 # This class wraps a single machine learning or benchmark model,
 # and provides commonly used utilities and shared functionality to work with that model.
@@ -36,7 +36,7 @@ class Model():
             # Machine Learning Model            
             self.my_model.eval()  
             with torch.no_grad():
-                output = self.my_model.forward(X.float())
+                output = self.my_model(X.float())
                 
         else:
             # Simple models
@@ -141,7 +141,12 @@ class Model():
         if self.my_model.isPytorchModel == False:   # Simple, parameter free models    
             
             # Predict
-            output = self.predict(X_test)
+            if isinstance(self.my_model, models.Perfect.Perfect):
+                # The Perfect prediction model just gets and returns 
+                # the perfect profile (used for reference).
+                output = self.predict(Y_test)
+            else:
+                output = self.predict(X_test)
             assert output.shape == Y_test.shape, \
                 f"Shape mismatch: got {output.shape}, expected {Y_test.shape})"
             
@@ -157,7 +162,8 @@ class Model():
             metric = self.smape(output, Y_test)
             results['test_sMAPE'] = [metric]
             reference = float(torch.mean(Y_test))
-            results['test_loss_relative'] = [100.0*loss.item()/reference]
+            results['test_loss_relative'] = [100.0*loss.item()/reference]            
+            results['predicted_profile'] = output
             
         else:   # Pytorch models            
             
@@ -165,6 +171,7 @@ class Model():
             loss_sum = 0
             smape_sum = 0
             total_samples = 0
+            prediction = torch.zeros(size=(Y_test.size(0), 0, Y_test.size(2)))
         
             # Unnormalize the target variable, if wished.
             if deNormalize == True:
@@ -192,6 +199,8 @@ class Model():
                     smape_val = self.smape(batch_y.float(), output)
                     smape_sum += smape_val * batch_x.size(0)
                     total_samples += batch_x.size(0)
+                    
+                    prediction = torch.cat([prediction, output], dim=1)
 
             # Calculate average loss and sMAPE
             if total_samples > 0:
@@ -200,10 +209,12 @@ class Model():
                 results['test_loss'] = [test_loss]
                 results['test_loss_relative'] = [100.0 * test_loss / reference]
                 results['test_sMAPE'] = [smape_sum / total_samples]
+                results['predicted_profile'] = prediction
             else:
                 results['test_loss'] = [0.0]
                 results['test_loss_relative'] = [0.0]
                 results['test_sMAPE'] = [0.0]
+                results['predicted_profile'] = [0.0]
         
         return results
     

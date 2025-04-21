@@ -21,11 +21,11 @@ class ModelSize():
     _80K = "80k"
 
 class Aggregation_Count():
-    _1_HOUSEHOLD    = 'data/london_loadprofiles_1households_each.pkl'
-    _2_HOUSEHOLDS  = 'data/london_loadprofiles_2households_each.pkl'
-    _10_HOUSEHOLDS  = 'data/london_loadprofiles_10households_each.pkl'
-    _50_HOUSEHOLDS  = 'data/london_loadprofiles_50households_each.pkl'  # <= Baseline
-    _100_HOUSEHOLDS  = 'data/london_loadprofiles_100households_each.pkl'
+    _1_HOUSEHOLD    = (1,   'data/london_loadprofiles_1households_each.pkl')
+    _2_HOUSEHOLDS   = (2,   'data/london_loadprofiles_2households_each.pkl')
+    _10_HOUSEHOLDS  = (10,  'data/london_loadprofiles_10households_each.pkl')
+    _50_HOUSEHOLDS  = (50,  'data/london_loadprofiles_50households_each.pkl')  # <= Baseline
+    _100_HOUSEHOLDS = (100, 'data/london_loadprofiles_100households_each.pkl')
     
 class NrOfComunities():
     _10 = 10
@@ -56,7 +56,7 @@ class TrainingFuture():
     _9_MONTH = 275
     
 class UsedModels():
-    ALL = ('KNN', 'PersistencePrediction', 'xLSTM', 'LSTM', 'Transformer_Encoder_Only')
+    ALL = ('Perfect', 'KNN', 'PersistencePrediction', 'xLSTM', 'LSTM', 'Transformer_Encoder_Only')
 
 class Epochs():
     SMOKE_TEST = 1

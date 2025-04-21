@@ -149,7 +149,7 @@ class ModelTrainer:
         
         # Readout the power profiles, bring them to the format needed by the model and store those profiles
         #
-        loadProfiles = pd.read_pickle(sim_config.aggregation_Count)
+        loadProfiles = pd.read_pickle(sim_config.aggregation_Count[1])
         loadProfiles = loadProfiles[:sim_config.nrOfComunities]
 
         # Readout the weather data

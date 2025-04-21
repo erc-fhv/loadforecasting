@@ -198,6 +198,7 @@ class Evaluate_Models:
             result_per_config[sim_config][model_type][load_profile]['test_loss'] = float(results['test_loss'][-1])
             result_per_config[sim_config][model_type][load_profile]['test_loss_relative'] = float(results['test_loss_relative'][-1])
             result_per_config[sim_config][model_type][load_profile]['test_sMAPE'] = float(results['test_sMAPE'][-1])
+            result_per_config[sim_config][model_type][load_profile]['predicted_profile'] = results['predicted_profile']
 
         # Optionally: Skip given configs
         result_per_config = dict(islice(result_per_config.items(), skip_first_n_configs, skip_last_n_configs))
@@ -214,18 +215,17 @@ class Evaluate_Models:
 
         for config, result_per_model in result_per_config.items():
             
-            if print_style != 'pandas_df':
-                pprint(f'Configuration: {config}')            
-            
             for model_type, result_per_profile in result_per_model.items():
                 
                 # Get al list of all losses of the current config and modeltype
-                train_losses, test_MAE, test_sMAPE, test_NMAE  = [], [], [], []
-                for load_profile, results in result_per_profile.items():
+                train_losses, test_MAE, test_sMAPE, test_NMAE, predicted_profiles  = [], [], [], [], []
+                for load_profile_name, results in result_per_profile.items():
                     train_losses.append(results['loss'])
                     test_MAE.append(results['test_loss'])
                     test_NMAE.append(results['test_loss_relative'])
-                    test_sMAPE.append(results['test_sMAPE'])        
+                    test_sMAPE.append(results['test_sMAPE'])
+                    predicted_profile = np.array(results['predicted_profile']).flatten()
+                    predicted_profiles.append(predicted_profile)
                 assert len(result_per_profile) == config.nrOfComunities
                 
                 decimal_points_MAE = 4
@@ -238,6 +238,8 @@ class Evaluate_Models:
 
                 if print_style == 'pandas_df':
                     result_dict[config][model_type] = test_NMAE
+                elif print_style == 'predicted_profiles':
+                    result_dict[config][model_type] = predicted_profiles
                 elif print_style == 'shell':
                     # Print the results of the current config and modeltype
                     print(f'    Model: {model_type}')
