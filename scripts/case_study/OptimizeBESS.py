@@ -11,12 +11,13 @@ class OptimizeBESS:
                  price, 
                  P_perfect,
                  delta_t = 1, # 1h
+                 buffer_size = 0.1
                  ):
         
         self.delta_t = delta_t
-        self.P_el_predicted = P_el_predicted
         self.price = price
         self.P_perfect = P_perfect
+        self.buffer_size = buffer_size
         
         # Optimal batterie size per household accord to https://doi.org/10.1016/j.apenergy.2017.12.056
         wh_storage_per_household = 12000.0
@@ -31,6 +32,11 @@ class OptimizeBESS:
         self.time_steps_per_day = 24
         available_timesteps = len(P_el_predicted)
         self.test_days = available_timesteps // self.time_steps_per_day
+
+        # Ensure that the load prediction is only positive.
+        # (This case study does not include any electricity generation.)
+        P_el_predicted = np.clip(P_el_predicted, a_min=0, a_max=None)
+        self.P_el_predicted = P_el_predicted    
     
         # Open-source solver HiGHS:
         self.solver = SolverFactory("appsi_highs")  
@@ -73,7 +79,7 @@ class OptimizeBESS:
             m.InitialSOC = Constraint(expr=m.E_batt[0] == E_start)
             m.FinalSOC = Constraint(expr=m.E_batt[self.time_steps_per_day] == E_final)
 
-        #   m.PowerBase = ConstraintList()
+            m.PowerBase = ConstraintList()
             m.PowerBalance = ConstraintList()
             m.EnergyBalance = ConstraintList()
             m.ChargingIndicator = ConstraintList()
@@ -82,7 +88,7 @@ class OptimizeBESS:
 
             for t in m.T:
                 # Power balance: power in = power out
-            #   m.PowerBase.add(m.P_grid[t] >= 0.1*P_el_predicted[pred_type, start_hour + t])
+                m.PowerBase.add(m.P_grid[t] >= self.buffer_size*self.P_el_predicted[start_hour + t])
 
                 m.PowerBalance.add(m.P_grid[t] + m.P_dis[t] == m.P_ch[t] + self.P_el_predicted[start_hour + t])
                 # Energy balance of the battery

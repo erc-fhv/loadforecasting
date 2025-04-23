@@ -25,7 +25,7 @@ class Model():
             print(f"Unexpected 'model_type' parameter received: {model_type}")
             print(f"Detailed error description : {e}")
     
-        self.loss_fn = nn.L1Loss()   # Optional: nn.L1Loss(), nn.MSE(), self.smape, ...
+        self.loss_fn = nn.L1Loss()   # Optional: nn.L1Loss(), nn.MSELoss(), self.smape, ...
         self.modelAdapter = modelAdapter
 
     # Predict Y from the given X.
