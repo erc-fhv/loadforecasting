@@ -253,6 +253,26 @@ class Evaluate_Models:
         
         return result_dict
 
+    # Check, if all data are available and create a nested dictionary of 
+    # shape 'profiles_by_community_size[community_size][model][community_id]'
+    # containing the results of the given testrun.
+    #
+    @staticmethod
+    def get_testrun_results(expected_configs, resuts_filename):
+        
+        result_dict = Evaluate_Models.print_results(resuts_filename, print_style = 'predicted_profiles')
+        
+        profiles_by_community_size = defaultdict(dict)
+        for expected_config in expected_configs:
+            for available_config in result_dict:
+                if expected_config == available_config:
+                    community_size = expected_config.aggregation_Count[0]
+                    profiles_by_community_size[community_size] = result_dict[expected_config]
+        assert len(profiles_by_community_size) == len(expected_configs), \
+            f"Not all expected test-runs found: {len(profiles_by_community_size)} != {len(expected_configs)}."
+        
+        return profiles_by_community_size
+
     # Calculate and print results for each config and model_type
     #
     @staticmethod
@@ -369,7 +389,9 @@ class Evaluate_Models:
         rows = (num_months + 2) // 3  # Arrange in 3 columns
 
         # Set up the figure and axis grid for the required months
-        fig, axs = plt.subplots(rows, 3, figsize=(16, rows * 4), constrained_layout=False)
+        fig_width_inch = 190 / 25.4
+        fig_height_inch = fig_width_inch /4.0 * rows
+        fig, axs = plt.subplots(rows, 3, figsize=(fig_width_inch, fig_height_inch), constrained_layout=False)
 
         # Adjust the spacing between rows and columns
         plt.subplots_adjust(hspace=0.3, wspace=0.1)
@@ -417,7 +439,7 @@ class Evaluate_Models:
                 # Get the subplot axis for the current month
                 ax = axs[plot_idx]
                 plot_idx += 1
-                ax.set_title(f"{calendar.month_name[month]} {year}", fontsize=14, pad=10, color="0.3")
+                ax.set_title(f"{calendar.month_name[month]} {year}", fontsize=10, pad=10, color="0.3")
 
                 # Set light grey borders around each monthly subplot
                 for spine in ax.spines.values():
@@ -445,12 +467,12 @@ class Evaluate_Models:
 
                 # Set x-axis labels for weekdays
                 ax.set_xticks(range(7))
-                ax.set_xticklabels(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], fontsize=10, color="0.3")
+                ax.set_xticklabels(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], fontsize=8, color="0.3")
                 ax.set_yticks([])
 
         # Add a color bar for the legend
         cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=axs, orientation='vertical', fraction=0.03, pad=0.04)
-        cbar.set_label("nMAE (%)", fontsize=12, color="0.3")
+        cbar.set_label("nMAE (%)", fontsize=10, color="0.3")
         cbar.outline.set_edgecolor(color="lightgrey")
         cbar.outline.set_linewidth(1)
         cbar.ax.yaxis.set_tick_params(labelcolor="0.3")
@@ -459,7 +481,7 @@ class Evaluate_Models:
         for i in range(plot_idx, len(axs)):
             fig.delaxes(axs[i])
 
-        plt.savefig("scripts/outputs/figs/calendar_plot.pdf", format="pdf", bbox_inches="tight", pad_inches=0.1)
+        plt.savefig("scripts/outputs/figs/Fig_calendar_plot.pdf", format="pdf", bbox_inches="tight", pad_inches=0.1)
         plt.show()
 
     # Get the best models per energy community (i.e. the "winners")

@@ -157,7 +157,7 @@ class PlotlyApp:
             fig_Y = px.line()
             fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_real']/1000.0, mode='lines', name='Real', line_color='darkgrey', line_shape='hv')
             fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_pred']/1000.0, mode='lines', name='Predicted', line_color='blue', line_shape='hv')
-            fig_Y.update_layout(yaxis_title='Load Profile (kW)', xaxis_title='Time (HH:MM)', 
+            fig_Y.update_layout(yaxis_title='Load (kW)', xaxis_title='Time (HH:MM)', 
                                 plot_bgcolor='white', legend=dict(x=0, y=1, xanchor='left', yanchor='top'),
                                 margin=dict(l=20, r=20, t=20, b=20),
                                 font=dict(size=16, color='black'),
