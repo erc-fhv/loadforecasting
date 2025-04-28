@@ -208,7 +208,7 @@ class Evaluate_Models:
     # Calculate and print results for each config and model_type
     #
     @staticmethod
-    def print_results(path_to_train_histories, print_style = 'pandas_df'):
+    def print_results(path_to_train_histories, value_type = 'nMAE'):
         
         result_per_config = Evaluate_Models.get_training_results(path_to_train_histories)
         result_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
@@ -228,6 +228,9 @@ class Evaluate_Models:
                     predicted_profiles.append(predicted_profile)
                 assert len(result_per_profile) == config.nrOfComunities
                 
+                if model_type == 'Transformer_Encoder_Only':
+                    model_type = 'Transformer'  # Rename
+        
                 decimal_points_MAE = 4
                 decimal_points_sMAPE = 2
                 mean_test_MAE = f'{np.mean(test_MAE):.{decimal_points_MAE}f}'
@@ -236,11 +239,11 @@ class Evaluate_Models:
                 std_dev_test_sMAPE = f'{np.std(test_sMAPE):.{decimal_points_sMAPE}f}'
                 mean_train_MAE = f'{np.mean(train_losses):.{decimal_points_MAE}f}'
 
-                if print_style == 'pandas_df':
+                if value_type == 'nMAE':
                     result_dict[config][model_type] = test_NMAE
-                elif print_style == 'predicted_profiles':
+                elif value_type == 'predicted_profiles':
                     result_dict[config][model_type] = predicted_profiles
-                elif print_style == 'shell':
+                elif value_type == 'shell':
                     # Print the results of the current config and modeltype
                     print(f'    Model: {model_type}')
                     print(f'      Mean Test MAE: {mean_test_MAE}')
@@ -249,29 +252,38 @@ class Evaluate_Models:
                     print(f'      Standard Deviation Test sMAPE: {std_dev_test_sMAPE}')
                     print(f'      Mean Train MAE: {mean_train_MAE}\n')
                 else:
-                    assert "Please choose correct 'print_style' argument."
+                    assert "Please choose correct 'value_type' argument."
         
         return result_dict
 
     # Check, if all data are available and create a nested dictionary of 
-    # shape 'profiles_by_community_size[community_size][model][community_id]'
+    # shape 'profiles[given_key][model][community_id]'
     # containing the results of the given testrun.
     #
     @staticmethod
-    def get_testrun_results(expected_configs, resuts_filename):
+    def get_testrun_results(expected_configs, resuts_filename, given_key = 'community_size', value_type = 'predicted_profiles'):
         
-        result_dict = Evaluate_Models.print_results(resuts_filename, print_style = 'predicted_profiles')
+        result_dict = Evaluate_Models.print_results(resuts_filename, value_type)
         
-        profiles_by_community_size = defaultdict(dict)
+        profiles = defaultdict(dict)
         for expected_config in expected_configs:
-            for available_config in result_dict:
+            for available_config in result_dict:                
                 if expected_config == available_config:
-                    community_size = expected_config.aggregation_Count[0]
-                    profiles_by_community_size[community_size] = result_dict[expected_config]
-        assert len(profiles_by_community_size) == len(expected_configs), \
-            f"Not all expected test-runs found: {len(profiles_by_community_size)} != {len(expected_configs)}."
+                    
+                    if given_key == 'community_size':
+                        key = available_config.aggregation_Count[0]
+                    elif given_key == 'trainingSize':
+                        key = available_config.trainingHistory
+                    elif given_key == 'modelSize':
+                        key = available_config.modelSize
+                    else:
+                        assert f"Unexpected function parameter: {given_key}."
+                    
+                    profiles[key] = result_dict[available_config]
+        assert len(profiles) == len(expected_configs), \
+            f"Not all expected test-runs found: {len(profiles)} != {len(expected_configs)}."
         
-        return profiles_by_community_size
+        return profiles
 
     # Calculate and print results for each config and model_type
     #
