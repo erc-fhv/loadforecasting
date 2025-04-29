@@ -228,8 +228,11 @@ class Evaluate_Models:
                     predicted_profiles.append(predicted_profile)
                 assert len(result_per_profile) == config.nrOfComunities
                 
+                # Rename for readability
                 if model_type == 'Transformer_Encoder_Only':
-                    model_type = 'Transformer'  # Rename
+                    model_type = 'Transformer'
+                elif model_type == 'PersistencePrediction':
+                    model_type = 'Persistence'
         
                 decimal_points_MAE = 4
                 decimal_points_sMAPE = 2
@@ -276,6 +279,8 @@ class Evaluate_Models:
                         key = available_config.trainingHistory
                     elif given_key == 'modelSize':
                         key = available_config.modelSize
+                    elif given_key == 'testSetDate':
+                        key = available_config.trainingHistory
                     else:
                         assert f"Unexpected function parameter: {given_key}."
                     
