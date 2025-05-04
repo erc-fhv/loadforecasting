@@ -531,6 +531,8 @@ class Evaluate_Models:
             print(latex_string)
 
     @staticmethod
+    # Print Latex Table of given configurations
+    #
     def print_latex_table(result_dict, configs_to_print, config_groups, config_names):
             latex_string = ''
             decimal_points = 2
