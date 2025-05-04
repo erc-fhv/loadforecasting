@@ -12,6 +12,9 @@ class DoTransferLearning():
     NO = False
 
 class ModelSize():
+    _0k1 = "0.1k"
+    _0k2 = "0.2k"
+    _0k5 = "0.5k"
     _1k = "1k"
     _2k = "2k"
     _5k = "5k"
@@ -56,7 +59,7 @@ class TrainingFuture():
     _9_MONTH = 275
     
 class UsedModels():
-    ALL = ('Perfect', 'KNN', 'PersistencePrediction', 'xLSTM', 'LSTM', 'Transformer_Encoder_Only')
+    ALL = ('Perfect', 'KNN', 'Persistence', 'xLSTM', 'LSTM', 'Transformer')
 
 class Epochs():
     SMOKE_TEST = 1
@@ -77,6 +80,12 @@ configs = [
             TrainingHistory._12_MONTH, TestSize._3_MONTH, TrainingFuture._0_MONTH, DevSize._2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
 
     # Vary the model sizes
+    Config_of_one_run(ModelSize._0k1, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._50_HOUSEHOLDS, NrOfComunities._20, 
+        TrainingHistory._12_MONTH, TestSize._3_MONTH, TrainingFuture._0_MONTH, DevSize._2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
+    Config_of_one_run(ModelSize._0k2, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._50_HOUSEHOLDS, NrOfComunities._20, 
+            TrainingHistory._12_MONTH, TestSize._3_MONTH, TrainingFuture._0_MONTH, DevSize._2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
+    Config_of_one_run(ModelSize._0k5, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._50_HOUSEHOLDS, NrOfComunities._20, 
+            TrainingHistory._12_MONTH, TestSize._3_MONTH, TrainingFuture._0_MONTH, DevSize._2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
     Config_of_one_run(ModelSize._1k, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._50_HOUSEHOLDS, NrOfComunities._20, 
             TrainingHistory._12_MONTH, TestSize._3_MONTH, TrainingFuture._0_MONTH, DevSize._2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
     Config_of_one_run(ModelSize._2k, DoPretraining.YES, DoTransferLearning.YES, Aggregation_Count._50_HOUSEHOLDS, NrOfComunities._20, 

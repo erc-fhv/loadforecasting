@@ -18,7 +18,7 @@ class xLSTM(nn.Module):
         self.isPytorchModel = True
         self.forecast_horizon = 24
         
-        # The following xLSTM config variables are as as provided by NX-AI.
+        # The following xLSTM config variables are as as provided by the xLSTM authors:
         conv1d_kernel_size=4
         num_heads=4
         qkv_proj_blocksize=4
@@ -26,12 +26,23 @@ class xLSTM(nn.Module):
         num_blocks=7
         slstm_at=[1]
         
-        # Fixed dense, for better comparison to other models
-        hidden_dimension_dense1 = 30
-        hidden_dimension_dense2 = 20
-        
         # Finetune the XLSTM config variables
-        if model_size == "1k":
+        if model_size == "0.1k":
+            num_blocks=1
+            slstm_at=[0]
+            num_heads=1
+            d_model=1
+        elif  model_size == "0.2k":
+            num_blocks=1
+            slstm_at=[0]
+            num_heads=1
+            d_model=1
+        elif model_size == "0.5k":
+            num_blocks=1
+            slstm_at=[0]
+            num_heads=2
+            d_model=2
+        elif model_size == "1k":
             num_blocks=1
             slstm_at=[0]
             num_heads=2
@@ -84,15 +95,10 @@ class xLSTM(nn.Module):
 
         # Adding none-xlstm layers
         self.input_projection = nn.Linear(num_of_features, d_model)
-        self.activation = nn.ReLU()
-        self.dense1 = nn.Linear(d_model, hidden_dimension_dense1)
-        self.dense2 = nn.Linear(hidden_dimension_dense1, hidden_dimension_dense2)
-        self.output_layer = nn.Linear(hidden_dimension_dense2, 1)
+        self.output_layer = nn.Linear(d_model, 1)
         
     def forward(self, x):
         x = self.input_projection(x)
         x = self.xlstm_stack(x)
-        x = self.activation(self.dense1(x))
-        x = self.activation(self.dense2(x))
         x = self.output_layer(x)
         return x
