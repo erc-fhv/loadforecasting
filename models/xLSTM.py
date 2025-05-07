@@ -29,44 +29,54 @@ class xLSTM(nn.Module):
         # Finetune the XLSTM config variables
         if model_size == "0.1k":
             num_blocks=1
-            slstm_at=[0]
             num_heads=1
             d_model=1
+            slstm_at=[0]
         elif  model_size == "0.2k":
             num_blocks=1
-            slstm_at=[0]
             num_heads=1
             d_model=1
+            slstm_at=[0]
         elif model_size == "0.5k":
             num_blocks=1
-            slstm_at=[0]
             num_heads=2
             d_model=2
+            slstm_at=[0]
         elif model_size == "1k":
             num_blocks=1
-            slstm_at=[0]
             num_heads=2
             d_model=4
+            slstm_at=[0]
         elif model_size == "2k":
             num_blocks=1
-            slstm_at=[0]
+            num_heads=4
             d_model=8
+            slstm_at=[0]
         elif model_size == "5k":
             num_blocks=2
+            num_heads=4
             d_model=8
+            slstm_at=[1]
         elif model_size == "10k":
             num_blocks=2
+            num_heads=4
             d_model=16
+            slstm_at=[1]
         elif model_size == "20k":
             num_blocks=2
+            num_heads=4
             d_model=32
+            slstm_at=[1]
         elif model_size == "40k":
             num_blocks=4
+            num_heads=4
             d_model=32
+            slstm_at=[1]
         elif model_size == "80k":
             num_blocks=4
-            d_model=40
             num_heads=8
+            d_model=40
+            slstm_at=[1]
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
         

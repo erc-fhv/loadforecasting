@@ -15,53 +15,53 @@ class Transformer(nn.Module):
         
         # Finetune the XLSTM config variables
         if model_size == "0.1k":
-            num_heads=2
             num_layers=1
+            num_heads=2
             dim_feedforward=5
             d_model = 2
         elif model_size == "0.2k":
-            num_heads=2
             num_layers=1
+            num_heads=2
             dim_feedforward=5
-            d_model = 4
+            d_model=4
         elif model_size == "0.5k":
-            num_heads=2
             num_layers=1
+            num_heads=2
             dim_feedforward=6
             d_model=6
         elif model_size == "1k":
-            num_heads=2
             num_layers=1
+            num_heads=2
             dim_feedforward=10
             d_model=10
         elif model_size == "2k":
-            num_heads=2
             num_layers=1
+            num_heads=2
             dim_feedforward=16
             d_model=14
         elif model_size == "5k":
-            num_heads=4
             num_layers=1
+            num_heads=4
             dim_feedforward=90
             d_model=20
         elif model_size == "10k":
-            num_heads=4
             num_layers=1
+            num_heads=4
             dim_feedforward=200
             d_model=20
         elif model_size == "20k":
-            num_heads=4
             num_layers=1
+            num_heads=4
             dim_feedforward=400
             d_model=20
         elif model_size == "40k":
-            num_heads=4
             num_layers=1
+            num_heads=4
             dim_feedforward=400
             d_model=40
         elif model_size == "80k":
-            num_heads=8
             num_layers=2
+            num_heads=8
             dim_feedforward=400
             d_model=40
         else:

@@ -11,17 +11,22 @@ class OptimizeBESS:
                  price, 
                  P_perfect,
                  delta_t = 1, # 1h
-                 buffer_size = 0.1
+                 buffer_size = 0.1,
+                 battery_size = None
                  ):
         
         self.delta_t = delta_t
         self.price = price
         self.P_perfect = P_perfect
         self.buffer_size = buffer_size
+        self.C = battery_size
         
-        # Optimal batterie size per household accord to https://doi.org/10.1016/j.apenergy.2017.12.056
-        wh_storage_per_household = 12000.0
-        self.C = nr_of_households * wh_storage_per_household
+        if battery_size == None:
+            # Linear scale of the optimal batterie size per household 
+            # accord to https://doi.org/10.1016/j.apenergy.2017.12.056
+            #
+            wh_storage_per_household = 12000.0
+            self.C = nr_of_households * wh_storage_per_household
         
         # Maximum charge Power in W
         self.P_el_max = self.C / 4
