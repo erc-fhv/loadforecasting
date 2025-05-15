@@ -498,7 +498,7 @@ class Evaluate_Models:
         for i in range(plot_idx, len(axs)):
             fig.delaxes(axs[i])
 
-        plt.savefig("scripts/outputs/figs/Fig_calendar_plot.pdf", format="pdf", bbox_inches="tight", pad_inches=0.1)
+        plt.savefig("scripts/outputs/figs/Figure_8a.pdf", format="pdf", bbox_inches="tight", pad_inches=0.1)
         plt.show()
 
     # Get the best models per energy community (i.e. the "winners")
