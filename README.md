@@ -6,7 +6,7 @@ This repository supports the development of short-term load forecasting (STLF) a
 
 More information about the models and the framework can be found in the following paper: 
 
->  *Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?* [https://arxiv.org/abs/2501.05000](https://arxiv.org/abs/2501.05000) *Submitted to Elsevier Energy and AI, December 2024*
+>  *Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?* [https://arxiv.org/abs/2501.05000](https://arxiv.org/abs/2501.05000)
 
 
 ## Folder Structure
