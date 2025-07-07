@@ -8,6 +8,7 @@ requires-python = ">=3.8"
 dependencies = [
     "torch",
     "scikit-learn",
+    "xlstm",
 ]
 
 [project.urls]
