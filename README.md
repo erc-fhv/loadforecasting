@@ -87,24 +87,9 @@ The main parts of the evaluation framework are connected as follows:
 
 ```
 
-## Steps to Reproduce the Complete Paper
+## Reusing the Forecasting Model
 
-1. Set up the environment (Linux only):
-    ```bash
-    conda env create --name load_forecasting --file=envs/env_linux.yml
-    conda activate load_forecasting
-    ```
-
-2. Train the models:
-    ```bash
-    python scripts/ModelTrainer.py
-    ```
-
-3. Generate figures and tables:
-
-    Open and run either `scripts/Paper_Illustration.ipynb` or `scripts/Model_Evaluation.ipynb`.
-
-## Steps to Reuse Our Model Implementations
+Our forecasting models can be easily reused in other applications as shown below.
 
 1. Install the package:
     ```bash
@@ -135,6 +120,24 @@ The main parts of the evaluation framework are connected as follows:
 
     ```
 
+## Steps to Reproduce the Complete Paper
+
+The entire paper can be reproduced by following these steps.
+
+1. Set up the environment (Linux only):
+    ```bash
+    conda env create --name load_forecasting --file=envs/env_linux.yml
+    conda activate load_forecasting
+    ```
+
+2. Train the models:
+    ```bash
+    python scripts/ModelTrainer.py
+    ```
+
+3. Generate figures and tables:
+
+    Open and run either `scripts/Paper_Illustration.ipynb` or `scripts/Model_Evaluation.ipynb`.
 
 ## Citation
 
@@ -149,4 +152,3 @@ If you use this codebase, or find our work valuable please cite the following pa
   doi={10.48550/arXiv.2501.05000}
 }
 ```
-
