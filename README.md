@@ -147,7 +147,7 @@ The entire paper can be reproduced by following these steps.
     ```
 ## Citation
 
-If you use this codebase, or find our work valuable please cite the following paper:
+If you use this codebase, or find our work valuable, please cite the following paper:
 
 ```
 @article{moosbrugger2025load,
