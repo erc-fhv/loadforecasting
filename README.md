@@ -87,7 +87,7 @@ The main parts of the evaluation framework are connected as follows:
 
 ```
 
-## Reusing only the Forecasting Model
+## Reusing only the Forecasting Models
 
 Our forecasting models can be easily reused in other applications as shown below.
 
