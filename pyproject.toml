@@ -1,0 +1,22 @@
+[project]
+name = "energyforecast-fhv"
+version = "0.1.0"
+description = "Package, containing multiple state-of-the-art forecasting models."
+authors = [{ name="Lukas Moosbrugger", email="molu@fhv.at" }]
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+dependencies = [
+    "torch",
+    "scikit-learn",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/erc-fhv/loadforecasting"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["models"]

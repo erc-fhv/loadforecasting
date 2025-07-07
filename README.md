@@ -13,27 +13,31 @@ More information about the models and the framework can be found in the followin
 
 The repository is organized as follows:
 
-| Folder           | Folder or File                            | Description                                        |
-|------------------|-------------------------------------------|----------------------------------------------------|
-| `data/`          |                                           |                                                    |
-|                  | `london_housholds_preprocessing.ipynb`    | Preprocessing of smartmeter dataset                |
-|                  | `london_loadprofiles_*.pkl`               | 20 virtual communities with varying households     |
-|                  | `weather_data.py`                         | Script to fetch Meteostat weather data             |
-| `envs/`          |                                           |                                                    |
-|                  | `env_from_nxai.yml`                       | Conda env file from xLSTM developers (reference)   |
-|                  | `env_linux.yml`                           | Provided Conda environment file                    |
-| `models/`        |                                           |                                                    |
-|                  | `Model.py`                                | Model wrapper, owns exactly one model.             |
-|                  | `*.py`                                    | Other deep learning/baseline model scripts         |
-| `scripts/`       |                                           |                                                    |
-|                  | `case_study/`                             | Example optimization of an energy community        |
-|                  | `outputs/`                                | Auto-generated figures, results, and profiles      |
-|                  | `ModelAdapter.py`                         | Brings the data into the model format              |
-|                  | `ModelTrainer.py`                         | Big train and test loop accord to the config       |
-|                  | `Paper_Illustration.ipynb`                | Create Figures and Tables after the testrun        |
-|                  | `Simulation_config.py`                    | Config for a full automated simulation run         |
-|                  | `Utils.py`                                | Helper functions for the simulation run            |
-|                  | `Visualization.py`                        | Plotly Visualization of all model in- and outputs  |
+| Folder           | Folder or File                                  | Description                                                                                  |
+|------------------|-------------------------------------------------|----------------------------------------------------------------------------------------------|
+| `data/`          |                                                 |                                                                                              |
+|                  | `london_housholds_preprocessing.ipynb`          | Fetching and preprocessing of the London smartmeter dataset.                                 |
+|                  | `london_loadprofiles_1households_each.pkl`      | Preprocessed 20 load profiles of single households.                                          |
+|                  | `london_loadprofiles_2households_each.pkl`      | Preprocessed 20 load profiles of virtual energy communities with 2 households each.          |
+|                  | `london_loadprofiles_10households_each.pkl`     | Preprocessed 20 load profiles of virtual energy communities with 10 households each.         |
+|                  | `london_loadprofiles_50households_each.pkl`     | Preprocessed 20 load profiles of virtual energy communities with 50 households each.         |
+|                  | `london_loadprofiles_100households_each.pkl`    | Preprocessed 20 load profiles of virtual energy communities with 100 households each.        |
+|                  | `weather_data.py`                               | Script to fetch Meteostat weather data.                                                      |
+| `envs/`          |                                                 |                                                                                              |
+|                  | `env_linux.yml`                                 | Use this Conda environment file to reproduce the results of our paper on Linux.                                                  |
+|                  | `env_from_nxai.yml`                               | Conda env file from xLSTM developers (reference)                                                 |
+| `models/`        |                                                 |                                                                                              |
+|                  | `Model.py`                                      | Model wrapper, owns exactly one model per instance.                                          |
+|                  | `*.py`                                          | Implementations of the single deep learning/baseline models.                                 |
+| `scripts/`       |                                                 |                                                                                              |
+|                  | `case_study/`                                   | Example optimization of an energy community.                                                 |
+|                  | `outputs/`                                      | Auto-generated figures, results, and profiles.                                               |
+|                  | `ModelAdapter.py`                               | Brings the data into the model format.                                                       |
+|                  | `ModelTrainer.py`                               | Big train and test loop accord to the config.                                                |
+|                  | `Paper_Illustration.ipynb`                      | Create Figures and Tables after the testrun.                                                 |
+|                  | `Simulation_config.py`                          | Config for a full automated simulation run.                                                  |
+|                  | `Utils.py`                                      | Helper functions for the simulation run.                                                     |
+|                  | `Model_Evaluation.ipynb`                        | Plotly Visualization of all model in- and outputs.                                           |
 
 
 ## Code Structure
@@ -46,32 +50,32 @@ The main parts of the evaluation framework are connected as follows:
 | Data                        |           | ModelAdapter                 |
 |-----------------------------|           |------------------------------|
 | # Weather, load, standard-  |           | + transformData()            |
-|   load, and holidays.       |---------->| # Preprocesses the data      |
-+-----------------------------+           +------------------------------+
+|   load, and holidays.       +-----------+ # Preprocesses the data      |
++-----------------------------+           +------------+-----------------+
                                                        |
                                                        |
-+-----------------------------+           +------------v-----------------+
++-----------------------------+           +------------+-----------------+
 | Simulation_config           |           | ModelTrainer                 |
 |-----------------------------|           |------------------------------|
 | configs: list               |           | + run()                      |
-| # Parameterize the run      |---------> | # Trains all models          |
+| # Parameterize the run      +-----------+ # Trains all models          |
 | # loop.                     |           | # accord to the config.      |
-+-----------------------------+           +------------------------------+
++-----------------------------+           +------------+-----------------+
                                                        |
                                                        |
-                                          +------------v-----------------+
+                                          +------------+-----------------+
                                           | Model                        |
                                           |------------------------------|
                                           | my_model: (xLSTM to KNN)     |
                                           | + train_model()              |
                                           | + evaluate()                 |
-                                          +------------------------------+
+                                          +------------+-----------------+
                                                        |            
                                                        |                 
        +-----------------+-------------+---------------+-----------------+
        |                 |             |               |                 |
        |                 |             |               |                 |
-+------v------+ +--------v----+ +------v------+ +------v------+ +--------v----+
++------+------+ +--------+----+ +------+------+ +------+------+ +--------+----+
 | KNN         | | Persistence | | xLSTM       | | LSTM        | | Transformer |
 |             | |             | |             | |             | |             |
 |-------------| |-------------| |-------------| |-------------| |-------------|
@@ -80,22 +84,53 @@ The main parts of the evaluation framework are connected as follows:
 
 ```
 
-<!-- ## Components: todo! -->
-
-## How to Use
+## Steps to Reproduce the Complete Paper
 
 1. **Install the conda enviroment** on a linux system:
-    ```
+    ```bash
     conda env create --name load_forecasting --file=envs/env_linux.yml
     conda activate load_forecasting
     ```
 
-2. **Train the model** using `ModelTrainer`:
-    ```python
+2. **Train the models** using `ModelTrainer`:
+    ```bash
     python scripts/ModelTrainer.py
     ```
 
-3. **Evaluate the results** e.g. within `scripts/model_evaluate.ipynb` or within `Paper_Illustration.ipynb`.
+3. To **evaluate the results,** just run `scripts/model_evaluate.ipynb` or `Paper_Illustration.ipynb`.
+
+
+## Steps to Reuse Our Model Implementations
+
+1. **Install** our model implementations as **package**:
+    ```bash
+    pip install git+https://github.com/erc-fhv/loadforecasting.git
+    ```
+
+2. **Use our implementation** in Python:
+    ```python
+    from models import Model
+    import torch 
+
+
+    # Train the sequence-to-sequence model
+    #
+
+    X_train = torch.randn(365, 24, 10)  # Your train features of shape (batch_len, sequence_len, features)
+    Y_train = torch.randn(365, 24, 1)  # Your train target of shape (batch_len, sequence_len, 1)
+    myModel = Model('Transformer', model_size='5k', num_of_features=X_train.shape[2])   # Alternative Models: 'LSTM', 'xLSTM', 'KNN'
+    myModel.train_model(X_train, Y_train, pretrain_now=False, finetune_now=False, epochs=100, verbose=0)
+
+
+    # Make predictions
+    #
+
+    X_test = torch.randn(90, 24, 10)  # Your test features of shape (batch_len, sequence_len, features)
+    Y_pred = myModel.predict(X_test)
+    print('\nOutput Shape = ', Y_pred.shape)
+
+    ```
+
 
 ## Citation
 

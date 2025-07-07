@@ -8,3 +8,5 @@ data/Smartmeter data of London Households/
 *.png
 scripts/outputs/
 .env
+dist/
+energyforecast_fhv.egg-info/
