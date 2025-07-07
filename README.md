@@ -7,7 +7,7 @@ This repository provides a flexible and modular framework for short-term load fo
 - Deep learning models: Transformer, LSTM, xLSTM
 - Baseline model: KNN, Perfect
 - Full pipeline for training, evaluation, and visualization
-- Reproducibility of all experiments from the subsequent paper
+- Reproducibility of all experiments from the following paper
 
 ## Related Paper
 
