@@ -137,8 +137,14 @@ The entire paper can be reproduced by following these steps.
 
 3. Generate figures and tables:
 
-    Open and run either `scripts/Paper_Illustration.ipynb` or `scripts/Model_Evaluation.ipynb`.
-
+    Open and run either 
+    ```
+    scripts/Paper_Illustration.ipynb
+    ```
+    or    
+    ```
+    scripts/Model_Evaluation.ipynb
+    ```
 ## Citation
 
 If you use this codebase, or find our work valuable please cite the following paper:
