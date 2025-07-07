@@ -13,7 +13,7 @@ class Transformer(nn.Module):
         self.num_of_features = num_of_features
         self.forecast_horizon = 24
         
-        # Finetune the XLSTM config variables
+        # Finetune the config variables
         if model_size == "0.1k":
             num_layers=1
             num_heads=2
