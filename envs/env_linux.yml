@@ -1,11 +1,9 @@
-name: load_forecasting2
+name: xlstm
 channels:
   - pytorch
-  - defaults
   - nvidia
   - conda-forge
-  - https://repo.anaconda.com/pkgs/main
-  - https://repo.anaconda.com/pkgs/r
+  - defaults
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
@@ -15,8 +13,7 @@ dependencies:
   - blas=2.16=mkl
   - bzip2=1.0.8=h4bc722e_7
   - c-ares=1.33.1=heb4867d_0
-  - ca-certificates=2025.1.31=hbcca054_0
-  - certifi=2025.1.31=pyhd8ed1ab_0
+  - ca-certificates=2024.8.30=hbcca054_0
   - cmake=3.30.3=hf9cb763_0
   - cuda=12.1.0=0
   - cuda-cccl=12.1.109=0
@@ -67,12 +64,10 @@ dependencies:
   - gds-tools=1.11.1.6=0
   - glib=2.80.3=h315aac3_2
   - glib-tools=2.80.3=h8fdd7da_2
-  - glpk=5.0=h445213a_0
   - gmp=6.3.0=hac33072_2
   - gmpy2=2.1.5=py311h0f6cedb_2
   - gxx_impl_linux-64=11.2.0=h82a94d6_16
   - gxx_linux-64=11.2.0=hacbe6df_10
-  - highs=1.10.0=h84d6215_0
   - icu=75.1=he02047a_0
   - intel-openmp=2022.0.1=h06a4308_3633
   - jinja2=3.1.4=pyhd8ed1ab_0
@@ -152,16 +147,15 @@ dependencies:
   - mpmath=1.3.0=pyhd8ed1ab_0
   - ncurses=6.5=he02047a_1
   - networkx=3.3=pyhd8ed1ab_1
+  - ninja=1.12.1=h297d8ca_0
   - nsight-compute=2024.3.1.2=0
   - nspr=4.35=h27087fc_0
   - nss=3.104=hd34e28f_0
-  - openssl=3.5.0=h7b32b05_0
+  - openssl=3.3.2=hb9d3cd8_0
   - packaging=24.1=pyhd8ed1ab_0
   - pcre2=10.44=hba22ea6_2
   - pip=24.2=pyh8b19718_1
-  - ply=3.11=pyhd8ed1ab_3
   - pthread-stubs=0.4=h36c2ea0_1001
-  - pyomo=6.9.2=py311hfdbb021_0
   - python=3.11.9=hb806964_0_cpython
   - python_abi=3.11=5_cp311
   - pytorch=2.2.0=py3.11_cuda12.1_cudnn8.9.2_0
@@ -200,6 +194,7 @@ dependencies:
       - beautifulsoup4==4.12.3
       - bleach==6.1.0
       - blinker==1.8.2
+      - certifi==2024.8.30
       - cffi==1.17.1
       - cfgv==3.4.0
       - charset-normalizer==3.3.2
@@ -217,7 +212,6 @@ dependencies:
       - defusedxml==0.7.1
       - demandlib==0.2.1
       - distlib==0.3.8
-      - einops==0.8.0
       - execnet==2.1.1
       - executing==2.1.0
       - fastjsonschema==2.20.0
@@ -226,12 +220,9 @@ dependencies:
       - fqdn==1.5.1
       - fsspec==2024.9.0
       - h11==0.14.0
-      - hf-xet==1.1.4
-      - highspy==1.10.0
       - holidays==0.56
       - httpcore==1.0.5
       - httpx==0.27.2
-      - huggingface-hub==0.33.0
       - identify==2.6.0
       - idna==3.8
       - importlib-metadata==8.4.0
@@ -264,7 +255,6 @@ dependencies:
       - kaleido==0.2.1
       - kiwisolver==1.4.7
       - lightning-utilities==0.11.7
-      - mamba-ssm==2.2.4
       - matplotlib==3.9.2
       - matplotlib-inline==0.1.7
       - meteostat==1.6.8
@@ -273,7 +263,6 @@ dependencies:
       - nbconvert==7.16.4
       - nbformat==5.10.4
       - nest-asyncio==1.6.0
-      - ninja==1.11.1.4
       - nodeenv==1.9.1
       - notebook==7.2.2
       - notebook-shim==0.2.4
@@ -304,16 +293,11 @@ dependencies:
       - pytz==2024.1
       - pyzmq==26.2.0
       - referencing==0.35.1
-      - regex==2024.11.6
       - requests==2.32.3
       - retrying==1.3.4
       - rfc3339-validator==0.1.4
       - rfc3986-validator==0.1.1
       - rpds-py==0.20.0
-      - safetensors==0.5.3
-      - scikit-learn==1.6.1
-      - scipy==1.15.2
-      - seaborn==0.13.2
       - send2trash==1.8.3
       - six==1.16.0
       - sniffio==1.3.1
@@ -321,15 +305,12 @@ dependencies:
       - stack-data==0.6.3
       - tenacity==9.0.0
       - terminado==0.18.1
-      - threadpoolctl==3.6.0
       - tinycss2==1.3.0
-      - tokenizers==0.21.1
       - torchmetrics==1.4.1
       - torchsummary==1.5.1
       - tornado==6.4.1
       - tqdm==4.66.5
       - traitlets==5.14.3
-      - transformers==4.52.4
       - types-python-dateutil==2.9.0.20240906
       - tzdata==2024.1
       - uri-template==1.3.0
@@ -343,4 +324,4 @@ dependencies:
       - widgetsnbextension==4.0.13
       - xlstm==1.0.6
       - zipp==3.20.1
-prefix: /home/molu/miniconda3/envs/load_forecasting2
+prefix: /home/molu/miniconda3/envs/xlstm
