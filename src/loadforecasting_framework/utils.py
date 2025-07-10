@@ -18,7 +18,7 @@ import os
 
 # Imports own modules.
 #
-import simulation_config
+import loadforecasting_framework.simulation_config
 import loadforecasting_models as forecasting_models
 
 # Persist dicts with complex keys.

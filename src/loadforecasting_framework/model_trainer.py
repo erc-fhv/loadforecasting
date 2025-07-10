@@ -15,10 +15,10 @@ if parent_dir not in sys.path:
 
 # Imports own modules.
 #
-import simulation_config
-import model_adapter
-import utils
-import import_weather_data
+import loadforecasting_framework.simulation_config as simulation_config
+from loadforecasting_framework.model_adapter import ModelAdapter
+import loadforecasting_framework.utils as utils
+import loadforecasting_framework.import_weather_data as import_weather_data
 import loadforecasting_models as forecasting_models
 
 
@@ -94,12 +94,12 @@ class ModelTrainer:
         for i, powerProfile in enumerate(loadProfiles[:sim_config.nrOfComunities]):
             
             # Preprocess data to get X and Y for the model
-            modelAdapter = model_adapter.ModelAdapter(public_holidays_timestamps, 
-                                                     trainHistory = sim_config.trainingHistory,
-                                                     testSize = sim_config.testSize, 
-                                                     trainFuture = sim_config.trainingFuture, 
-                                                     devSize = sim_config.devSize, 
-                                                     )
+            modelAdapter = ModelAdapter(public_holidays_timestamps, 
+                                            trainHistory = sim_config.trainingHistory,
+                                            testSize = sim_config.testSize, 
+                                            trainFuture = sim_config.trainingFuture, 
+                                            devSize = sim_config.devSize, 
+                                            )
             X, Y = modelAdapter.transformData(powerProfile, weatherData)            
             
             output_path = os.path.join(os.path.dirname(__file__), 'outputs', 'file_' + str(i) + '.pkl')
@@ -120,12 +120,12 @@ class ModelTrainer:
         all_standard_loadprofiles = all_standard_loadprofiles.tz_localize("UTC")
         
         # Preprocess data to get X and Y for the model
-        modelAdapter = model_adapter.ModelAdapter(public_holidays_timestamps,
-                                                trainHistory = sim_config.trainingHistory,
-                                                testSize = sim_config.testSize,
-                                                trainFuture = sim_config.trainingFuture,
-                                                devSize = sim_config.devSize, 
-                                                )
+        modelAdapter = ModelAdapter(public_holidays_timestamps,
+                                        trainHistory = sim_config.trainingHistory,
+                                        testSize = sim_config.testSize,
+                                        trainFuture = sim_config.trainingFuture,
+                                        devSize = sim_config.devSize, 
+                                        )
         X, Y = modelAdapter.transformData(all_standard_loadprofiles, weatherData=None)
         pretraining_filename = os.path.join(os.path.dirname(__file__), 'outputs', 'standard_loadprofile.pkl')
         with open(pretraining_filename, 'wb') as file:
