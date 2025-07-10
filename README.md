@@ -139,7 +139,7 @@ The entire paper can be reproduced by following these steps.
 
 1. Set up the environment (Linux only):
     ```bash
-    conda env create --name load_forecasting --file=envs/env_linux.yml
+    conda env create --name load_forecasting --file=envs/env_linux.yml -y
     conda activate load_forecasting
     ```
 

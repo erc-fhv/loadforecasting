@@ -16,16 +16,10 @@ import calendar
 import sys
 import os
 
-# Make sure, that the root of the project is already in PYTHONPATH.
-#
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
-
 # Imports own modules.
 #
 import simulation_config
-import src.loadforecasting_models as forecasting_models
+import loadforecasting_models as forecasting_models
 
 # Persist dicts with complex keys.
 # The dict keys are converted from multi-class into json format.
@@ -41,10 +35,12 @@ class Serialize:
         # Squeeze the dict keys
         all_trained_models = Serialize.get_serialized_dicts(all_trained_models, isModel = True)
 
-        # Save the total model with torch.save
-        timestamp = Serialize.get_act_timestamp()
-        torch.save(all_trained_models, f'src/loadforecasting_framework/outputs/all_trained_models{timestamp}.pth')
-        torch.save(all_trained_models, f'src/loadforecasting_framework/outputs/all_trained_models.pth')
+        # Save all trained models with torch.save
+        base_dir = os.path.dirname(__file__)
+        output_path = os.path.join(base_dir, 'outputs', 'all_trained_models.pth')
+        output_path_w_timestamp = os.path.join(base_dir, 'outputs', f'all_trained_models{Serialize.get_act_timestamp()}.pth')
+        torch.save(all_trained_models, output_path_w_timestamp)
+        torch.save(all_trained_models, output_path)
 
     # Use pickle to save a dictionary with training results to disc.
     #
@@ -55,10 +51,12 @@ class Serialize:
         all_train_histories = Serialize.get_serialized_dicts(all_train_histories, isModel = False)
         
         # Store the variables in a persistent files with the timestamp
-        timestamp = Serialize.get_act_timestamp()
-        with open(f"src/loadforecasting_framework/outputs/all_train_histories{timestamp}.pkl", 'wb') as f:
+        base_dir = os.path.dirname(__file__)
+        output_path = os.path.join(base_dir, 'outputs', 'all_train_histories.pkl')
+        output_path_w_timestamp = os.path.join(base_dir, 'outputs', f'all_train_histories{Serialize.get_act_timestamp()}.pkl')
+        with open(output_path_w_timestamp, 'wb') as f:
             pickle.dump(all_train_histories, f)
-        with open(f"src/loadforecasting_framework/outputs/all_train_histories.pkl", 'wb') as f:
+        with open(output_path, 'wb') as f:
             pickle.dump(all_train_histories, f)
 
     # Serialize the given dicts.
@@ -373,8 +371,10 @@ class Evaluate_Models:
             height=500
         )
 
-        # Save and show the plot
-        fig.write_image('src/loadforecasting_framework/outputs/figs/loss_over_epochs.pdf', format='pdf')
+        # Save and show the plot        
+        base_dir = os.path.dirname(__file__)
+        output_path = os.path.join(base_dir, 'outputs', 'figs', 'loss_over_epochs.pdf')
+        fig.write_image(output_path, format='pdf')
         fig.show()
 
 
@@ -508,8 +508,10 @@ class Evaluate_Models:
         # Hide any unused subplots
         for i in range(plot_idx, len(axs)):
             fig.delaxes(axs[i])
-
-        plt.savefig("src/loadforecasting_framework/outputs/figs/Figure_8a.pdf", format="pdf", bbox_inches="tight", pad_inches=0.1)
+        
+        base_dir = os.path.dirname(__file__)
+        output_path = os.path.join(base_dir, 'outputs', 'figs', 'Figure_8a.pdf')
+        plt.savefig(output_path, format="pdf", bbox_inches="tight", pad_inches=0.1)
         plt.show()
 
     # Get the best models per energy community (i.e. the "winners")

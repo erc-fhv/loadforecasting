@@ -7,7 +7,7 @@ from datetime import timedelta, date
 import sys
 import os
 
-# Make sure, that the root of the project is already in PYTHONPATH.
+# Make sure, that the "src" folder is already in PYTHONPATH.
 #
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if parent_dir not in sys.path:
@@ -19,7 +19,7 @@ import simulation_config
 import model_adapter
 import utils
 import import_weather_data
-import src.loadforecasting_models as forecasting_models
+import loadforecasting_models as forecasting_models
 
 
 class ModelTrainer:
@@ -100,12 +100,12 @@ class ModelTrainer:
                                                      trainFuture = sim_config.trainingFuture, 
                                                      devSize = sim_config.devSize, 
                                                      )
-            X, Y = modelAdapter.transformData(powerProfile, weatherData)
+            X, Y = modelAdapter.transformData(powerProfile, weatherData)            
             
-            out_filename = 'src/loadforecasting_framework/outputs/file_' + str(i) + '.pkl'
-            with open(out_filename, 'wb') as file:
+            output_path = os.path.join(os.path.dirname(__file__), 'outputs', 'file_' + str(i) + '.pkl')
+            with open(output_path, 'wb') as file:
                 pickle.dump((X, Y, modelAdapter), file)
-            loadProfiles_filenames.append(out_filename)
+            loadProfiles_filenames.append(output_path)
 
         # Load the BDEW standard load profiles for the desired datetime range
         standard_loadprofiles = []
@@ -127,7 +127,7 @@ class ModelTrainer:
                                                 devSize = sim_config.devSize, 
                                                 )
         X, Y = modelAdapter.transformData(all_standard_loadprofiles, weatherData=None)
-        pretraining_filename = 'src/loadforecasting_framework/outputs/standard_loadprofile.pkl'
+        pretraining_filename = os.path.join(os.path.dirname(__file__), 'outputs', 'standard_loadprofile.pkl')
         with open(pretraining_filename, 'wb') as file:
             pickle.dump((X, Y, modelAdapter), file)
         
@@ -148,7 +148,8 @@ class ModelTrainer:
         
         # Readout the power profiles, bring them to the format needed by the model and store those profiles
         #
-        loadProfiles = pd.read_pickle(sim_config.aggregation_Count[1])
+        file_path = os.path.join(os.path.dirname(__file__), sim_config.aggregation_Count[1])
+        loadProfiles = pd.read_pickle(file_path)
         loadProfiles = loadProfiles[:sim_config.nrOfComunities]
 
         # Readout the weather data

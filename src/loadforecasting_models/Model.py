@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -78,7 +79,7 @@ class Model():
             
             # Load pretrained weights
             if finetune_now:
-                pretrained_weights_path = f'src/loadforecasting_framework/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+                pretrained_weights_path = f'{os.path.dirname(__file__)}/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
                 self.my_model.load_state_dict(torch.load(pretrained_weights_path))
 
             # Start training
@@ -123,7 +124,7 @@ class Model():
                 
             # Save the trained weights
             if pretrain_now:
-                pretrained_weights_path = f'src/loadforecasting_framework/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+                pretrained_weights_path = f'{os.path.dirname(__file__)}/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
                 torch.save(self.my_model.state_dict(), pretrained_weights_path)
 
         return history
