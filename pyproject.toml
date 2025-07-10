@@ -1,5 +1,5 @@
 [project]
-name = "energyforecast-fhv"
+name = "loadforecasting_models"
 version = "0.1.0"
 description = "Package, containing multiple state-of-the-art forecasting models."
 authors = [{ name="Lukas Moosbrugger", email="molu@fhv.at" }]
@@ -19,4 +19,5 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["models"]
+package-dir = {"" = "src"}
+packages = ["loadforecasting_models"]

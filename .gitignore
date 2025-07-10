@@ -6,7 +6,7 @@
 data/Smartmeter data of London Households/
 *.pyc
 *.png
-scripts/outputs/
+**/outputs/
 .env
-dist/
-energyforecast_fhv.egg-info/
+**/dist/*
+**/energyforecast_fhv.egg-info/*

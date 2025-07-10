@@ -22,24 +22,32 @@ More information about the models and the framework can be found in the followin
 The repository is organized as follows:
 
 ```
-├── models/                       # All forecasting models
-│   ├── Model.py                  # Unified model wrapper
-│   ├── *.py                      # Implementations of deep learning & baseline models
-│         
-├── data/                         # Preprocessed smart meter and weather data
-│   ├── *.pkl                     # Load profiles (varying community sizes per file)
-│   ├── *.ipynb/.py               # Preprocessing scripts (e.g., weather, London data)
-│         
-├── scripts/                      # Evaluation framework and visualization
-│   ├── Simulation_config.py      # Config file for simulation runs
-│   ├── ModelTrainer.py           # Training and evaluation loop
-│   ├── ModelAdapter.py           # Data formatting and preprocessing
-│   ├── Paper_Illustration.ipynb  # Plots and tables for the paper
-│   └── case_study/               # Energy community MILP optimization
+├── data/                             # Preprocessed smart meter and weather data
+│   ├── *.pkl                         # Load profiles (varying community sizes per file)
+│   ├── *.ipynb                       # Loadprofile preprocessing script
 │
-├── envs/                         # Conda environments
-│   ├── env_linux.yml             # Reproducible environment for the paper
-│   └── env_from_nxai.yml         # Environment from xLSTM authors
+├── envs/                             # Conda environments
+│   ├── env_linux.yml                 # Reproducible environment for the paper
+│   └── env_from_nxai.yml             # Environment from xLSTM authors
+│   
+├── src/      
+│   ├── loadforecasting_models/       # All forecasting models
+│   │   ├── Model.py                  # Unified model wrapper
+│   │   └── *.py                      # Implementations of deep learning & baseline models
+│   │         
+│   ├── scripts/                      # Evaluation framework and visualization
+│   │   ├── Simulation_config.py      # Config file for simulation runs
+│   │   ├── ModelTrainer.py           # Training and evaluation loop
+│   │   ├── ModelAdapter.py           # Data formatting and preprocessing
+│   │   ├── Paper_Illustration.ipynb  # Plots and tables for the paper
+│   │   └── case_study/               # Energy community MILP optimization
+│
+├── tests/                            # Automated unit and integration tests
+│   └── *.py
+|
+├── pyproject.toml                    # Description of the 'loadforecasting_models' packet
+├── LICENCE
+└── README.md
 ```
 
 
@@ -98,7 +106,7 @@ Our forecasting models can be easily reused in other applications as shown below
 
 2. Use in Python:
     ```python
-    from models import Model
+    from loadforecasting_models import Model
     import torch 
 
 
@@ -124,26 +132,31 @@ Our forecasting models can be easily reused in other applications as shown below
 
 The entire paper can be reproduced by following these steps.
 
+1. Download the whole repository:
+    ```bash
+    git clone https://github.com/erc-fhv/loadforecasting.git
+    ```
+
 1. Set up the environment (Linux only):
     ```bash
     conda env create --name load_forecasting --file=envs/env_linux.yml
     conda activate load_forecasting
     ```
 
-2. Train the models:
+1. Train the models:
     ```bash
-    python scripts/ModelTrainer.py
+    python src/loadforecasting_framework/model_trainer.py
     ```
 
-3. Generate figures and tables:
+1. Generate figures and tables:
 
     Open and run either 
     ```
-    scripts/Paper_Illustration.ipynb
+    src/loadforecasting_framework/paper_illustration.ipynb
     ```
     or    
     ```
-    scripts/Model_Evaluation.ipynb
+    src/loadforecasting_framework/model_evaluation.ipynb
     ```
 ## Citation
 
