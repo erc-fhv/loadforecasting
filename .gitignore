@@ -9,5 +9,5 @@ data/Smartmeter data of London Households/
 **/outputs/
 .env
 **/dist/*
-**/energyforecast_fhv.egg-info/*
+**/loadforecasting_models.egg-info/*
 envs/condaenv*

@@ -101,7 +101,7 @@ Our forecasting models can be easily reused in other applications as shown below
 
 1. Install the package:
     ```bash
-    pip install git+https://github.com/erc-fhv/loadforecasting.git
+    pip install loadforecasting_models
     ```
 
 2. Use in Python:
@@ -148,7 +148,7 @@ The entire paper can be reproduced by following these steps.
     python src/loadforecasting_framework/model_trainer.py
     ```
 
-1. Generate figures and tables:
+1. Generate figures and tables or run the case study:
 
     Open and run either 
     ```
@@ -157,6 +157,10 @@ The entire paper can be reproduced by following these steps.
     or    
     ```
     src/loadforecasting_framework/model_evaluation.ipynb
+    ```
+    or    
+    ```
+    src/loadforecasting_framework/case_study/CaseStudy.ipynb
     ```
 ## Citation
 
