@@ -2,7 +2,6 @@ import numpy as np
 
 class Persistence():
     def __init__(self, model_size, num_of_features, modelAdapter):
-        super(Persistence, self).__init__()
         self.isPytorchModel = False
         self.modelAdapter = modelAdapter
     

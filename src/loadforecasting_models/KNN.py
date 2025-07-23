@@ -3,7 +3,6 @@ import torch
 
 class KNN():
     def __init__(self, model_size, num_of_features, modelAdapter):
-        super(KNN, self).__init__()
         self.isPytorchModel = False
         self.X_train = None
         self.Y_train = None
