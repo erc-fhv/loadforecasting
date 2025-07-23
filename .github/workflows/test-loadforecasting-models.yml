@@ -23,4 +23,4 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest test_model.py
+        pytest smoketest_transformer.py
