@@ -35,7 +35,7 @@ The repository is organized as follows:
 │   │   ├── Model.py                  # Unified model wrapper
 │   │   └── *.py                      # Implementations of deep learning & baseline models
 │   │         
-│   ├── scripts/                      # Evaluation framework and visualization
+│   ├── loadforecasting_framework/    # Evaluation framework and visualization
 │   │   ├── Simulation_config.py      # Config file for simulation runs
 │   │   ├── ModelTrainer.py           # Training and evaluation loop
 │   │   ├── ModelAdapter.py           # Data formatting and preprocessing
