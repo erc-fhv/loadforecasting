@@ -18,12 +18,14 @@ jobs:
         environment-file: envs/env_linux.yml
         auto-activate-base: false
 
-    - name: Show Conda Info
+    - name: Show Conda Info 
+      shell: bash -l {0}
       run: |
         conda info
         conda list
 
-    - name: Run training script
+    - name: Run training script    
+      shell: bash -l {0}
       run: |
         python src/loadforecasting_framework/model_trainer.py --mode ci
         
