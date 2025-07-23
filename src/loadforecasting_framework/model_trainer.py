@@ -6,6 +6,7 @@ import pickle
 from datetime import timedelta, date
 import sys
 import os
+import argparse
 
 # Make sure, that the "src" folder is already in PYTHONPATH.
 #
@@ -20,7 +21,6 @@ from loadforecasting_framework.model_adapter import ModelAdapter
 import loadforecasting_framework.utils as utils
 import loadforecasting_framework.import_weather_data as import_weather_data
 import loadforecasting_models as forecasting_models
-
 
 class ModelTrainer:
     
@@ -182,5 +182,17 @@ class ModelTrainer:
         return loadProfiles, weatherData, public_holidays_timestamps
 
 if __name__ == "__main__":
-    configs = simulation_config.configs
+    
+    # Parse the optional cmd-line-arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", choices=['default', 'ci'], default='default')
+    mode = parser.parse_args().mode
+    
+    # Load the simulations configs
+    if mode == 'default':
+        configs = simulation_config.configs
+    else:
+        configs = simulation_config.configs_for_the_ci
+    
+    # Run the simulation
     ModelTrainer().run(configs)
