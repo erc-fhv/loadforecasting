@@ -3,7 +3,7 @@ import torch
 
 def test_model_prediction():
 
-    for model_type in ['KNN', 'LSTM', 'Transformer_full', 'Transformer', 'xLSTM',]:
+    for model_type in ['KNN', 'LSTM', 'Transformer_Full', 'Transformer', 'xLSTM',]:
 
         print(f'Test the {model_type} model.')
         
