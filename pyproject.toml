@@ -1,6 +1,6 @@
 [project]
 name = "loadforecasting_models"
-version = "0.1.2"
+version = "0.1.3"
 description = "Package, containing multiple state-of-the-art forecasting models."
 authors = [{ name="Lukas Moosbrugger", email="molu@fhv.at" }]
 readme = "README.pypi.md"
