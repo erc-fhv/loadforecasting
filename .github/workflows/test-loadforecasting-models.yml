@@ -1,0 +1,26 @@
+name: Test loadforecasting_models
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install pytest loadforecasting_models
+
+    - name: Run tests
+      run: |
+        pytest test_model.py
