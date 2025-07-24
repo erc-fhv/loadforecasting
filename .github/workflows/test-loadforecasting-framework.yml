@@ -10,6 +10,9 @@ jobs:
 
     container:
       image: ghcr.io/molu-fhv/loadforecasting:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     
     steps:
     - name: Checkout code
