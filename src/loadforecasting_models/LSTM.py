@@ -63,7 +63,7 @@ class LSTM(nn.Module):
             assert False, f"Unimplemented model_size parameter given: {model_size}"
 
         if bidirectional == True:
-            bidirectional_factor = 2 
+            bidirectional_factor = 2
         else:
             bidirectional_factor = 1
 
