@@ -1,8 +1,12 @@
 name: Test loadforecasting_framework
 
 on:
-  push:
-  pull_request:
+  push:  
+    paths:
+      - 'src/**/*.py'
+  pull_request:  
+    paths:
+      - 'src/**/*.py'
 
 jobs:
   test_the_framework:
