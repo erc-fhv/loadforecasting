@@ -107,7 +107,9 @@ class Model():
                 epoch_loss = loss_sum / total_samples
                 history['loss'].append(epoch_loss)
                 
-                if verbose > 0:
+                if verbose == 0:
+                    print(".", end="", flush=True)
+                elif verbose == 1:
                     if X_dev.shape[0] == 0 or Y_dev.shape[0] == 0:
                         dev_loss = -1.0
                     else:
@@ -119,8 +121,10 @@ class Model():
                         f"Dev_Loss = {dev_loss:.4f} - " + 
                         f"LR = {my_optimizer.param_groups[0]['lr']}", 
                         flush=True)
+                elif verbose == 2:
+                    pass    # silent
                 else:
-                    print(".", end="", flush=True)
+                    raise ValueError(f"Unexpected parameter value: verbose = {verbose}")
                 
             # Save the trained weights
             if pretrain_now:
