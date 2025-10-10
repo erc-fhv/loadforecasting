@@ -1,6 +1,6 @@
 [project]
 name = "loadforecasting_models"
-version = "0.1.5"
+version = "0.1.6"
 description = "Package, containing multiple state-of-the-art forecasting models."
 authors = [{ name="Lukas Moosbrugger", email="molu@fhv.at" }]
 readme = "README.pypi.md"
@@ -15,7 +15,6 @@ dependencies = [
     "xlstm",
 ]
 license = "MIT"
-license-files = ["LICEN[CS]E*"]
 
 [project.urls]
 Homepage = "https://github.com/erc-fhv/loadforecasting"

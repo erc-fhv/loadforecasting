@@ -5,7 +5,7 @@
 This repository provides a flexible and modular framework for short-term load forecasting (STLF), suitable for both research and real-world applications. It supports:
 
 - Deep learning models: Transformer, LSTM, xLSTM
-- Baseline model: KNN, Perfect
+- Baseline model: KNN, Persistence, Perfect
 - Full pipeline for training, evaluation, and visualization
 - Reproducibility of all experiments from the following paper
 
@@ -22,7 +22,7 @@ More information about the models and the framework can be found in the followin
 The repository is organized as follows:
 
 ```
-├── data/                             # Preprocessed smart meter and weather data
+├── data/                             # Preprocessed smart meter data
 │   ├── *.pkl                         # Load profiles (varying community sizes per file)
 │   ├── *.ipynb                       # Loadprofile preprocessing script
 │
