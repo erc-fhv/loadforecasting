@@ -14,7 +14,7 @@ class KNN():
         # 
         self.k = 40
         self.weights = 'distance'
-        
+    
     # Store the training data
     #
     def train_model(self, X_train, Y_train):

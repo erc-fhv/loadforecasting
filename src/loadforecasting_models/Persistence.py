@@ -8,13 +8,11 @@ class Persistence():
     def forward(self, x):
         """
         Upcoming load profile = load profile 7 days ago.
-        Assumption: The training load profile immediately precedes the given test load profile (to ensure accurate 
-        prediction of the initial days in the test set).
         """
 
-        x = self.modelAdapter.deNormalizeX(x)    # de-normalize especially the lagged power feature
+        x = self.modelAdapter.deNormalizeX(x)    # de-normalize all inputs
 
-        # Take the latest available lagged loads as predictions
+        # Take the chosen lagged loads as predictions
         # 
         lagged_load_feature = 11
         y_pred = x[:,:, lagged_load_feature]
@@ -28,14 +26,10 @@ class Persistence():
         
         return y_pred
     
-    def train_model(self, X_train, Y_train):
-        self.Y_train = Y_train
-    
     def state_dict(self):
         state_dict = {}
-        state_dict['Y_train'] = self.Y_train
         return state_dict
 
     def load_state_dict(self, state_dict):
-        self.Y_train = state_dict['Y_train']
+        pass
 

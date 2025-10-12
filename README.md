@@ -115,7 +115,7 @@ Our forecasting models can be easily reused in other applications as shown below
 
     X_train = torch.randn(365, 24, 10)  # Your train features of shape (batch_len, sequence_len, features)
     Y_train = torch.randn(365, 24, 1)  # Your train target of shape (batch_len, sequence_len, 1)
-    myModel = Model('Transformer', model_size='5k', num_of_features=X_train.shape[2])   # Alternative Models: 'LSTM', 'xLSTM', 'KNN'
+    myModel = Model('Transformer', model_size='5k', num_of_features=X_train.shape[2])   # Alternative Models: 'LSTM', 'xLSTM', 'KNN', 'Perfect'
     myModel.train_model(X_train, Y_train, pretrain_now=False, finetune_now=False, epochs=100, verbose=0)
 
 
