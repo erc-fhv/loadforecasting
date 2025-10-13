@@ -231,55 +231,51 @@ class ModelAdapter:
         Y_all['all'] = self.normalizeY(Y_all['all'], training=False)
         
         return X_all, Y_all
-        
-    # Z-Normalize the input data of the model.
-    #
-    def normalizeX(self, X, training=False):
+
+    def normalize_x(self, x, training=False):
+        """Z-Normalize the input data of the model."""
 
         if training:
             # Estimate the mean and standard deviation of the data during training
-            self.meanX = np.mean(X, axis=(0, 1))
-            self.stdX = np.std(X, axis=(0, 1))
+            self.mean_x = np.mean(x, axis=(0, 1))
+            self.std_x = np.std(x, axis=(0, 1))
         
-            if np.isclose(self.stdX, 0).any():
+            if np.isclose(self.std_x, 0).any():
                 # Avoid a division by zero (which can occur for constant features)
-                self.stdX = np.where(np.isclose(self.stdX, 0), 1e-8, self.stdX)
+                self.std_x = np.where(np.isclose(self.std_x, 0), 1e-8, self.std_X)
 
-        X_normalized = (X - self.meanX) / self.stdX
+        X_normalized = (x - self.mean_x) / self.std_x
 
         return X_normalized
 
-    # Undo z-normalization
-    #
-    def deNormalizeX(self, X):
+    def de_normalize_x(self, x):
+        """Undo z-normalization."""
 
-        X_denormalized = (X * self.stdX) + self.meanX
+        x_denormalized = (x * self.std_x) + self.mean_x
 
-        return X_denormalized
+        return x_denormalized
 
-    # Normalize the output data of the model.    
-    #
-    def normalizeY(self, Y, training=False):
+    def normalize_y(self, y, training=False):
+        """Normalize the output data of the model."""
 
         if training:
             # Estimate the mean and standard deviation of the data during training
-            self.meanY = np.mean(Y, axis=(0, 1))
-            self.stdY = np.std(Y)
+            self.mean_y = np.mean(y, axis=(0, 1))
+            self.std_y = np.std(y)
         
-        if np.isclose(self.stdY, 0):
+        if np.isclose(self.std_y, 0):
             assert False, "Normalization leads to division by zero."
 
-        Y_normalized = (Y - self.meanY) / self.stdY
+        y_normalized = (y - self.mean_y) / self.std_y
 
-        return Y_normalized
+        return y_normalized
 
-    # Undo normalization
-    #
-    def deNormalizeY(self, Y):
+    def de_normalize_y(self, y):
+        """Undo normalization"""
 
-        Y_denormalized = (Y * self.stdY) + self.meanY
+        y_denormalized = (y * self.std_y) + self.mean_y
 
-        return Y_denormalized
+        return y_denormalized
     
     # Split up the data into train-, dev- and test-set
     #

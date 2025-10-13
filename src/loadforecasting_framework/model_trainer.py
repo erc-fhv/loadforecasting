@@ -71,7 +71,7 @@ class ModelTrainer:
         # Train and evaluate the model
         sim_config = configs[act_sim_config_index]
         num_of_features = X['train'].shape[2]
-        myModel = forecasting_models.Model(model_type, sim_config.modelSize, num_of_features, modelAdapter=modelAdapter)
+        myModel = forecasting_models.model(model_type, sim_config.modelSize, num_of_features, modelAdapter=modelAdapter)
         history = myModel.train_model(X['train'], Y['train'], pretrain_now=False,
                                     finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
         history = myModel.evaluate(X['test'], Y['test'], results=history, deNormalize=True)
@@ -138,7 +138,7 @@ class ModelTrainer:
             for model_type in sim_config.usedModels:
                 print(f"\nPretraining {model_type} model and and sim_config {act_sim_config_index+1}/{len(configs)}.", flush=True)
                 num_of_features = X['all'].shape[2]
-                myModel = forecasting_models.Model(model_type, sim_config.modelSize, num_of_features)
+                myModel = forecasting_models.model(model_type, sim_config.modelSize, num_of_features)
                 myModel.train_model(X['all'], Y['all'], pretrain_now=True, 
                                     finetune_now=False, epochs=sim_config.epochs)
 

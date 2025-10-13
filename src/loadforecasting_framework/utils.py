@@ -140,7 +140,7 @@ class Deserialize:
             if model_type == deserialize_key[0] and \
                 test_profile == deserialize_key[1] and \
                 chosenConfig == deserialize_key[2]:
-                act_model = forecasting_models.Model(model_type=deserialize_key[0], 
+                act_model = forecasting_models.model(model_type=deserialize_key[0], 
                                             model_size=deserialize_key[2].modelSize,
                                             num_of_features=num_of_features,
                                             modelAdapter=modelAdapter
