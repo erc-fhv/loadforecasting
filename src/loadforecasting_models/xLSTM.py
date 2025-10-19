@@ -136,3 +136,15 @@ class xLSTM(torch.nn.Module):
         x = self.xlstm_stack(x)
         x = self.output_layer(x)
         return x
+
+    def get_nr_of_parameters(self, do_print=True):
+        """
+        Return and optionally print the number of parameters of this owned model
+        """
+
+        total_params = sum(p.numel() for p in self.parameters())
+
+        if do_print:
+            print(f"Total number of parameters: {total_params}")
+
+        return total_params

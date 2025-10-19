@@ -119,31 +119,8 @@ class Model:
             results['predicted_profile'] = output
 
         else:   # Pytorch models
-            results = PytorchHelper.evaluate(
-                self,
-                x_train,
-                y_train,
-                x_dev,
-                y_dev,
-                pretrain_now,
-                finetune_now,
-                epochs,
-                learning_rates,
-                batch_size,
-                verbose,
-                )
+            results = PytorchHelper.evaluate()
         
         return results
     
     
-    def get_nr_of_parameters(self, do_print=True):
-        """
-        Print and return the number of parameters of the owned model
-        """
-
-        total_params = self.my_model.get_nr_of_parameters()
-
-        if do_print:
-            print(f"Total number of parameters: {total_params}")
-
-        return total_params

@@ -74,7 +74,7 @@ class MachineLearningModelInitParams(ModelParams):
 
     # Optional parameter
     model_adapter: Optional[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] \
-        = torch.nn.L1Loss()   # Options: nn.L1Loss(), nn.MSELoss(), pytorch_helpers.smape, ...
+        = torch.nn.L1Loss() 
     forecast_horizon: int = 24
 
 @dataclass
@@ -167,7 +167,7 @@ class EvaluationParams(ModelParams):
     # Mandatory parameter
     x_test: torch.Tensor
     y_test: torch.Tensor
-    
+
     # Optional parameters
     results: dict = {}
     de_normalize: bool = False
