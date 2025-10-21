@@ -1,42 +1,37 @@
+import os
+import argparse
+import pickle
+from datetime import timedelta, date
+
 import pandas as pd
 import holidays
 import pytz
 from demandlib import bdew
-import pickle
-from datetime import timedelta, date
-import sys
-import os
-import argparse
 
-# Make sure, that the "src" folder is already in PYTHONPATH.
-#
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
-
-# Imports own modules.
-#
-import loadforecasting_framework.simulation_config as simulation_config
+from loadforecasting_framework import simulation_config
 from loadforecasting_framework.model_adapter import ModelAdapter
-import loadforecasting_framework.utils as utils
-import loadforecasting_framework.import_weather_data as import_weather_data
-import loadforecasting_models as forecasting_models
+from loadforecasting_framework import utils
+from loadforecasting_framework import import_weather_data
+import loadforecasting_models
+
 
 class ModelTrainer:
-    
+    """
+    Class to train and evaluate load forecasting models.
+    """
+
     def __init__(self):
-        
         self.test_set_size_days = 131    # Size of the testset is fixed to 131 days ~ 4 month
-            
+
     def run(self, configs):
-        
+
         # Run every single config
         all_train_histories, all_trained_models = {}, {}
-        for act_sim_config_index in range(len(configs)):
-            
+        for act_sim_config_index, act_sim_config in enumerate(configs):
+
             # Fetch and prepare all needed data
             loadprofiles = self.preprocess_data(configs, act_sim_config_index)
-            
+
             # Train and test the given models
             act_sim_config = configs[act_sim_config_index]
             results = []
@@ -51,13 +46,13 @@ class ModelTrainer:
                 result_key = (model_types[i], load_profiles[i], sim_configs[i])
                 all_train_histories[result_key] = histories[i]
                 all_trained_models[result_key] = returnedModels[i]
-        
+
         # Persist all results
         utils.Serialize.store_results_with_pickle(all_train_histories)
         utils.Serialize.store_results_with_torch(all_trained_models)
-        
+
         return
-    
+
     # Do Model training and evaluation
     # 
     def optimize_model(self, model_type, load_profile, configs, act_sim_config_index):
@@ -71,7 +66,7 @@ class ModelTrainer:
         # Train and evaluate the model
         sim_config = configs[act_sim_config_index]
         num_of_features = X['train'].shape[2]
-        myModel = forecasting_models.model(model_type, sim_config.modelSize, num_of_features, modelAdapter=modelAdapter)
+        myModel = loadforecasting_models.model(model_type, sim_config.modelSize, num_of_features, modelAdapter=modelAdapter)
         history = myModel.train_model(X['train'], Y['train'], pretrain_now=False,
                                     finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
         history = myModel.evaluate(X['test'], Y['test'], results=history, deNormalize=True)
@@ -138,7 +133,7 @@ class ModelTrainer:
             for model_type in sim_config.usedModels:
                 print(f"\nPretraining {model_type} model and and sim_config {act_sim_config_index+1}/{len(configs)}.", flush=True)
                 num_of_features = X['all'].shape[2]
-                myModel = forecasting_models.model(model_type, sim_config.modelSize, num_of_features)
+                myModel = loadforecasting_models.model(model_type, sim_config.modelSize, num_of_features)
                 myModel.train_model(X['all'], Y['all'], pretrain_now=True, 
                                     finetune_now=False, epochs=sim_config.epochs)
 
@@ -171,28 +166,28 @@ class ModelTrainer:
         # Load the public holiday calendar
         #
         public_holidays_dict = holidays.CountryHoliday('GB', prov='ENG', years=range(startDate.year, endDate.year + 1))
-        
+
         # Add Christmas holidays from Dec 24 to Dec 31 for each year
-        for year in range(startDate.year, endDate.year + 1): 
+        for year in range(startDate.year, endDate.year + 1):
             for day in range(8):  # 9 days from Dec 24 to Dec 31 inclusive
                 public_holidays_dict[date(year, 12, 24) + timedelta(days=day)] = "Christmas Holidays"
-                
+
         public_holidays_timestamps = [pd.Timestamp(date, tzinfo=pytz.utc) for date in public_holidays_dict.keys()]
 
         return loadProfiles, weatherData, public_holidays_timestamps
 
 if __name__ == "__main__":
-    
+
     # Parse the optional cmd-line-arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=['default', 'ci'], default='default')
     mode = parser.parse_args().mode
-    
+
     # Load the simulations configs
     if mode == 'default':
         configs = simulation_config.configs
     else:
         configs = simulation_config.configs_for_the_ci
-    
+
     # Run the simulation
     ModelTrainer().run(configs)

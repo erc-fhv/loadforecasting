@@ -1,5 +1,6 @@
-import torch
+from typing import Optional, Callable
 import numpy as np
+import torch
 from loadforecasting_models.interfaces import ModelAdapterProtocol
 
 class Persistence:
@@ -8,18 +9,21 @@ class Persistence:
     """
 
     def __init__(self,
+            lagged_load_feature: int,
             model_adapter: ModelAdapterProtocol,
             ) -> None:
         """
         Args:
             model_adapter (ModelAdapterProtocol): Custom model adapter, especially
                 used for X and Y normalization and denormalization.
+            lagged_load_feature (int): The feature index in the input tensor
+                that contains the lagged load to be used for prediction.
         """
         self.model_adapter = model_adapter
+        self.lagged_load_feature = lagged_load_feature
 
     def predict(self,
             x: torch.Tensor,
-            lagged_load_feature: int,
             ) -> torch.Tensor:
         """
         Upcoming load profile = load profile 7 days ago.
@@ -28,18 +32,16 @@ class Persistence:
             x (torch.Tensor): Normalised model input tensor of shape (batch_len, 
                 sequence_len, features), where the feature at index `lagged_load_feature`
                 contains the lagged load values.
-            lagged_load_feature (int): The feature index in the input tensor
-                that contains the lagged load to be used for prediction.
 
         Returns:
             torch.Tensor: Predicted y tensor of shape (batch_len, sequence_len, 1).
         """
-
+        
         x = self.model_adapter.de_normalize_x(x)    # de-normalize all inputs
 
         # Take the chosen lagged loads as predictions
         #
-        y_pred = x[:,:, lagged_load_feature]
+        y_pred = x[:,:, self.lagged_load_feature]
 
         # Add axis and normalize y_pred again, to compare it to other models.
         #
@@ -57,6 +59,41 @@ class Persistence:
         history['loss'] = [0.0]
 
         return history
+
+    def evaluate(
+        self,
+        x_test: torch.Tensor,
+        y_test: torch.Tensor,
+        results: dict | None = None,
+        de_normalize: bool = False,
+        eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
+        ) -> dict:
+        """
+        Evaluate the model on the given x_test and y_test.
+        """
+
+        if results is None:
+            results = {}
+
+        output = self.predict(x_test)
+
+        assert output.shape == y_test.shape, \
+            f"Shape mismatch: got {output.shape}, expected {y_test.shape})"
+
+        # Unnormalize the target variable, if wished.
+        if de_normalize:
+            assert self.model_adapter is not None, "No model_adapter given."
+            y_test = self.model_adapter.de_normalize_y(y_test)
+            output = self.model_adapter.de_normalize_y(output)
+
+        # Compute Loss
+        loss = eval_fn(output, y_test)
+        results['test_loss'] = [loss.item()]
+        reference = float(torch.mean(y_test))
+        results['test_loss_relative'] = [100.0*loss.item()/reference]            
+        results['predicted_profile'] = output
+
+        return results
 
     def state_dict(self) -> dict:
         """No persistent parameter needed for this trivial model."""

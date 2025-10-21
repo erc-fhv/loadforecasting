@@ -23,7 +23,7 @@ class KNN():
         self.x_train = torch.Tensor([])
         self.y_train = torch.Tensor([])
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def predict(self, x: torch.Tensor) -> torch.Tensor:
         """
         Given an input x, find the closest neighbors from the training data x_train
         and return the corresponding y_train.

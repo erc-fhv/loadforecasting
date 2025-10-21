@@ -29,11 +29,12 @@ class CustomLRScheduler:
         self.optimizer = optimizer
         self.set_learning_rates = set_learning_rates
         self.max_epochs = max_epochs
-        self.lr_switching_points = np.flip(np.linspace(1, 0, len(self.set_learning_rates), endpoint=False))
+        self.lr_switching_points = np.flip(np.linspace(1, 0, len(self.set_learning_rates),
+            endpoint=False))
 
     def adjust_learning_rate(self, epoch):
         """Adjust the learning rate based on the current epoch."""
-        
+
         # Calculate the progress through the epochs (0 to 1)
         progress = epoch / self.max_epochs
 

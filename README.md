@@ -32,9 +32,9 @@ The repository is organized as follows:
 │   
 ├── src/      
 │   ├── loadforecasting_models/       # All forecasting models
-│   │   ├── Model.py                  # Unified model wrapper
+|   │   ├── pyproject.toml            # Description of the 'loadforecasting_models' package
 │   │   └── *.py                      # Implementations of deep learning & baseline models
-│   │         
+│   │
 │   ├── loadforecasting_framework/    # Evaluation framework and visualization
 │   │   ├── Simulation_config.py      # Config file for simulation runs
 │   │   ├── ModelTrainer.py           # Training and evaluation loop
@@ -45,7 +45,7 @@ The repository is organized as follows:
 ├── tests/                            # Automated unit and integration tests
 │   └── *.py
 |
-├── pyproject.toml                    # Description of the 'loadforecasting_models' packet
+├── pyproject.toml                    # Description of the 'loadforecasting_framework' package
 ├── LICENCE
 └── README.md
 ```
@@ -72,15 +72,6 @@ The main parts of the evaluation framework are connected as follows:
 | # Parameterize the run      +-----------+ # Trains all models          |
 | # loop.                     |           | # accord to the config.      |
 +-----------------------------+           +------------+-----------------+
-                                                       |
-                                                       |
-                                          +------------+-----------------+
-                                          | Model                        |
-                                          |------------------------------|
-                                          | my_model: (xLSTM to KNN)     |
-                                          | + train_model()              |
-                                          | + evaluate()                 |
-                                          +------------+-----------------+
                                                        |            
                                                        |                 
        +-----------------+-------------+---------------+-----------------+
@@ -141,6 +132,11 @@ The entire paper can be reproduced by following these steps.
     ```bash
     conda env create --name load_forecasting --file=envs/env_linux.yml -y
     conda activate load_forecasting
+
+1. Install the local packages
+    ```bash
+    # From the project root
+    pip install -e .
     ```
 
 1. Train the models:

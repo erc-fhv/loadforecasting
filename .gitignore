@@ -11,3 +11,4 @@ data/Smartmeter data of London Households/
 **/dist/*
 **/loadforecasting_models.egg-info/*
 envs/condaenv*
+**/loadforecasting_framework.egg-info/*
