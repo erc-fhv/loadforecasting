@@ -1,19 +1,18 @@
 from typing import Optional, Callable, Sequence
 import torch
-from torch import nn
 from loadforecasting_models.pytorch_helpers import PytorchHelper
 from loadforecasting_models.interfaces import ModelAdapterProtocol
 
 class LSTM(torch.nn.Module):
     """
-    LSTM model.
+    LSTM model for timeseries prediction.
     """
 
     def __init__(
         self,
         model_size: int,
         num_of_features: int,
-        loss_fn: Optional[Callable[..., torch.Tensor]] = nn.L1Loss(),
+        loss_fn: Optional[Callable[..., torch.Tensor]] = torch.nn.L1Loss(),
         model_adapter: Optional[ModelAdapterProtocol] = None,
         ) -> None:
         """
@@ -22,7 +21,7 @@ class LSTM(torch.nn.Module):
                 '2k', '5k', '10k', '20k', '40k', '80k'.
             num_of_features (int): Number of model input features.
             loss_fn (Callable[..., torch.Tensor]): Loss function to be used during 
-                training. E.g., nn.L1Loss(), nn.MSELoss(), pytorch_helpers.smape, ...
+                training. E.g., torch.nn.L1Loss(), torch.nn.MSELoss(), pytorch_helpers.smape, ...
             model_adapter (ModelAdapterProtocol, optional): Custom model adapter, especially
                 used for X and Y normalization and denormalization.    
         """
@@ -32,7 +31,7 @@ class LSTM(torch.nn.Module):
         self.loss_fn = loss_fn
         self.model_adapter = model_adapter
 
-        # Define the LSTM size
+        # LSTM configuration based on model size
         if model_size == "0.1k":
             bidirectional=False
             hidden_dimension_lstm1 = 1
@@ -101,17 +100,32 @@ class LSTM(torch.nn.Module):
         else:
             bidirectional_factor = 1
 
-        self.lstm1 = torch.nn.LSTM(input_size=num_of_features, hidden_size=hidden_dimension_lstm1, batch_first=True, bidirectional=bidirectional)
-        self.lstm2 = torch.nn.LSTM(input_size=hidden_dimension_lstm1*bidirectional_factor, hidden_size=hidden_dimension_lstm2, batch_first=True, bidirectional=bidirectional)
+        self.lstm1 = torch.nn.LSTM(input_size=num_of_features, hidden_size=hidden_dimension_lstm1,
+                                   batch_first=True, bidirectional=bidirectional)
+        self.lstm2 = torch.nn.LSTM(input_size=hidden_dimension_lstm1*bidirectional_factor,
+                                   hidden_size=hidden_dimension_lstm2, batch_first=True,
+                                   bidirectional=bidirectional)
 
         # Adding additional dense layers
         self.activation = torch.nn.ReLU()
-        self.dense1 = torch.nn.Linear(hidden_dimension_lstm2*bidirectional_factor, hidden_dimension_dense1)
+        self.dense1 = torch.nn.Linear(hidden_dimension_lstm2*bidirectional_factor,
+                                      hidden_dimension_dense1)
         self.dense2 = torch.nn.Linear(hidden_dimension_dense1, hidden_dimension_dense2)
         self.output_layer = torch.nn.Linear(hidden_dimension_dense2, 1)
 
         # Setup Pytorch helper for training and evaluation
         self.my_pytorch_helper = PytorchHelper(self)
+
+    def forward(self, x) -> torch.Tensor:
+        """Model forward pass."""
+
+        x, _ = self.lstm1(x.float())
+        x, _ = self.lstm2(x)
+        x = self.activation(self.dense1(x))
+        x = self.activation(self.dense2(x))
+        x = self.output_layer(x)
+
+        return x
 
     def train_model(
         self,
@@ -129,16 +143,21 @@ class LSTM(torch.nn.Module):
         """
         Train this model.
         Args:
-            X_train (torch.Tensor): Training input features of shape (batch_len, sequence_len, features).
+            X_train (torch.Tensor): Training input features of shape (batch_len, sequence_len, 
+                features).
             Y_train (torch.Tensor): Training labels of shape (batch_len, sequence_len, 1).
-            X_dev (torch.Tensor, optional): Validation input features of shape (batch_len, sequence_len, features).
-            Y_dev (torch.Tensor, optional): Validation labels of shape (batch_len, sequence_len, 1).
+            X_dev (torch.Tensor, optional): Validation input features of shape (batch_len, 
+                sequence_len, features).
+            Y_dev (torch.Tensor, optional): Validation labels of shape (batch_len, 
+                sequence_len, 1).
             pretrain_now (bool): Whether to run a pretraining phase.
             finetune_now (bool): Whether to run fine-tuning.
             epochs (int): Number of training epochs.
             learning_rates (Sequence[float], optional): Learning rates schedule.
             batch_size (int): Batch size for training.
             verbose (int): Verbosity level.
+        Returns:
+            dict: Training history containing loss values.
         """
 
         if x_dev is None:
@@ -161,17 +180,6 @@ class LSTM(torch.nn.Module):
             )
 
         return history
-
-    def forward(self, x) -> torch.Tensor:
-        """Model forward pass."""
-
-        x, _ = self.lstm1(x.float())
-        x, _ = self.lstm2(x)
-        x = self.activation(self.dense1(x))
-        x = self.activation(self.dense2(x))
-        x = self.output_layer(x)
-
-        return x
 
     def predict(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -213,7 +221,6 @@ class LSTM(torch.nn.Module):
             )
 
         return results
-
 
     def get_nr_of_parameters(self, do_print=True):
         """

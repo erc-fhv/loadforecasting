@@ -231,7 +231,7 @@ class PositionalEncoding(nn.Module):
     """
 
     def __init__(self, d_model, timesteps=5000):
-        super(PositionalEncoding, self).__init__()
+        super().__init__()
 
         pe = torch.zeros(timesteps, d_model)  # [timesteps, d_model]
         position = torch.arange(0, timesteps, dtype=torch.float).unsqueeze(1)  # [timesteps, 1]
@@ -254,3 +254,36 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe
 
         return x
+
+
+class PositionalEncoding(nn.Module):
+    """    
+    Implements sinusoidal positional encoding as used in Transformer models.
+
+    Positional encodings provide information about the relative or absolute position
+    of tokens in a sequence, allowing the model to capture order without recurrence.
+
+    This implementation is adapted from:
+    https://stackoverflow.com/questions/77444485/using-positional-encoding-in-pytorch
+    or respectively:
+    https://pytorch-tutorials-preview.netlify.app/beginner/transformer_tutorial.html
+    """
+
+    def __init__(self, d_model: int, dropout: float = 0.0, max_len: int = 5000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Arguments:
+            x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+        """
+        x = x + self.pe[:x.size(0)]
+        return self.dropout(x)

@@ -1,28 +1,42 @@
+from typing import Callable, Literal
 from sklearn.neighbors import KNeighborsRegressor
 import torch
-from loadforecasting_models.interfaces import KnnModelInitParams, KnnTrainParams
 
 class KNN():
+    """
+    KNN model for timeseries prediction.
+    """
 
     def __init__(
         self,
-        params: KnnModelInitParams
+        k: int = 40,
+        weights: Literal['uniform', 'distance'] | Callable = 'distance',
         ) -> None:
+        """
+        Args:
+            k: Number of neighbors to use.
+            weights: Weight function used in prediction. Possible 
+                values: 'uniform', 'distance' or a callable distance function.
+        """
 
-        self.knn = KNeighborsRegressor(n_neighbors = params.k, weights=params.weights)
+        self.knn = KNeighborsRegressor(n_neighbors = k, weights=weights)
         self.x_train = torch.Tensor([])
         self.y_train = torch.Tensor([])
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Given an input x, find the closest neighbors from the training data x_train
         and return the corresponding y_train.
+        Args:
+            x: Input features of shape (batch_len, sequence_len, features).
+        Returns:
+            torch.Tensor: Predicted y tensor of shape (batch_len, sequence_len, 1).
         """
 
         # Prediction on new hourly data
         #
         batches, timesteps, num_features = x.shape
-        x_hourly = x.view(batches * timesteps, num_features)
+        x_hourly = x.view(batches * timesteps, num_features).numpy()
         y_pred = self.knn.predict(x_hourly)
         y_pred = torch.tensor(y_pred).view(batches, timesteps, 1)
 
@@ -30,12 +44,21 @@ class KNN():
 
     def train_model(
         self,
-        params: KnnTrainParams
+        x_train: torch.Tensor,
+        y_train: torch.Tensor,
         ) -> dict:
-        """For our KNN model the training means just to store the training data."""
+        """
+        Train this model.
+        Args:
+            X_train (torch.Tensor): Training input features of shape (batch_len, sequence_len, 
+                features).
+            Y_train (torch.Tensor): Training labels of shape (batch_len, sequence_len, 1).
+        Returns:
+            dict: Training history containing loss values.
+        """
 
-        self.x_train = params.x_train
-        self.y_train = params.y_train
+        self.x_train = x_train
+        self.y_train = y_train
         self.knn_fit()
         history = {}
         history['loss'] = [0.0]
@@ -46,8 +69,8 @@ class KNN():
         """Fit the model with hourly training data."""
 
         batches, timesteps, num_features = self.x_train.shape
-        x_hourly = self.x_train.view(batches * timesteps, num_features)
-        y_hourly = self.y_train.view(batches * timesteps, 1)
+        x_hourly = self.x_train.view(batches * timesteps, num_features).numpy()
+        y_hourly = self.y_train.view(batches * timesteps, 1).numpy()
         self.knn.fit(x_hourly, y_hourly)
 
     def state_dict(self):

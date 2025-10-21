@@ -1,29 +1,23 @@
 import torch
-from loadforecasting_models.interfaces import ModelParams, PerfectPredictionParams
 
 class Perfect():
     """
     Trivial 'model': Just gets and returns the perfect profile (used for reference).
     """
 
-    def __init__(self,
-                 params: ModelParams
-                 ) -> None:
+    def __init__(self) -> None:
         pass
 
     def forward(self,
-                params: PerfectPredictionParams
+                y_real: torch.Tensor
                 ) -> torch.Tensor:
         """Gets and return the perfect profile."""
 
-        y_pred = params.y_real
+        y_pred = y_real
 
         return y_pred
 
-    def train_model(
-        self,
-        params: ModelParams
-        ) -> dict:
+    def train_model(self) -> dict:
         """No training necessary for the perfect model."""
 
         history = {}

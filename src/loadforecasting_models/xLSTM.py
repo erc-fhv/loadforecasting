@@ -1,3 +1,4 @@
+from typing import Optional, Callable, Sequence
 import torch
 from xlstm import (
     xLSTMBlockStack,
@@ -8,11 +9,8 @@ from xlstm import (
     sLSTMLayerConfig,
     FeedForwardConfig,
 )
-from loadforecasting_models.interfaces import (
-    MachineLearningModelInitParams,
-    MachineLearningModelTrainParams,
-    MachineLearningPredictionParams, )
 from loadforecasting_models.pytorch_helpers import PytorchHelper, PositionalEncoding
+from loadforecasting_models.interfaces import ModelAdapterProtocol
 
 
 class xLSTM(torch.nn.Module):
@@ -20,11 +18,27 @@ class xLSTM(torch.nn.Module):
 
     def __init__(
         self,
-        params: MachineLearningModelInitParams,
+        model_size: int,
+        num_of_features: int,
+        loss_fn: Optional[Callable[..., torch.Tensor]] = torch.nn.L1Loss(),
+        model_adapter: Optional[ModelAdapterProtocol] = None,
         ) -> None:
-        
+        """
+        Args:
+            model_size (str): The model parameter count, e.g. '0.1k', '0.2k', '0.5k', '1k',
+                '2k', '5k', '10k', '20k', '40k', '80k'.
+            num_of_features (int): Number of model input features.
+            loss_fn (Callable[..., torch.Tensor]): Loss function to be used during 
+                training. E.g., torch.nn.L1Loss(), torch.nn.MSELoss(), pytorch_helpers.smape, ...
+            model_adapter (ModelAdapterProtocol, optional): Custom model adapter, especially
+                used for X and Y normalization and denormalization.    
+        """
+
         super().__init__()
-        
+
+        self.loss_fn = loss_fn
+        self.model_adapter = model_adapter
+
         # The following xLSTM config variables are overtaken from the xLSTM authors
         conv1d_kernel_size=4
         num_heads=4
@@ -33,59 +47,59 @@ class xLSTM(torch.nn.Module):
         num_blocks=7
         slstm_at=[1]
 
-        # Finetune the XLSTM config variables
-        if params.model_size == "0.1k":
+        # Finetune the XLSTM config variables based on model size
+        if model_size == "0.1k":
             num_blocks=1
             num_heads=1
             d_model=1
             slstm_at=[0]
-        elif  params.model_size == "0.2k":
+        elif  model_size == "0.2k":
             num_blocks=1
             num_heads=1
             d_model=1
             slstm_at=[0]
-        elif params.model_size == "0.5k":
+        elif model_size == "0.5k":
             num_blocks=1
             num_heads=2
             d_model=2
             slstm_at=[0]
-        elif params.model_size == "1k":
+        elif model_size == "1k":
             num_blocks=1
             num_heads=2
             d_model=4
             slstm_at=[0]
-        elif params.model_size == "2k":
+        elif model_size == "2k":
             num_blocks=1
             num_heads=4
             d_model=8
             slstm_at=[0]
-        elif params.model_size == "5k":
+        elif model_size == "5k":
             num_blocks=2
             num_heads=4
             d_model=8
             slstm_at=[1]
-        elif params.model_size == "10k":
+        elif model_size == "10k":
             num_blocks=2
             num_heads=4
             d_model=16
             slstm_at=[1]
-        elif params.model_size == "20k":
+        elif model_size == "20k":
             num_blocks=2
             num_heads=4
             d_model=32
             slstm_at=[1]
-        elif params.model_size == "40k":
+        elif model_size == "40k":
             num_blocks=4
             num_heads=4
             d_model=32
             slstm_at=[1]
-        elif params.model_size == "80k":
+        elif model_size == "80k":
             num_blocks=4
             num_heads=8
             d_model=40
             slstm_at=[1]
         else:
-            assert False, f"Unimplemented params.model_size parameter given: {params.model_size}"
+            assert False, f"Unimplemented model_size parameter given: {model_size}"
 
         # Configuration for the xLSTM Block
         self.cfg = xLSTMBlockStackConfig(
@@ -111,31 +125,116 @@ class xLSTM(torch.nn.Module):
         self.xlstm_stack = xLSTMBlockStack(self.cfg)
 
         # Adding none-xlstm layers
-        self.input_projection = torch.nn.Linear(params.num_of_features, d_model)
-        self.positional_encoding = PositionalEncoding(d_model, timesteps=params.forecast_horizon)
+        self.input_projection = torch.nn.Linear(num_of_features, d_model)
+        self.positional_encoding = PositionalEncoding(d_model)
         self.output_layer = torch.nn.Linear(d_model, 1)
 
-    def train_model(
-        self,
-        params: MachineLearningModelTrainParams
-        ) -> dict:
-        """Train this model."""
+        # Setup Pytorch helper for training and evaluation
+        self.my_pytorch_helper = PytorchHelper(self)
 
-        history = PytorchHelper.train(self, params)
-
-        return history
-
-    def forward(
-        self,
-        params: MachineLearningPredictionParams
-        ) -> torch.Tensor:
+    def forward(self, x) -> torch.Tensor:
         """Model forward pass."""
 
-        x = self.input_projection(params.x.float())
+        x = self.input_projection(x.float())
         x = self.positional_encoding(x)
         x = self.xlstm_stack(x)
         x = self.output_layer(x)
         return x
+
+    def train_model(
+        self,
+        x_train: torch.Tensor,
+        y_train: torch.Tensor,
+        x_dev: Optional[torch.Tensor] = None,
+        y_dev: Optional[torch.Tensor] = None,
+        pretrain_now: bool = False,
+        finetune_now: bool = True,
+        epochs: int = 100,
+        learning_rates: Optional[Sequence[float]] = None,
+        batch_size: int = 256,
+        verbose: int = 0,
+        ) -> dict:
+        """
+        Train this model.
+        Args:
+            X_train (torch.Tensor): Training input features of shape (batch_len, sequence_len, 
+                features).
+            Y_train (torch.Tensor): Training labels of shape (batch_len, sequence_len, 1).
+            X_dev (torch.Tensor, optional): Validation input features of shape (batch_len, 
+                sequence_len, features).
+            Y_dev (torch.Tensor, optional): Validation labels of shape (batch_len, 
+                sequence_len, 1).
+            pretrain_now (bool): Whether to run a pretraining phase.
+            finetune_now (bool): Whether to run fine-tuning.
+            epochs (int): Number of training epochs.
+            learning_rates (Sequence[float], optional): Learning rates schedule.
+            batch_size (int): Batch size for training.
+            verbose (int): Verbosity level.
+        Returns:
+            dict: Training history containing loss values.
+        """
+
+        if x_dev is None:
+            x_dev = torch.Tensor([])
+        if y_dev is None:
+            y_dev = torch.Tensor([])
+        if learning_rates is None:
+            learning_rates = [0.01, 0.005, 0.001, 0.0005]
+
+        history = self.my_pytorch_helper.train(
+            x_train,
+            y_train,
+            x_dev,
+            y_dev,
+            pretrain_now,
+            finetune_now,
+            epochs,
+            learning_rates,
+            batch_size, verbose,
+            )
+
+        return history
+
+    def predict(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Predict y from the given x.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_len, sequence_len, features) 
+                containing the features for which predictions are to be made.
+                
+        Returns:
+            torch.Tensor: Predicted y tensor of shape (batch_len, sequence_len, 1).
+        """
+
+        self.my_model.eval()
+        with torch.no_grad():
+            y = self.my_model(x)
+
+        return y
+
+    def evaluate(
+        self,
+        x_test: torch.Tensor,
+        y_test: torch.Tensor,
+        results: Optional[dict] = None,
+        de_normalize: bool = False,
+        ) -> dict:
+        """
+        Evaluate the model on the given x_test and y_test.
+        """
+
+        if results is None:
+            results = {}
+
+        results = self.my_pytorch_helper.evaluate(
+            x_test,
+            y_test,
+            results,
+            de_normalize,
+            )
+
+        return results
 
     def get_nr_of_parameters(self, do_print=True):
         """
