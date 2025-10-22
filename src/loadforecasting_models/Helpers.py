@@ -1,11 +1,10 @@
 """
-This module contains common code for the (pytorch) machine learning models.
+This module contains common (mainly pytorch) code for the machine learning models.
 """
 
 import os
 from typing import Sequence
 import numpy as np
-import math
 import torch
 from torch import nn
 from torch import optim
@@ -288,3 +287,6 @@ class PositionalEncoding(nn.Module):
         """
         x = x + self.pe[:x.size(0)]
         return self.dropout(x)
+
+
+

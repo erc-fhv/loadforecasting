@@ -1,6 +1,6 @@
 from typing import Optional, Callable, Sequence
 import torch
-from loadforecasting_models.pytorch_helpers import PytorchHelper, PositionalEncoding
+from loadforecasting_models.Helpers import PytorchHelper, PositionalEncoding
 from loadforecasting_models.interfaces import ModelAdapterProtocol
 
 

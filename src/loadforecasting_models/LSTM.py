@@ -1,6 +1,6 @@
 from typing import Optional, Callable, Sequence
 import torch
-from loadforecasting_models.pytorch_helpers import PytorchHelper
+from loadforecasting_models.Helpers import PytorchHelper
 from loadforecasting_models.interfaces import ModelAdapterProtocol
 
 class LSTM(torch.nn.Module):

@@ -36,4 +36,3 @@ class ModelAdapterProtocol(Protocol):
         ) -> torch.Tensor:
         """De-Normalizes X."""
         ...
-
