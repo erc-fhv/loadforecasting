@@ -1,6 +1,7 @@
 from typing import Callable, Literal
 from sklearn.neighbors import KNeighborsRegressor
 import torch
+from loadforecasting_models.interfaces import ModelAdapterProtocol
 
 class KNN():
     """
@@ -9,19 +10,23 @@ class KNN():
 
     def __init__(
         self,
-        k: int = 40,
+        k: int,
         weights: Literal['uniform', 'distance'] | Callable = 'distance',
+            model_adapter: ModelAdapterProtocol | None = None,
         ) -> None:
         """
         Args:
-            k: Number of neighbors to use.
+            k (int): Number of neighbors to use.
             weights: Weight function used in prediction. Possible 
                 values: 'uniform', 'distance' or a callable distance function.
+            model_adapter (ModelAdapterProtocol): Custom model adapter, especially
+                used for X and Y normalization and denormalization.
         """
 
         self.knn = KNeighborsRegressor(n_neighbors = k, weights=weights)
         self.x_train = torch.Tensor([])
         self.y_train = torch.Tensor([])
+        self.model_adapter = model_adapter
 
     def predict(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -72,6 +77,41 @@ class KNN():
         x_hourly = self.x_train.view(batches * timesteps, num_features).numpy()
         y_hourly = self.y_train.view(batches * timesteps, 1).numpy()
         self.knn.fit(x_hourly, y_hourly)
+
+    def evaluate(
+        self,
+        x_test: torch.Tensor,
+        y_test: torch.Tensor,
+        results: dict | None = None,
+        de_normalize: bool = False,
+        eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
+        ) -> dict:
+        """
+        Evaluate the model on the given x_test and y_test.
+        """
+
+        if results is None:
+            results = {}
+
+        output = self.predict(x_test)
+
+        assert output.shape == y_test.shape, \
+            f"Shape mismatch: got {output.shape}, expected {y_test.shape})"
+
+        # Unnormalize the target variable, if wished.
+        if de_normalize:
+            assert self.model_adapter is not None, "No model_adapter given."
+            y_test = self.model_adapter.de_normalize_y(y_test)
+            output = self.model_adapter.de_normalize_y(output)
+
+        # Compute Loss
+        loss = eval_fn(output, y_test)
+        results['test_loss'] = [loss.item()]
+        reference = float(torch.mean(y_test))
+        results['test_loss_relative'] = [100.0*loss.item()/reference]            
+        results['predicted_profile'] = output
+
+        return results
 
     def state_dict(self):
         """Store the persistent parameters of this model."""

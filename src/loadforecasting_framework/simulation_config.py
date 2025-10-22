@@ -2,6 +2,7 @@
 #
 
 from collections import namedtuple
+from loadforecasting_models import KNN, Persistence, xLSTM, LSTM, Transformer, Perfect
 
 class DoPretraining():
     YES = True      # <= Baseline
@@ -57,9 +58,9 @@ class TrainingFuture():
     _3_MONTH = 92
     _6_MONTH = 183
     _9_MONTH = 275
-    
+
 class UsedModels():
-    ALL = ('Perfect', 'KNN', 'Persistence', 'xLSTM', 'LSTM', 'Transformer')
+    ALL = (Perfect, KNN, Persistence, xLSTM, LSTM, Transformer)
 
 class Epochs():
     SMOKE_TEST = 1

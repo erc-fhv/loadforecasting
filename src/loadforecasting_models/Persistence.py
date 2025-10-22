@@ -14,10 +14,10 @@ class Persistence:
             ) -> None:
         """
         Args:
-            model_adapter (ModelAdapterProtocol): Custom model adapter, especially
-                used for X and Y normalization and denormalization.
             lagged_load_feature (int): The feature index in the input tensor
                 that contains the lagged load to be used for prediction.
+            model_adapter (ModelAdapterProtocol): Custom model adapter, especially
+                used for X and Y normalization and denormalization.
         """
         self.model_adapter = model_adapter
         self.lagged_load_feature = lagged_load_feature
@@ -36,7 +36,7 @@ class Persistence:
         Returns:
             torch.Tensor: Predicted y tensor of shape (batch_len, sequence_len, 1).
         """
-        
+
         x = self.model_adapter.de_normalize_x(x)    # de-normalize all inputs
 
         # Take the chosen lagged loads as predictions
@@ -64,7 +64,7 @@ class Persistence:
         self,
         x_test: torch.Tensor,
         y_test: torch.Tensor,
-        results: dict | None = None,
+        results: Optional[dict] = None,
         de_normalize: bool = False,
         eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
         ) -> dict:

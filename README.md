@@ -81,7 +81,9 @@ The main parts of the evaluation framework are connected as follows:
 | KNN         | | Persistence | | xLSTM       | | LSTM        | | Transformer |
 |             | |             | |             | |             | |             |
 |-------------| |-------------| |-------------| |-------------| |-------------|
-| + forward() | | + forward() | | + forward() | | + forward() | | + forward() |
+|train_model()| |train_model()| |train_model()| |train_model()| |train_model()|
+|predict()    | |predict()    | |predict()    | |predict()    | |predict()    |
+|evaluate()   | |evaluate()   | |evaluate()   | |evaluate()   | |evaluate()   |
 +-------------+ +-------------+ +-------------+ +-------------+ +-------------+
 
 ```

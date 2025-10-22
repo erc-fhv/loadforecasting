@@ -7,12 +7,13 @@ import pandas as pd
 import holidays
 import pytz
 from demandlib import bdew
+import torch
 
 from loadforecasting_framework import simulation_config
 from loadforecasting_framework.model_adapter import ModelAdapter
 from loadforecasting_framework import utils
 from loadforecasting_framework import import_weather_data
-import loadforecasting_models
+from loadforecasting_models import KNN, Persistence, xLSTM, LSTM, Transformer, Perfect
 
 
 class ModelTrainer:
@@ -23,29 +24,30 @@ class ModelTrainer:
     def __init__(self):
         self.test_set_size_days = 131    # Size of the testset is fixed to 131 days ~ 4 month
 
-    def run(self, configs):
+    def run(self, my_configs):
 
         # Run every single config
         all_train_histories, all_trained_models = {}, {}
-        for act_sim_config_index, act_sim_config in enumerate(configs):
+        for act_sim_config_index, act_sim_config in enumerate(my_configs):
 
             # Fetch and prepare all needed data
-            loadprofiles = self.preprocess_data(configs, act_sim_config_index)
+            loadprofiles = self.preprocess_data(my_configs, act_sim_config_index)
 
             # Train and test the given models
-            act_sim_config = configs[act_sim_config_index]
+            act_sim_config = my_configs[act_sim_config_index]
             results = []
             for model_type in act_sim_config.usedModels:
                 for load_profile in loadprofiles:
-                    result = self.optimize_model(model_type, load_profile, configs, act_sim_config_index)
+                    result = self.optimize_model(model_type, load_profile, my_configs,
+                        act_sim_config_index)
                     results.append(result)
 
             # Store the results into dicts
-            model_types, load_profiles, sim_configs, histories, returnedModels = zip(*results)
-            for i in range(len(model_types)):
+            model_types, load_profiles, sim_configs, histories, returned_models = zip(*results)
+            for i, _ in enumerate(model_types):
                 result_key = (model_types[i], load_profiles[i], sim_configs[i])
                 all_train_histories[result_key] = histories[i]
-                all_trained_models[result_key] = returnedModels[i]
+                all_trained_models[result_key] = returned_models[i]
 
         # Persist all results
         utils.Serialize.store_results_with_pickle(all_train_histories)
@@ -54,31 +56,53 @@ class ModelTrainer:
         return
 
     # Do Model training and evaluation
-    # 
+    #
     def optimize_model(self, model_type, load_profile, configs, act_sim_config_index):
-        
-        print(f"\nProcessing model {model_type} with load profile {load_profile} and sim_config {act_sim_config_index+1}/{len(configs)}.", flush=True)
+        """
+        Train and evaluate the given model_type on the given load_profile.
+        """
+
+        print(f"\nProcessing model {model_type} with load profile {load_profile} and sim_config \
+            {act_sim_config_index+1}/{len(configs)}.", flush=True)
 
         # Load a new powerprofile
         with open(load_profile, 'rb') as f:
-            (X, Y, modelAdapter) = pickle.load(f)
+            (x, y, model_adapter) = pickle.load(f)
 
         # Train and evaluate the model
         sim_config = configs[act_sim_config_index]
-        num_of_features = X['train'].shape[2]
-        myModel = loadforecasting_models.model(model_type, sim_config.modelSize, num_of_features, modelAdapter=modelAdapter)
-        history = myModel.train_model(X['train'], Y['train'], pretrain_now=False,
-                                    finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
-        history = myModel.evaluate(X['test'], Y['test'], results=history, deNormalize=True)
-        
-        # Return the results
-        return (model_type, load_profile, sim_config, history, myModel.my_model)
+        num_of_features = x['train'].shape[2]
+
+        # Initialize, train and evaluate the given model
+        if model_type is KNN:
+            my_model = model_type(k=40, weights = 'distance', model_adapter=model_adapter)
+            history = my_model.train_model(x['train'], y['train'])
+            history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
+        elif model_type is Persistence:
+            my_model = model_type(lagged_load_feature=11, model_adapter=model_adapter)
+            history = my_model.train_model()
+            history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
+        elif model_type is Perfect:
+            my_model = model_type(model_adapter=model_adapter)
+            history = my_model.train_model()
+            history = my_model.evaluate(y['test'], results=history, de_normalize=True)
+        elif model_type in (xLSTM, LSTM, Transformer):
+            my_model = model_type(sim_config.modelSize, num_of_features, model_adapter=model_adapter)
+            history = my_model.train_model(x['train'], y['train'], pretrain_now=False,
+                finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
+            history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
+        else:
+            assert False, f"Unimplemented model_type given: {model_type}"
+
+        ret_tuple = (model_type, load_profile, sim_config, history, my_model)
+        return ret_tuple
 
     def preprocess_data(self, configs, act_sim_config_index):
         
         sim_config = configs[act_sim_config_index]
         if sim_config.epochs <= 5:
-            print(f"WARNING: Only {sim_config.epochs} epochs chosen. Please check, if this really fits your needs.")
+            print(f"WARNING: Only {sim_config.epochs} epochs chosen. Please check, if this really \
+                fits your needs.")
         print(f"\n\nDo Data Preprocessing for run config={sim_config}.", flush=True)
         
         loadProfiles, weatherData, public_holidays_timestamps = self.load_data(sim_config)
@@ -87,16 +111,16 @@ class ModelTrainer:
         #
         loadProfiles_filenames = []
         for i, powerProfile in enumerate(loadProfiles[:sim_config.nrOfComunities]):
-            
+
             # Preprocess data to get X and Y for the model
-            modelAdapter = ModelAdapter(public_holidays_timestamps, 
+            modelAdapter = ModelAdapter(public_holidays_timestamps,
                                             trainHistory = sim_config.trainingHistory,
-                                            testSize = sim_config.testSize, 
-                                            trainFuture = sim_config.trainingFuture, 
-                                            devSize = sim_config.devSize, 
+                                            testSize = sim_config.testSize,
+                                            trainFuture = sim_config.trainingFuture,
+                                            devSize = sim_config.devSize,
                                             )
-            X, Y = modelAdapter.transformData(powerProfile, weatherData)            
-            
+            X, Y = modelAdapter.transformData(powerProfile, weatherData)
+
             output_path = os.path.join(os.path.dirname(__file__), 'outputs', 'file_' + str(i) + '.pkl')
             with open(output_path, 'wb') as file:
                 pickle.dump((X, Y, modelAdapter), file)
@@ -107,7 +131,8 @@ class ModelTrainer:
         startDate = loadProfiles[0].index[0].to_pydatetime().replace(tzinfo=None)
         endDate = loadProfiles[0].index[-1].to_pydatetime().replace(tzinfo=None)
         for year in range(startDate.year, endDate.year + 1):
-            load_profile = bdew.ElecSlp(year, holidays=public_holidays_timestamps).get_profile({"h0": 1000})
+            load_profile = bdew.ElecSlp(year, holidays=public_holidays_timestamps)\
+                .get_profile({"h0": 1000})
             standard_loadprofiles.append(load_profile)
         all_standard_loadprofiles = pd.concat(standard_loadprofiles)['h0']
         all_standard_loadprofiles = all_standard_loadprofiles[(all_standard_loadprofiles.index >= startDate)
@@ -125,23 +150,28 @@ class ModelTrainer:
         pretraining_filename = os.path.join(os.path.dirname(__file__), 'outputs', 'standard_loadprofile.pkl')
         with open(pretraining_filename, 'wb') as file:
             pickle.dump((X, Y, modelAdapter), file)
-        
+
         # If required, do pretraining
         if sim_config.doPretraining:
-            
-            # Do model pretraining
+
             for model_type in sim_config.usedModels:
-                print(f"\nPretraining {model_type} model and and sim_config {act_sim_config_index+1}/{len(configs)}.", flush=True)
-                num_of_features = X['all'].shape[2]
-                myModel = loadforecasting_models.model(model_type, sim_config.modelSize, num_of_features)
-                myModel.train_model(X['all'], Y['all'], pretrain_now=True, 
-                                    finetune_now=False, epochs=sim_config.epochs)
+                if issubclass(model_type, torch.nn.Module):
+                    print(f"\nPretraining {model_type} model and and sim_config \
+                        {act_sim_config_index+1}/{len(configs)}.", flush=True)
+                    num_of_features = X['all'].shape[2]
+                    my_model = model_type(sim_config.modelSize, num_of_features)                    
+                    my_model.train_model(X['all'], Y['all'], pretrain_now=True,
+                        finetune_now=False, epochs=sim_config.epochs)
+                else:
+                    print(f"\nNo pretraining possible for baseline model {model_type}. Sim_config \
+                        {act_sim_config_index+1}/{len(configs)}.", flush=True)
 
         return loadProfiles_filenames
 
     def load_data(self, sim_config):
-        
-        # Readout the power profiles, bring them to the format needed by the model and store those profiles
+
+        # Readout the power profiles, bring them to the format needed by the model and store those 
+        # profiles
         #
         file_path = os.path.join(os.path.dirname(__file__), sim_config.aggregation_Count[1])
         loadProfiles = pd.read_pickle(file_path)
@@ -153,12 +183,12 @@ class ModelTrainer:
         endDate = loadProfiles[0].index[-1].to_pydatetime().replace(tzinfo=None)
         weather_measurements = import_weather_data.WeatherMeasurements()
         weatherData = weather_measurements.get_data(
-                    startDate = startDate, 
+                    startDate = startDate,
                     endDate = endDate,
                     lat = 51.5085,      # Location:
                     lon = -0.1257,      # London Heathrow,
-                    alt = 25,           # Weatherstation   
-                    sample_periode = 'hourly', 
+                    alt = 25,           # Weatherstation
+                    sample_periode = 'hourly',
                     tz = 'UTC',
                     )
         weatherData = weatherData.loc[:, (weatherData != 0).any(axis=0)]    # remove empty columns
