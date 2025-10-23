@@ -9,11 +9,11 @@ from xlstm import (
     sLSTMLayerConfig,
     FeedForwardConfig,
 )
-from loadforecasting_models.Helpers import PytorchHelper, PositionalEncoding
+from loadforecasting_models.helpers import PytorchHelper, PositionalEncoding
 from loadforecasting_models import Normalizer
 
 
-class xLSTM(torch.nn.Module):
+class xLstm(torch.nn.Module):
     """xLSTM configuration as provided by the xLSTM authors."""
 
     def __init__(

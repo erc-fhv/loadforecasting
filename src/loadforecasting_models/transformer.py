@@ -1,12 +1,14 @@
 from typing import Optional, Callable, Sequence
 import torch
-from loadforecasting_models.Helpers import PytorchHelper, PositionalEncoding
+from loadforecasting_models.helpers import PytorchHelper, PositionalEncoding
 from loadforecasting_models import Normalizer
 
-class TransformerFull(torch.nn.Module):
+
+class Transformer(torch.nn.Module):
     """
-    Full pytorch transformer for timeseries prediction.
-    """    
+    Encoder-only Transformer inspired by "A Time Series is
+    Worth 64 Words" (https://arxiv.org/abs/2211.14730)
+    """
 
     def __init__(
         self,
@@ -31,84 +33,69 @@ class TransformerFull(torch.nn.Module):
         self.normalizer = normalizer
 
         # Configuration based on model size
-        if model_size == "1k":
-            num_heads=2
+        if model_size == "0.1k":
             num_layers=1
+            num_heads=2
+            dim_feedforward=5
+            d_model = 2
+        elif model_size == "0.2k":
+            num_layers=1
+            num_heads=2
+            dim_feedforward=5
+            d_model=4
+        elif model_size == "0.5k":
+            num_layers=1
+            num_heads=2
             dim_feedforward=6
             d_model=6
-        elif model_size == "2k":
-            num_heads=2
+        elif model_size == "1k":
             num_layers=1
+            num_heads=2
             dim_feedforward=10
             d_model=10
-        elif model_size == "5k":
-            num_heads=2
+        elif model_size == "2k":
             num_layers=1
+            num_heads=2
             dim_feedforward=16
             d_model=14
-        elif model_size == "10k":
-            num_heads=4
+        elif model_size == "5k":
             num_layers=1
+            num_heads=4
             dim_feedforward=90
             d_model=20
-        elif model_size == "20k":
-            num_heads=4
+        elif model_size == "10k":
             num_layers=1
+            num_heads=4
             dim_feedforward=200
             d_model=20
-        elif model_size == "40k":
-            num_heads=4
+        elif model_size == "20k":
             num_layers=1
+            num_heads=4
             dim_feedforward=400
             d_model=20
-        elif model_size == "80k":
-            num_heads=4
+        elif model_size == "40k":
             num_layers=1
+            num_heads=4
+            dim_feedforward=400
+            d_model=40
+        elif model_size == "80k":
+            num_layers=2
+            num_heads=8
             dim_feedforward=400
             d_model=40
         else:
             assert False, f"Unimplemented model_size parameter given: {model_size}"
 
-        # Project input features to transformer dimension
+        # Transformer Encoder Layers
         self.input_projection = torch.nn.Linear(num_of_features, d_model)
-        self.tgt_projection = torch.nn.Linear(1, d_model)
         self.positional_encoding = PositionalEncoding(d_model)
-
-        # Transformer Encoder-Decoder
-        self.transformer = torch.nn.Transformer(
-            d_model=d_model,
-            nhead=num_heads,
-            num_encoder_layers=num_layers,
-            num_decoder_layers=num_layers,
-            dim_feedforward=dim_feedforward,
-            batch_first=True
-        )
-
-        # Final output projection (to 1)
+        encoder_layer = torch.nn.TransformerEncoderLayer(d_model=d_model, nhead=num_heads,
+            dim_feedforward=dim_feedforward, batch_first=True)
+        self.transformer = torch.nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.output_layer = torch.nn.Linear(d_model, 1)
 
         # Setup Pytorch helper for training and evaluation
         self.my_pytorch_helper = PytorchHelper(self)
-
-    def forward(self, x) -> torch.Tensor:
-        """Model forward pass."""
-
-        # Take the latest available lagged loads as target-input
-        lagged_load_feature = 11
-        x = x.float()
-        tgt = x[:,:, lagged_load_feature].unsqueeze(-1)
-
-        # Input and tgt projection
-        x = self.input_projection(x)
-        x = self.positional_encoding(x)
-        tgt = self.tgt_projection(tgt)
-        tgt = self.positional_encoding(tgt)
-
-        # Run the full transformer model
-        out = self.transformer(x, tgt)
-        out = self.output_layer(out)
-
-        return out
 
     def train_model(
         self,
@@ -163,6 +150,16 @@ class TransformerFull(torch.nn.Module):
             )
 
         return history
+
+    def forward(self, x) -> torch.Tensor:
+        """Model forward pass."""
+
+        x = self.input_projection(x.float())
+        x = self.positional_encoding(x)
+        x = self.transformer(x)
+        x = self.output_layer(x)
+
+        return x
 
     def predict(self, x: torch.Tensor) -> torch.Tensor:
         """

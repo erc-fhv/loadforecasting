@@ -3,7 +3,7 @@ from sklearn.neighbors import KNeighborsRegressor
 import torch
 from loadforecasting_models import Normalizer
 
-class KNN():
+class Knn():
     """
     KNN model for timeseries prediction.
     """

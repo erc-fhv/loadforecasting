@@ -1,12 +1,12 @@
 from typing import Optional, Callable, Sequence
 import torch
-from loadforecasting_models.Helpers import PytorchHelper
+from loadforecasting_models.helpers import PytorchHelper, PositionalEncoding
 from loadforecasting_models import Normalizer
 
-class LSTM(torch.nn.Module):
+class TransformerFull(torch.nn.Module):
     """
-    LSTM model for timeseries prediction.
-    """
+    Full pytorch transformer for timeseries prediction.
+    """    
 
     def __init__(
         self,
@@ -30,87 +30,62 @@ class LSTM(torch.nn.Module):
         self.loss_fn = loss_fn
         self.normalizer = normalizer
 
-        # LSTM configuration based on model size
-        if model_size == "0.1k":
-            bidirectional=False
-            hidden_dimension_lstm1 = 1
-            hidden_dimension_lstm2 = 1
-            hidden_dimension_dense1 = 4
-            hidden_dimension_dense2 = 4
-        elif  model_size == "0.2k":
-            bidirectional=True
-            hidden_dimension_lstm1 = 1
-            hidden_dimension_lstm2 = 1
-            hidden_dimension_dense1 = 4
-            hidden_dimension_dense2 = 4
-        elif model_size == "0.5k":
-            bidirectional=True
-            hidden_dimension_lstm1 = 2
-            hidden_dimension_lstm2 = 2
-            hidden_dimension_dense1 = 5
-            hidden_dimension_dense2 = 5
-        elif model_size == "1k":
-            bidirectional=True
-            hidden_dimension_lstm1 = 3
-            hidden_dimension_lstm2 = 3
-            hidden_dimension_dense1 = 10
-            hidden_dimension_dense2 = 10
+        # Configuration based on model size
+        if model_size == "1k":
+            num_heads=2
+            num_layers=1
+            dim_feedforward=6
+            d_model=6
         elif model_size == "2k":
-            bidirectional=True
-            hidden_dimension_lstm1 = 5
-            hidden_dimension_lstm2 = 5
-            hidden_dimension_dense1 = 15
-            hidden_dimension_dense2 = 10
+            num_heads=2
+            num_layers=1
+            dim_feedforward=10
+            d_model=10
         elif model_size == "5k":
-            bidirectional=True
-            hidden_dimension_lstm1 = 8
-            hidden_dimension_lstm2 = 9
-            hidden_dimension_dense1 = 30
-            hidden_dimension_dense2 = 20
+            num_heads=2
+            num_layers=1
+            dim_feedforward=16
+            d_model=14
         elif model_size == "10k":
-            bidirectional=True
-            hidden_dimension_lstm1 = 10
-            hidden_dimension_lstm2 = 18
-            hidden_dimension_dense1 = 30
-            hidden_dimension_dense2 = 20
+            num_heads=4
+            num_layers=1
+            dim_feedforward=90
+            d_model=20
         elif model_size == "20k":
-            bidirectional=True
-            hidden_dimension_lstm1 = 22
-            hidden_dimension_lstm2 = 20
-            hidden_dimension_dense1 = 30
-            hidden_dimension_dense2 = 20
+            num_heads=4
+            num_layers=1
+            dim_feedforward=200
+            d_model=20
         elif model_size == "40k":
-            bidirectional=True
-            hidden_dimension_lstm1 = 42
-            hidden_dimension_lstm2 = 20
-            hidden_dimension_dense1 = 30
-            hidden_dimension_dense2 = 20
+            num_heads=4
+            num_layers=1
+            dim_feedforward=400
+            d_model=20
         elif model_size == "80k":
-            bidirectional=True
-            hidden_dimension_lstm1 = 70
-            hidden_dimension_lstm2 = 21
-            hidden_dimension_dense1 = 30
-            hidden_dimension_dense2 = 20
+            num_heads=4
+            num_layers=1
+            dim_feedforward=400
+            d_model=40
         else:
-            assert False, f"Unimplemented params.model_size parameter given: {model_size}"
+            assert False, f"Unimplemented model_size parameter given: {model_size}"
 
-        if bidirectional:
-            bidirectional_factor = 2
-        else:
-            bidirectional_factor = 1
+        # Project input features to transformer dimension
+        self.input_projection = torch.nn.Linear(num_of_features, d_model)
+        self.tgt_projection = torch.nn.Linear(1, d_model)
+        self.positional_encoding = PositionalEncoding(d_model)
 
-        self.lstm1 = torch.nn.LSTM(input_size=num_of_features, hidden_size=hidden_dimension_lstm1,
-                                   batch_first=True, bidirectional=bidirectional)
-        self.lstm2 = torch.nn.LSTM(input_size=hidden_dimension_lstm1*bidirectional_factor,
-                                   hidden_size=hidden_dimension_lstm2, batch_first=True,
-                                   bidirectional=bidirectional)
+        # Transformer Encoder-Decoder
+        self.transformer = torch.nn.Transformer(
+            d_model=d_model,
+            nhead=num_heads,
+            num_encoder_layers=num_layers,
+            num_decoder_layers=num_layers,
+            dim_feedforward=dim_feedforward,
+            batch_first=True
+        )
 
-        # Adding additional dense layers
-        self.activation = torch.nn.ReLU()
-        self.dense1 = torch.nn.Linear(hidden_dimension_lstm2*bidirectional_factor,
-                                      hidden_dimension_dense1)
-        self.dense2 = torch.nn.Linear(hidden_dimension_dense1, hidden_dimension_dense2)
-        self.output_layer = torch.nn.Linear(hidden_dimension_dense2, 1)
+        # Final output projection (to 1)
+        self.output_layer = torch.nn.Linear(d_model, 1)
 
         # Setup Pytorch helper for training and evaluation
         self.my_pytorch_helper = PytorchHelper(self)
@@ -118,13 +93,22 @@ class LSTM(torch.nn.Module):
     def forward(self, x) -> torch.Tensor:
         """Model forward pass."""
 
-        x, _ = self.lstm1(x.float())
-        x, _ = self.lstm2(x)
-        x = self.activation(self.dense1(x))
-        x = self.activation(self.dense2(x))
-        x = self.output_layer(x)
+        # Take the latest available lagged loads as target-input
+        lagged_load_feature = 11
+        x = x.float()
+        tgt = x[:,:, lagged_load_feature].unsqueeze(-1)
 
-        return x
+        # Input and tgt projection
+        x = self.input_projection(x)
+        x = self.positional_encoding(x)
+        tgt = self.tgt_projection(tgt)
+        tgt = self.positional_encoding(tgt)
+
+        # Run the full transformer model
+        out = self.transformer(x, tgt)
+        out = self.output_layer(out)
+
+        return out
 
     def train_model(
         self,
@@ -232,4 +216,3 @@ class LSTM(torch.nn.Module):
             print(f"Total number of parameters: {total_params}")
 
         return total_params
-    

@@ -13,7 +13,7 @@ from loadforecasting_framework import simulation_config
 from loadforecasting_framework.data_preprocessor import DataPreprocessor
 from loadforecasting_framework import utils
 from loadforecasting_framework import import_weather_data
-from loadforecasting_models import KNN, Persistence, xLSTM, LSTM, Transformer, Perfect, Normalizer
+from loadforecasting_models import Knn, Persistence, xLstm, Lstm, Transformer, Perfect, Normalizer
 
 
 class ModelTrainer:
@@ -74,7 +74,7 @@ class ModelTrainer:
         num_of_features = x['train'].shape[2]
 
         # Initialize, train and evaluate the given model
-        if model_type is KNN:
+        if model_type is Knn:
             my_model = model_type(k=40, weights = 'distance', normalizer=normalizer)
             history = my_model.train_model(x['train'], y['train'])
             history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
@@ -86,7 +86,7 @@ class ModelTrainer:
             my_model = model_type(normalizer=normalizer)
             history = my_model.train_model()
             history = my_model.evaluate(y['test'], results=history, de_normalize=True)
-        elif model_type in (xLSTM, LSTM, Transformer):
+        elif model_type in (xLstm, Lstm, Transformer):
             my_model = model_type(sim_config.modelSize, num_of_features, normalizer=normalizer)
             history = my_model.train_model(x['train'], y['train'], pretrain_now=False,
                 finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)

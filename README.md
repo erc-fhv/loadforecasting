@@ -58,7 +58,7 @@ The main parts of the evaluation framework are connected as follows:
 ```
 
 +-----------------------------+           +------------------------------+
-| Data                        |           | DataPreprocessor             |
+| data                        |           | data_prprocessor             |
 |-----------------------------|           |------------------------------|
 | # Weather, load, standard-  |           | + transformData()            |
 |   load, and holidays.       +-----------+ # Preprocesses the data      |
@@ -66,7 +66,7 @@ The main parts of the evaluation framework are connected as follows:
                                                        |
                                                        |
 +-----------------------------+           +------------+-----------------+
-| Simulation_config           |           | ModelTrainer                 |
+| simulation_config           |           | model_trainer                |
 |-----------------------------|           |------------------------------|
 | configs: list               |           | + run()                      |
 | # Parameterize the run      +-----------+ # Trains all models          |
@@ -78,7 +78,7 @@ The main parts of the evaluation framework are connected as follows:
        |                 |             |               |                 |
        |                 |             |               |                 |
 +------+------+ +--------+----+ +------+------+ +------+------+ +--------+----+
-| KNN         | | Persistence | | xLSTM       | | LSTM        | | Transformer |
+| Knn         | | Persistence | | xLstm       | | Lstm        | | Transformer |
 |             | |             | |             | |             | |             |
 |-------------| |-------------| |-------------| |-------------| |-------------|
 |train_model()| |train_model()| |train_model()| |train_model()| |train_model()|

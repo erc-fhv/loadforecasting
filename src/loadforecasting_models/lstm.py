@@ -1,13 +1,11 @@
 from typing import Optional, Callable, Sequence
 import torch
-from loadforecasting_models.Helpers import PytorchHelper, PositionalEncoding
+from loadforecasting_models.helpers import PytorchHelper
 from loadforecasting_models import Normalizer
 
-
-class Transformer(torch.nn.Module):
+class Lstm(torch.nn.Module):
     """
-    Encoder-only Transformer inspired by "A Time Series is
-    Worth 64 Words" (https://arxiv.org/abs/2211.14730)
+    LSTM model for timeseries prediction.
     """
 
     def __init__(
@@ -32,70 +30,101 @@ class Transformer(torch.nn.Module):
         self.loss_fn = loss_fn
         self.normalizer = normalizer
 
-        # Configuration based on model size
+        # LSTM configuration based on model size
         if model_size == "0.1k":
-            num_layers=1
-            num_heads=2
-            dim_feedforward=5
-            d_model = 2
-        elif model_size == "0.2k":
-            num_layers=1
-            num_heads=2
-            dim_feedforward=5
-            d_model=4
+            bidirectional=False
+            hidden_dimension_lstm1 = 1
+            hidden_dimension_lstm2 = 1
+            hidden_dimension_dense1 = 4
+            hidden_dimension_dense2 = 4
+        elif  model_size == "0.2k":
+            bidirectional=True
+            hidden_dimension_lstm1 = 1
+            hidden_dimension_lstm2 = 1
+            hidden_dimension_dense1 = 4
+            hidden_dimension_dense2 = 4
         elif model_size == "0.5k":
-            num_layers=1
-            num_heads=2
-            dim_feedforward=6
-            d_model=6
+            bidirectional=True
+            hidden_dimension_lstm1 = 2
+            hidden_dimension_lstm2 = 2
+            hidden_dimension_dense1 = 5
+            hidden_dimension_dense2 = 5
         elif model_size == "1k":
-            num_layers=1
-            num_heads=2
-            dim_feedforward=10
-            d_model=10
+            bidirectional=True
+            hidden_dimension_lstm1 = 3
+            hidden_dimension_lstm2 = 3
+            hidden_dimension_dense1 = 10
+            hidden_dimension_dense2 = 10
         elif model_size == "2k":
-            num_layers=1
-            num_heads=2
-            dim_feedforward=16
-            d_model=14
+            bidirectional=True
+            hidden_dimension_lstm1 = 5
+            hidden_dimension_lstm2 = 5
+            hidden_dimension_dense1 = 15
+            hidden_dimension_dense2 = 10
         elif model_size == "5k":
-            num_layers=1
-            num_heads=4
-            dim_feedforward=90
-            d_model=20
+            bidirectional=True
+            hidden_dimension_lstm1 = 8
+            hidden_dimension_lstm2 = 9
+            hidden_dimension_dense1 = 30
+            hidden_dimension_dense2 = 20
         elif model_size == "10k":
-            num_layers=1
-            num_heads=4
-            dim_feedforward=200
-            d_model=20
+            bidirectional=True
+            hidden_dimension_lstm1 = 10
+            hidden_dimension_lstm2 = 18
+            hidden_dimension_dense1 = 30
+            hidden_dimension_dense2 = 20
         elif model_size == "20k":
-            num_layers=1
-            num_heads=4
-            dim_feedforward=400
-            d_model=20
+            bidirectional=True
+            hidden_dimension_lstm1 = 22
+            hidden_dimension_lstm2 = 20
+            hidden_dimension_dense1 = 30
+            hidden_dimension_dense2 = 20
         elif model_size == "40k":
-            num_layers=1
-            num_heads=4
-            dim_feedforward=400
-            d_model=40
+            bidirectional=True
+            hidden_dimension_lstm1 = 42
+            hidden_dimension_lstm2 = 20
+            hidden_dimension_dense1 = 30
+            hidden_dimension_dense2 = 20
         elif model_size == "80k":
-            num_layers=2
-            num_heads=8
-            dim_feedforward=400
-            d_model=40
+            bidirectional=True
+            hidden_dimension_lstm1 = 70
+            hidden_dimension_lstm2 = 21
+            hidden_dimension_dense1 = 30
+            hidden_dimension_dense2 = 20
         else:
-            assert False, f"Unimplemented model_size parameter given: {model_size}"
+            assert False, f"Unimplemented params.model_size parameter given: {model_size}"
 
-        # Transformer Encoder Layers
-        self.input_projection = torch.nn.Linear(num_of_features, d_model)
-        self.positional_encoding = PositionalEncoding(d_model)
-        encoder_layer = torch.nn.TransformerEncoderLayer(d_model=d_model, nhead=num_heads,
-            dim_feedforward=dim_feedforward, batch_first=True)
-        self.transformer = torch.nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        self.output_layer = torch.nn.Linear(d_model, 1)
+        if bidirectional:
+            bidirectional_factor = 2
+        else:
+            bidirectional_factor = 1
+
+        self.lstm1 = torch.nn.LSTM(input_size=num_of_features, hidden_size=hidden_dimension_lstm1,
+                                   batch_first=True, bidirectional=bidirectional)
+        self.lstm2 = torch.nn.LSTM(input_size=hidden_dimension_lstm1*bidirectional_factor,
+                                   hidden_size=hidden_dimension_lstm2, batch_first=True,
+                                   bidirectional=bidirectional)
+
+        # Adding additional dense layers
+        self.activation = torch.nn.ReLU()
+        self.dense1 = torch.nn.Linear(hidden_dimension_lstm2*bidirectional_factor,
+                                      hidden_dimension_dense1)
+        self.dense2 = torch.nn.Linear(hidden_dimension_dense1, hidden_dimension_dense2)
+        self.output_layer = torch.nn.Linear(hidden_dimension_dense2, 1)
 
         # Setup Pytorch helper for training and evaluation
         self.my_pytorch_helper = PytorchHelper(self)
+
+    def forward(self, x) -> torch.Tensor:
+        """Model forward pass."""
+
+        x, _ = self.lstm1(x.float())
+        x, _ = self.lstm2(x)
+        x = self.activation(self.dense1(x))
+        x = self.activation(self.dense2(x))
+        x = self.output_layer(x)
+
+        return x
 
     def train_model(
         self,
@@ -151,16 +180,6 @@ class Transformer(torch.nn.Module):
 
         return history
 
-    def forward(self, x) -> torch.Tensor:
-        """Model forward pass."""
-
-        x = self.input_projection(x.float())
-        x = self.positional_encoding(x)
-        x = self.transformer(x)
-        x = self.output_layer(x)
-
-        return x
-
     def predict(self, x: torch.Tensor) -> torch.Tensor:
         """
         Predict y from the given x.
@@ -213,3 +232,4 @@ class Transformer(torch.nn.Module):
             print(f"Total number of parameters: {total_params}")
 
         return total_params
+    

@@ -1,7 +1,7 @@
 from pyomo.environ import *
 import numpy as np
 
-class OptimizeBESS:
+class OptimizeBess:
     
     # Parameterize the energy community and the optimizer
     #
