@@ -10,7 +10,7 @@ from demandlib import bdew
 import torch
 
 from loadforecasting_framework import simulation_config
-from loadforecasting_framework.model_adapter import ModelAdapter
+from loadforecasting_framework.data_preprocessor import DataPreprocessor
 from loadforecasting_framework import utils
 from loadforecasting_framework import import_weather_data
 from loadforecasting_models import KNN, Persistence, xLSTM, LSTM, Transformer, Perfect, Normalizer
@@ -67,7 +67,7 @@ class ModelTrainer:
 
         # Load a new powerprofile
         with open(load_profile, 'rb') as f:
-            (x, y, model_adapter) = pickle.load(f)
+            (x, y, normalizer) = pickle.load(f)
 
         # Train and evaluate the model
         sim_config = configs[act_sim_config_index]
@@ -75,19 +75,19 @@ class ModelTrainer:
 
         # Initialize, train and evaluate the given model
         if model_type is KNN:
-            my_model = model_type(k=40, weights = 'distance', model_adapter=model_adapter)
+            my_model = model_type(k=40, weights = 'distance', normalizer=normalizer)
             history = my_model.train_model(x['train'], y['train'])
             history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
         elif model_type is Persistence:
-            my_model = model_type(lagged_load_feature=11, model_adapter=model_adapter)
+            my_model = model_type(lagged_load_feature=11, normalizer=normalizer)
             history = my_model.train_model()
             history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
         elif model_type is Perfect:
-            my_model = model_type(model_adapter=model_adapter)
+            my_model = model_type(normalizer=normalizer)
             history = my_model.train_model()
             history = my_model.evaluate(y['test'], results=history, de_normalize=True)
         elif model_type in (xLSTM, LSTM, Transformer):
-            my_model = model_type(sim_config.modelSize, num_of_features, model_adapter=model_adapter)
+            my_model = model_type(sim_config.modelSize, num_of_features, normalizer=normalizer)
             history = my_model.train_model(x['train'], y['train'], pretrain_now=False,
                 finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
             history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
@@ -114,14 +114,14 @@ class ModelTrainer:
 
             # Preprocess data to get X and Y for the model
             normalizer = Normalizer()
-            modelAdapter = ModelAdapter(public_holidays_timestamps,
+            model_preprocessor = DataPreprocessor(public_holidays_timestamps,
                                             trainHistory = sim_config.trainingHistory,
                                             testSize = sim_config.testSize,
                                             devSize = sim_config.devSize,
                                             trainFuture = sim_config.trainingFuture,
                                             normalizer = normalizer,
                                             )
-            X, Y = modelAdapter.transformData(powerProfile, weatherData)
+            X, Y = model_preprocessor.transformData(powerProfile, weatherData)
 
             output_path = os.path.join(os.path.dirname(__file__), 'outputs', 'file_' + str(i) + '.pkl')
             with open(output_path, 'wb') as file:
@@ -143,14 +143,14 @@ class ModelTrainer:
         
         # Preprocess data to get X and Y for the model
         normalizer = Normalizer()
-        modelAdapter = ModelAdapter(public_holidays_timestamps,
+        model_preprocessor = DataPreprocessor(public_holidays_timestamps,
                                         trainHistory = sim_config.trainingHistory,
                                         testSize = sim_config.testSize,
                                         devSize = sim_config.devSize, 
                                         trainFuture = sim_config.trainingFuture,
                                         normalizer = normalizer,
                                         )
-        X, Y = modelAdapter.transformData(all_standard_loadprofiles, weatherData=None)
+        X, Y = model_preprocessor.transformData(all_standard_loadprofiles, weatherData=None)
         pretraining_filename = os.path.join(os.path.dirname(__file__), 'outputs', 'standard_loadprofile.pkl')
         with open(pretraining_filename, 'wb') as file:
             pickle.dump((X, Y, normalizer), file)

@@ -5,7 +5,7 @@ import torch
 
 # Bring the data into the data format needed by the model
 #
-class ModelAdapter:
+class DataPreprocessor:
 
     def __init__(self,
                  public_holidays,
