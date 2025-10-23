@@ -1,7 +1,7 @@
 from typing import Optional, Callable
 import numpy as np
 import torch
-from loadforecasting_models import Normalizer
+from loadforecasting_models.normalizer import Normalizer
 
 class Persistence:
     """

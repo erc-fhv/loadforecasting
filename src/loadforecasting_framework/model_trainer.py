@@ -13,8 +13,8 @@ from loadforecasting_framework import simulation_config
 from loadforecasting_framework.data_preprocessor import DataPreprocessor
 from loadforecasting_framework import utils
 from loadforecasting_framework import import_weather_data
-from loadforecasting_models import Knn, Persistence, xLstm, Lstm, Transformer, Perfect, Normalizer
-
+from loadforecasting_models import Knn, Persistence, xLstm, Lstm, Transformer, Perfect
+from loadforecasting_models import Normalizer
 
 class ModelTrainer:
     """
@@ -74,20 +74,27 @@ class ModelTrainer:
         num_of_features = x['train'].shape[2]
 
         # Initialize, train and evaluate the given model
-        if model_type is Knn:
-            my_model = model_type(k=40, weights = 'distance', normalizer=normalizer)
+        if model_type == 'Knn':
+            my_model = Knn(k=40, weights = 'distance', normalizer=normalizer)
             history = my_model.train_model(x['train'], y['train'])
             history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
-        elif model_type is Persistence:
-            my_model = model_type(lagged_load_feature=11, normalizer=normalizer)
+        elif model_type == 'Persistence':
+            my_model = Persistence(lagged_load_feature=11, normalizer=normalizer)
             history = my_model.train_model()
             history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
-        elif model_type is Perfect:
-            my_model = model_type(normalizer=normalizer)
+        elif model_type == 'Perfect':
+            my_model = Perfect(normalizer=normalizer)
             history = my_model.train_model()
             history = my_model.evaluate(y['test'], results=history, de_normalize=True)
-        elif model_type in (xLstm, Lstm, Transformer):
-            my_model = model_type(sim_config.modelSize, num_of_features, normalizer=normalizer)
+        elif model_type in ('xLstm', 'Lstm', 'Transformer'):
+            # Machine Learning Models chosen
+            if model_type == 'xLstm':
+                model_class = xLstm
+            elif model_type == 'Lstm':
+                model_class = Lstm
+            else:
+                model_class = Transformer
+            my_model = model_class(sim_config.modelSize, num_of_features, normalizer=normalizer)
             history = my_model.train_model(x['train'], y['train'], pretrain_now=False,
                 finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
             history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
@@ -104,9 +111,9 @@ class ModelTrainer:
             print(f"WARNING: Only {sim_config.epochs} epochs chosen. Please check, if this really \
                 fits your needs.")
         print(f"\n\nDo Data Preprocessing for run config={sim_config}.", flush=True)
-        
+
         loadProfiles, weatherData, public_holidays_timestamps = self.load_data(sim_config)
-        
+
         # Bring the power profiles to the model shape of (nr_of_batches, timesteps, features)
         #
         loadProfiles_filenames = []
@@ -118,7 +125,7 @@ class ModelTrainer:
                                             trainHistory = sim_config.trainingHistory,
                                             testSize = sim_config.testSize,
                                             devSize = sim_config.devSize,
-                                            trainFuture = sim_config.trainingFuture,
+                                            trainFuture = sim_config.TrainSetFuture,
                                             normalizer = normalizer,
                                             )
             X, Y = model_preprocessor.transformData(powerProfile, weatherData)
@@ -147,7 +154,7 @@ class ModelTrainer:
                                         trainHistory = sim_config.trainingHistory,
                                         testSize = sim_config.testSize,
                                         devSize = sim_config.devSize, 
-                                        trainFuture = sim_config.trainingFuture,
+                                        trainFuture = sim_config.TrainSetFuture,
                                         normalizer = normalizer,
                                         )
         X, Y = model_preprocessor.transformData(all_standard_loadprofiles, weatherData=None)
@@ -159,11 +166,18 @@ class ModelTrainer:
         if sim_config.doPretraining:
 
             for model_type in sim_config.usedModels:
-                if issubclass(model_type, torch.nn.Module):
+                if model_type in ('xLstm', 'Lstm', 'Transformer'):
+                    # Pretraining possible for Machine Learning Models
+                    if model_type == 'xLstm':
+                        model_class = xLstm
+                    elif model_type == 'Lstm':
+                        model_class = Lstm
+                    else:
+                        model_class = Transformer
                     print(f"\nPretraining {model_type} model and and sim_config \
                         {act_sim_config_index+1}/{len(configs)}.", flush=True)
                     num_of_features = X['all'].shape[2]
-                    my_model = model_type(sim_config.modelSize, num_of_features)                    
+                    my_model = model_class(sim_config.modelSize, num_of_features)                    
                     my_model.train_model(X['all'], Y['all'], pretrain_now=True,
                         finetune_now=False, epochs=sim_config.epochs)
                 else:
@@ -186,6 +200,7 @@ class ModelTrainer:
         startDate = loadProfiles[0].index[0].to_pydatetime().replace(tzinfo=None)
         endDate = loadProfiles[0].index[-1].to_pydatetime().replace(tzinfo=None)
         weather_measurements = import_weather_data.WeatherMeasurements()
+
         weatherData = weather_measurements.get_data(
                     startDate = startDate,
                     endDate = endDate,
@@ -195,6 +210,7 @@ class ModelTrainer:
                     sample_periode = 'hourly',
                     tz = 'UTC',
                     )
+
         weatherData = weatherData.loc[:, (weatherData != 0).any(axis=0)]    # remove empty columns
 
         # Load the public holiday calendar
@@ -219,7 +235,7 @@ if __name__ == "__main__":
 
     # Load the simulations configs
     if mode == 'default':
-        configs = simulation_config.configs
+        configs = simulation_config.configs_for_the_ci
     else:
         configs = simulation_config.configs_for_the_ci
 

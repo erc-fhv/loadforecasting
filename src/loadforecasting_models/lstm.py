@@ -1,7 +1,7 @@
 from typing import Optional, Callable, Sequence
 import torch
 from loadforecasting_models.helpers import PytorchHelper
-from loadforecasting_models import Normalizer
+from loadforecasting_models.normalizer import Normalizer
 
 class Lstm(torch.nn.Module):
     """
@@ -232,4 +232,3 @@ class Lstm(torch.nn.Module):
             print(f"Total number of parameters: {total_params}")
 
         return total_params
-    

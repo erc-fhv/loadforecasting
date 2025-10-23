@@ -118,7 +118,7 @@ class PlotlyApp:
 
             # Get the real measured power profile of the selected day
             Y_real = self.Y_plot[selected_dataset][selected_date,:,0]
-            Y_real = self.modelAdapter.deNormalizeY(Y_real)
+            Y_real = self.modelAdapter.de_normalize_y(Y_real)
 
             # Get the predicted power profile of the selected day
             X_selected = self.X_plot[selected_dataset]
@@ -130,7 +130,7 @@ class PlotlyApp:
             else:
                 Y_pred = self.model_plot.predict(X_selected)
                 Y_pred = Y_pred[selected_date,:,0]
-            Y_pred = self.modelAdapter.deNormalizeY(Y_pred)
+            Y_pred = self.modelAdapter.de_normalize_y(Y_pred)
 
             # Create a DataFrame for Plotly Express
             startdate = self.modelAdapter.getStartDateFromIndex(selected_dataset, selected_date)
@@ -140,7 +140,7 @@ class PlotlyApp:
                 df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': Y_real, 'Y_pred': Y_pred})
             else:
                 # Add scaled standard load profile
-                Y_standardload_denormalized = self.modelAdapter_pretrain.deNormalizeY(self.Y_model_pretrain[selected_dataset][selected_date,:,0])
+                Y_standardload_denormalized = self.modelAdapter_pretrain.de_normalize_y(self.Y_model_pretrain[selected_dataset][selected_date,:,0])
                 df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': Y_real, 'Y_pred': Y_pred, 'Y_standardload': Y_standardload_denormalized})
 
             # Add one hour to the last timestep, in order to have the "hold-values" till 00:00

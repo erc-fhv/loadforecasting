@@ -4,9 +4,9 @@ This module contains common (mainly pytorch) code for the forecasting models.
 
 import os
 from typing import Sequence
+import math
 import numpy as np
 import torch
-from torch import nn
 from torch import optim
 from torch.utils.data import DataLoader, Dataset
 
@@ -54,7 +54,7 @@ class CustomLRScheduler:
 class PytorchHelper():
     """Helper class for Pytorch models."""
 
-    def __init__(self, my_model: nn.Module):
+    def __init__(self, my_model: torch.nn.Module):
         self.my_model = my_model
 
     def train(
@@ -94,7 +94,8 @@ class PytorchHelper():
 
         # Load pretrained weights
         if finetune_now:
-            pretrained_weights_path = f'{os.path.dirname(__file__)}/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+            pretrained_weights_path = f'{os.path.dirname(__file__)} \
+                /outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
             self.my_model.load_state_dict(torch.load(pretrained_weights_path))
 
         # Start training
@@ -143,7 +144,8 @@ class PytorchHelper():
 
         # Save the trained weights
         if pretrain_now:
-            pretrained_weights_path = f'{os.path.dirname(__file__)}/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+            pretrained_weights_path = f'{os.path.dirname(__file__)} \
+                /outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
             torch.save(self.my_model.state_dict(), pretrained_weights_path)
 
         return history
@@ -179,7 +181,7 @@ class PytorchHelper():
         # Unnormalize the target variable, if wished.
         if de_normalize:
             assert self.my_model.normalizer is not None, "No normalizer given."
-            y_test = self.my_model.normalizer.deNormalizeY(y_test)
+            y_test = self.my_model.normalizer.de_normalize_y(y_test)
 
         # Create DataLoader
         batch_size=256
@@ -195,7 +197,7 @@ class PytorchHelper():
 
                 # Unnormalize the target variable, if wished.
                 if de_normalize:
-                    output = self.my_model.normalizer.deNormalizeY(output)
+                    output = self.my_model.normalizer.de_normalize_y(output)
 
                 # Compute Metrics
                 loss = self.my_model.loss_fn(output, batch_y.float())
@@ -223,7 +225,7 @@ class PytorchHelper():
         return results
 
 
-class PositionalEncoding(nn.Module):
+class PositionalEncoding(torch.nn.Module):
     """    
     This implementation of positional encoding is based on the
     "Attention Is All You Need" paper, and is conceptually similar to:
@@ -256,7 +258,7 @@ class PositionalEncoding(nn.Module):
         return x
 
 
-class PositionalEncoding(nn.Module):
+class PositionalEncoding(torch.nn.Module):
     """    
     Implements sinusoidal positional encoding as used in Transformer models.
 
@@ -271,7 +273,7 @@ class PositionalEncoding(nn.Module):
 
     def __init__(self, d_model: int, dropout: float = 0.0, max_len: int = 5000):
         super().__init__()
-        self.dropout = nn.Dropout(p=dropout)
+        self.dropout = torch.nn.Dropout(p=dropout)
 
         position = torch.arange(max_len).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
@@ -280,7 +282,7 @@ class PositionalEncoding(nn.Module):
         pe[:, 0, 1::2] = torch.cos(position * div_term)
         self.register_buffer('pe', pe)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Arguments:
             x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``

@@ -154,7 +154,7 @@ class Deserialize:
     #
     @staticmethod
     def dict_to_named_tuple(**kwargs):
-        return simulation_config.Config_of_one_run(**kwargs)
+        return simulation_config.ConfigOfOneRun(**kwargs)
 
     # If the named tuple includes lists, convert it to a tuples.
     #

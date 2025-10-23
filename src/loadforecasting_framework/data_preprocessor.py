@@ -96,7 +96,7 @@ class DataPreprocessor:
 
         # Calculate/define the number of features of X
         nr_of_features = 11
-        if self.addLaggedPower == True:
+        if self.addLaggedPower:
             nr_of_features += 3
         if weatherData is None:
             num_of_weather_features = 6 # Default weather features
@@ -106,7 +106,8 @@ class DataPreprocessor:
 
         seq_start_time = self.first_prediction_date
         seq_end_time = self.first_prediction_date + self.prediction_horizon
-        nr_of_timesteps = len(pd.date_range(start=seq_start_time, end=seq_end_time, freq=self.sampling_time))
+        nr_of_timesteps = len(pd.date_range(start=seq_start_time,
+            end=seq_end_time, freq=self.sampling_time))
         X_all = np.zeros(shape=(0, nr_of_timesteps, nr_of_features))
 
         while next_prediction_date + self.prediction_horizon <= self.last_available_datetime:

@@ -5,6 +5,7 @@
 *.h5
 *.pyc
 *.png
+*.prof
 **/outputs/
 **/dist/*
 **/loadforecasting_models.egg-info/*

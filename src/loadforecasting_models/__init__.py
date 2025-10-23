@@ -4,5 +4,4 @@ from .xlstm import xLstm
 from .lstm import Lstm
 from .transformer import Transformer
 from .perfect import Perfect
-from .helpers import Normalizer
-
+from .normalizer import Normalizer
