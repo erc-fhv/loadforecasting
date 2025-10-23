@@ -4,8 +4,8 @@
 
 This repository provides a flexible and modular framework for short-term load forecasting (STLF), suitable for both research and real-world applications. It supports:
 
-- Deep learning models: Transformer, LSTM, xLSTM
-- Baseline model: KNN, Persistence, Perfect
+- Deep learning models: Transformer, Lstm, xLstm
+- Baseline model: Knn, Persistence, Perfect
 - Full pipeline for training, evaluation, and visualization
 - Reproducibility of all experiments from the following paper
 
@@ -28,19 +28,19 @@ The repository is organized as follows:
 │
 ├── envs/                             # Conda environments
 │   ├── env_linux.yml                 # Reproducible environment for the paper
-│   └── env_from_nxai.yml             # Environment from xLSTM authors
+│   └── env_from_nxai.yml             # Environment from xLstm authors
 │   
 ├── src/      
 │   ├── loadforecasting_models/       # All forecasting models
 |   │   ├── pyproject.toml            # Description of the 'loadforecasting_models' package
 │   │   └── *.py                      # Implementations of deep learning & baseline models
 │   │
-│   ├── loadforecasting_framework/    # Evaluation framework and visualization
-│   │   ├── Simulation_config.py      # Config file for simulation runs
-│   │   ├── ModelTrainer.py           # Training and evaluation loop
-│   │   ├── ModelAdapter.py           # Data formatting and preprocessing
-│   │   ├── Paper_Illustration.ipynb  # Plots and tables for the paper
-│   │   └── case_study/               # Energy community MILP optimization
+│   └── loadforecasting_framework/    # Evaluation framework and visualization
+│       ├── simulation_config.py      # Config file for simulation runs
+│       ├── model_trainer.py         # Training and evaluation loop
+│       ├── data_preprocessr.py       # Data formatting and preprocessing
+│       ├── paper_illustration.ipynb  # Plots and tables for the paper
+│       └── case_study/               # Energy community MILP optimization
 │
 ├── tests/                            # Automated unit and integration tests
 │   └── *.py
@@ -58,22 +58,30 @@ The main parts of the evaluation framework are connected as follows:
 ```
 
 +-----------------------------+           +------------------------------+
-| data                        |           | data_prprocessor             |
+| data                        |           | data_preprocessor            |
 |-----------------------------|           |------------------------------|
-| # Weather, load, standard-  |           | + transformData()            |
-|   load, and holidays.       +-----------+ # Preprocesses the data      |
+| # Weather, load, standard-  +-----------+ transformData()              |
+|   load, and holidays.       |           | # Preprocesses the data      |
 +-----------------------------+           +------------+-----------------+
                                                        |
                                                        |
 +-----------------------------+           +------------+-----------------+
 | simulation_config           |           | model_trainer                |
 |-----------------------------|           |------------------------------|
-| configs: list               |           | + run()                      |
+| configs: list               |           | run()                        |
 | # Parameterize the run      +-----------+ # Trains all models          |
 | # loop.                     |           | # accord to the config.      |
 +-----------------------------+           +------------+-----------------+
-                                                       |            
-                                                       |                 
+                                                       |
+                                                       |
++-----------------------------+                        |
+| normalizer                  |                        |
+|-----------------------------|                        |
+| normalize()                 +------------------------+
+| de_normalize()              |                        |
++-----------------------------+                        |
+                                                       |
+                                                       |
        +-----------------+-------------+---------------+-----------------+
        |                 |             |               |                 |
        |                 |             |               |                 |
@@ -84,7 +92,18 @@ The main parts of the evaluation framework are connected as follows:
 |train_model()| |train_model()| |train_model()| |train_model()| |train_model()|
 |predict()    | |predict()    | |predict()    | |predict()    | |predict()    |
 |evaluate()   | |evaluate()   | |evaluate()   | |evaluate()   | |evaluate()   |
-+-------------+ +-------------+ +-------------+ +-------------+ +-------------+
++------+------+ +--------+----+ +------+------+ +------+------+ +--------+----+
+       |                 |             |               |                 |
+       |                 |             |               |                 |
+       +-----------------+-------------+---------------+-----------------+
+                                                       |
+                                                       |
+                                          +------------+-----------------+
+                                          | helpers                      |
+                                          |------------------------------|
+                                          | # Common (e.g. pytorch)      |
+                                          | # models code.               |
+                                          +------------------------------+
 
 ```
 
