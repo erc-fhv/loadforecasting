@@ -13,6 +13,7 @@ class ModelAdapter:
                  testSize,
                  devSize,
                  trainFuture,
+                 normalizer,
                  addLaggedPower=True,
                  shuffle_data=False,
                  seed=None,
@@ -31,15 +32,16 @@ class ModelAdapter:
         self.testSize = testSize
         self.devSize = devSize
         self.trainFuture = trainFuture
+        self.normalizer = normalizer
         self.nr_of_lagged_days = 3
 
         # Optionally: Fix the random-seed for reproducibility
         if seed != None:
             np.random.seed(seed)
 
-    def transformData(self, 
-                      powerProfiles, 
-                      weatherData, 
+    def transformData(self,
+                      powerProfiles,
+                      weatherData,
                       first_prediction_clocktime = datetime.time(0, 0),
                       ):
 
@@ -216,67 +218,22 @@ class ModelAdapter:
             Y_all[dataset] = torch.tensor(Y_all[dataset])
             
         return X_all, Y_all
-        
-    # Normalize all the inputs and targets of the model.
+
+    # Normalize all input data and target value
     #
     def normalizeAll(self, X_all, Y_all):
-        
-        X_all['train'] = self.normalizeX(X_all['train'], training=True)
-        Y_all['train'] = self.normalizeY(Y_all['train'], training=True)
-        X_all['dev'] = self.normalizeX(X_all['dev'], training=False)
-        Y_all['dev'] = self.normalizeY(Y_all['dev'], training=False)
-        X_all['test'] = self.normalizeX(X_all['test'], training=False)
-        Y_all['test'] = self.normalizeY(Y_all['test'], training=False)
-        X_all['all'] = self.normalizeX(X_all['all'], training=False)
-        Y_all['all'] = self.normalizeY(Y_all['all'], training=False)
-        
+
+        X_all['train'] = self.normalizer.normalize_x(X_all['train'], training=True)
+        Y_all['train'] = self.normalizer.normalize_y(Y_all['train'], training=True)
+        X_all['dev'] = self.normalizer.normalize_x(X_all['dev'], training=False)
+        Y_all['dev'] = self.normalizer.normalize_y(Y_all['dev'], training=False)
+        X_all['test'] = self.normalizer.normalize_x(X_all['test'], training=False)
+        Y_all['test'] = self.normalizer.normalize_y(Y_all['test'], training=False)
+        X_all['all'] = self.normalizer.normalize_x(X_all['all'], training=False)
+        Y_all['all'] = self.normalizer.normalize_y(Y_all['all'], training=False)
+
         return X_all, Y_all
 
-    def normalize_x(self, x, training=False):
-        """Z-Normalize the input data of the model."""
-
-        if training:
-            # Estimate the mean and standard deviation of the data during training
-            self.mean_x = np.mean(x, axis=(0, 1))
-            self.std_x = np.std(x, axis=(0, 1))
-        
-            if np.isclose(self.std_x, 0).any():
-                # Avoid a division by zero (which can occur for constant features)
-                self.std_x = np.where(np.isclose(self.std_x, 0), 1e-8, self.std_X)
-
-        X_normalized = (x - self.mean_x) / self.std_x
-
-        return X_normalized
-
-    def de_normalize_x(self, x):
-        """Undo z-normalization."""
-
-        x_denormalized = (x * self.std_x) + self.mean_x
-
-        return x_denormalized
-
-    def normalize_y(self, y, training=False):
-        """Normalize the output data of the model."""
-
-        if training:
-            # Estimate the mean and standard deviation of the data during training
-            self.mean_y = np.mean(y, axis=(0, 1))
-            self.std_y = np.std(y)
-        
-        if np.isclose(self.std_y, 0):
-            assert False, "Normalization leads to division by zero."
-
-        y_normalized = (y - self.mean_y) / self.std_y
-
-        return y_normalized
-
-    def de_normalize_y(self, y):
-        """Undo normalization"""
-
-        y_denormalized = (y * self.std_y) + self.mean_y
-
-        return y_denormalized
-    
     # Split up the data into train-, dev- and test-set
     #
     def splitUpData(self, X_all, Y_all):

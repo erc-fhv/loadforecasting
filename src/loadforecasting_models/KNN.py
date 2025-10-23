@@ -1,7 +1,7 @@
 from typing import Callable, Literal
 from sklearn.neighbors import KNeighborsRegressor
 import torch
-from loadforecasting_models.interfaces import ModelAdapterProtocol
+from loadforecasting_models import Normalizer
 
 class KNN():
     """
@@ -12,21 +12,20 @@ class KNN():
         self,
         k: int,
         weights: Literal['uniform', 'distance'] | Callable = 'distance',
-            model_adapter: ModelAdapterProtocol | None = None,
+            normalizer: Normalizer | None = None,
         ) -> None:
         """
         Args:
             k (int): Number of neighbors to use.
             weights: Weight function used in prediction. Possible 
                 values: 'uniform', 'distance' or a callable distance function.
-            model_adapter (ModelAdapterProtocol): Custom model adapter, especially
-                used for X and Y normalization and denormalization.
+            normalizer (Normalizer): Used for X and Y normalization and denormalization.
         """
 
         self.knn = KNeighborsRegressor(n_neighbors = k, weights=weights)
         self.x_train = torch.Tensor([])
         self.y_train = torch.Tensor([])
-        self.model_adapter = model_adapter
+        self.normalizer = normalizer
 
     def predict(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -100,9 +99,9 @@ class KNN():
 
         # Unnormalize the target variable, if wished.
         if de_normalize:
-            assert self.model_adapter is not None, "No model_adapter given."
-            y_test = self.model_adapter.de_normalize_y(y_test)
-            output = self.model_adapter.de_normalize_y(output)
+            assert self.normalizer is not None, "No normalizer given."
+            y_test = self.normalizer.de_normalize_y(y_test)
+            output = self.normalizer.de_normalize_y(output)
 
         # Compute Loss
         loss = eval_fn(output, y_test)

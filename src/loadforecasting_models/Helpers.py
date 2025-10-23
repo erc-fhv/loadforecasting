@@ -178,8 +178,8 @@ class PytorchHelper():
 
         # Unnormalize the target variable, if wished.
         if de_normalize:
-            assert self.my_model.model_adapter is not None, "No model_adapter given."
-            y_test = self.my_model.model_adapter.deNormalizeY(y_test)
+            assert self.my_model.normalizer is not None, "No normalizer given."
+            y_test = self.my_model.normalizer.deNormalizeY(y_test)
 
         # Create DataLoader
         batch_size=256
@@ -195,7 +195,7 @@ class PytorchHelper():
 
                 # Unnormalize the target variable, if wished.
                 if de_normalize:
-                    output = self.my_model.model_adapter.deNormalizeY(output)
+                    output = self.my_model.normalizer.deNormalizeY(output)
 
                 # Compute Metrics
                 loss = self.my_model.loss_fn(output, batch_y.float())
@@ -288,5 +288,64 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[:x.size(0)]
         return self.dropout(x)
 
+class Normalizer():
+    """Simple normalizer class for input and output normalization and denormalization."""
 
+    def __init__(self):
+        self.mean_x = 0
+        self.std_x = 0
+        self.mean_y = 0
+        self.std_y = 0
+        
+    def normalize(self, x, y, training=True):
+        """Normalize both input and output data of the model."""
 
+        x_normalized = self.normalize_x(x, training)
+        y_normalized = self.normalize_y(y, training)
+
+        return x_normalized, y_normalized
+
+    def normalize_x(self, x, training=True):
+        """Z-Normalize the input data of the model."""
+
+        if training:
+            # Estimate the mean and standard deviation of the data during training
+            self.mean_x = np.mean(x, axis=(0, 1))
+            self.std_x = np.std(x, axis=(0, 1))
+
+            if np.isclose(self.std_x, 0).any():
+                # Avoid a division by zero (which can occur for constant features)
+                self.std_x = np.where(np.isclose(self.std_x, 0), 1e-8, self.std_X)
+
+        x_normalized = (x - self.mean_x) / self.std_x
+
+        return x_normalized
+
+    def normalize_y(self, y, training=True):
+        """Z-Normalize the output data of the model."""
+
+        if training:
+            # Estimate the mean and standard deviation of the data during training
+            self.mean_y = np.mean(y, axis=(0, 1))
+            self.std_y = np.std(y)
+
+        if np.isclose(self.std_y, 0):
+            assert False, "Normalization leads to division by zero."
+
+        y_normalized = (y - self.mean_y) / self.std_y
+
+        return y_normalized
+
+    def de_normalize_y(self, y):
+        """Undo normalization"""
+
+        y_denormalized = (y * self.std_y) + self.mean_y
+
+        return y_denormalized
+
+    def de_normalize_x(self, x):
+        """Undo z-normalization."""
+
+        x_denormalized = (x * self.std_x) + self.mean_x
+
+        return x_denormalized

@@ -1,6 +1,6 @@
 from typing import Optional, Callable
 import torch
-from loadforecasting_models.interfaces import ModelAdapterProtocol
+from loadforecasting_models import Normalizer
 
 class Perfect():
     """
@@ -8,14 +8,13 @@ class Perfect():
     """
 
     def __init__(self,
-            model_adapter: Optional[ModelAdapterProtocol] = None,
+            normalizer: Optional[Normalizer] = None,
             ) -> None:
         """
         Args:
-            model_adapter (ModelAdapterProtocol): Custom model adapter, especially
-                used for X and Y normalization and denormalization.
+            normalizer (Normalizer): Used for X and Y normalization and denormalization.
         """
-        self.model_adapter = model_adapter
+        self.normalizer = normalizer
 
     def predict(self,
                 y_real: torch.Tensor
@@ -55,9 +54,9 @@ class Perfect():
 
         # Unnormalize the target variable, if wished.
         if de_normalize:
-            assert self.model_adapter is not None, "No model_adapter given."
-            y_test = self.model_adapter.de_normalize_y(y_test)
-            output = self.model_adapter.de_normalize_y(output)
+            assert self.normalizer is not None, "No normalizer given."
+            y_test = self.normalizer.de_normalize_y(y_test)
+            output = self.normalizer.de_normalize_y(output)
 
         # Compute Loss
         loss = eval_fn(output, y_test)

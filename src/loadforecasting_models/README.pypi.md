@@ -21,15 +21,20 @@ pip install loadforecasting_models
 You can easily integrate and train our forecasting models in your Python workflow. Here's an example using the Transformer-based sequence-to-sequence model:
 
 ```python
-from loadforecasting_models import Model
+from loadforecasting_models import Transformer
 import torch
 
 # Generate dummy training data
 X_train = torch.randn(365, 24, 10)  # shape: (batch_size, sequence_length, num_features)
 Y_train = torch.randn(365, 24, 1)   # shape: (batch_size, sequence_length, 1)
 
+# Normalize data
+my_normalizer = Normalizer()
+X_train, Y_train = my_normalizer(X_train, Y_train, training=True)
+
+
 # Initialize and train the model
-model = Model('Transformer', model_size='5k', num_of_features=X_train.shape[2])
+model = Transformer(model_size='5k', num_of_features=X_train.shape[2])
 model.train_model(X_train, Y_train, pretrain_now=False, finetune_now=False, epochs=100, verbose=0)
 
 # Generate predictions

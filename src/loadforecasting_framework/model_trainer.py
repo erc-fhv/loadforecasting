@@ -13,7 +13,7 @@ from loadforecasting_framework import simulation_config
 from loadforecasting_framework.model_adapter import ModelAdapter
 from loadforecasting_framework import utils
 from loadforecasting_framework import import_weather_data
-from loadforecasting_models import KNN, Persistence, xLSTM, LSTM, Transformer, Perfect
+from loadforecasting_models import KNN, Persistence, xLSTM, LSTM, Transformer, Perfect, Normalizer
 
 
 class ModelTrainer:
@@ -113,17 +113,19 @@ class ModelTrainer:
         for i, powerProfile in enumerate(loadProfiles[:sim_config.nrOfComunities]):
 
             # Preprocess data to get X and Y for the model
+            normalizer = Normalizer()
             modelAdapter = ModelAdapter(public_holidays_timestamps,
                                             trainHistory = sim_config.trainingHistory,
                                             testSize = sim_config.testSize,
-                                            trainFuture = sim_config.trainingFuture,
                                             devSize = sim_config.devSize,
+                                            trainFuture = sim_config.trainingFuture,
+                                            normalizer = normalizer,
                                             )
             X, Y = modelAdapter.transformData(powerProfile, weatherData)
 
             output_path = os.path.join(os.path.dirname(__file__), 'outputs', 'file_' + str(i) + '.pkl')
             with open(output_path, 'wb') as file:
-                pickle.dump((X, Y, modelAdapter), file)
+                pickle.dump((X, Y, normalizer), file)
             loadProfiles_filenames.append(output_path)
 
         # Load the BDEW standard load profiles for the desired datetime range
@@ -140,16 +142,18 @@ class ModelTrainer:
         all_standard_loadprofiles = all_standard_loadprofiles.tz_localize("UTC")
         
         # Preprocess data to get X and Y for the model
+        normalizer = Normalizer()
         modelAdapter = ModelAdapter(public_holidays_timestamps,
                                         trainHistory = sim_config.trainingHistory,
                                         testSize = sim_config.testSize,
-                                        trainFuture = sim_config.trainingFuture,
                                         devSize = sim_config.devSize, 
+                                        trainFuture = sim_config.trainingFuture,
+                                        normalizer = normalizer,
                                         )
         X, Y = modelAdapter.transformData(all_standard_loadprofiles, weatherData=None)
         pretraining_filename = os.path.join(os.path.dirname(__file__), 'outputs', 'standard_loadprofile.pkl')
         with open(pretraining_filename, 'wb') as file:
-            pickle.dump((X, Y, modelAdapter), file)
+            pickle.dump((X, Y, normalizer), file)
 
         # If required, do pretraining
         if sim_config.doPretraining:

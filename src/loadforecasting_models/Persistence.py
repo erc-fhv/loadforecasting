@@ -1,7 +1,7 @@
 from typing import Optional, Callable
 import numpy as np
 import torch
-from loadforecasting_models.interfaces import ModelAdapterProtocol
+from loadforecasting_models import Normalizer
 
 class Persistence:
     """
@@ -10,16 +10,15 @@ class Persistence:
 
     def __init__(self,
             lagged_load_feature: int,
-            model_adapter: ModelAdapterProtocol,
+            normalizer: Normalizer,
             ) -> None:
         """
         Args:
             lagged_load_feature (int): The feature index in the input tensor
                 that contains the lagged load to be used for prediction.
-            model_adapter (ModelAdapterProtocol): Custom model adapter, especially
-                used for X and Y normalization and denormalization.
+            normalizer (Normalizer): Used for X and Y normalization and denormalization.
         """
-        self.model_adapter = model_adapter
+        self.normalizer = normalizer
         self.lagged_load_feature = lagged_load_feature
 
     def predict(self,
@@ -37,7 +36,7 @@ class Persistence:
             torch.Tensor: Predicted y tensor of shape (batch_len, sequence_len, 1).
         """
 
-        x = self.model_adapter.de_normalize_x(x)    # de-normalize all inputs
+        x = self.normalizer.de_normalize_x(x)    # de-normalize all inputs
 
         # Take the chosen lagged loads as predictions
         #
@@ -46,7 +45,7 @@ class Persistence:
         # Add axis and normalize y_pred again, to compare it to other models.
         #
         y_pred = y_pred[:,:,np.newaxis]
-        y_pred = self.model_adapter.normalize_y(y_pred)
+        y_pred = self.normalizer.normalize_y(y_pred, training=False)
         assert y_pred.shape == (x.size(0), x.size(1), 1), \
             f"Shape mismatch: got {y_pred.shape}, expected ({x.size(0)}, {x.size(1)}, 1)"
 
@@ -82,9 +81,9 @@ class Persistence:
 
         # Unnormalize the target variable, if wished.
         if de_normalize:
-            assert self.model_adapter is not None, "No model_adapter given."
-            y_test = self.model_adapter.de_normalize_y(y_test)
-            output = self.model_adapter.de_normalize_y(output)
+            assert self.normalizer is not None, "No model_adapter given."
+            y_test = self.normalizer.de_normalize_y(y_test)
+            output = self.normalizer.de_normalize_y(output)
 
         # Compute Loss
         loss = eval_fn(output, y_test)

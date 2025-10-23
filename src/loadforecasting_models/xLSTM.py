@@ -10,7 +10,7 @@ from xlstm import (
     FeedForwardConfig,
 )
 from loadforecasting_models.Helpers import PytorchHelper, PositionalEncoding
-from loadforecasting_models.interfaces import ModelAdapterProtocol
+from loadforecasting_models import Normalizer
 
 
 class xLSTM(torch.nn.Module):
@@ -21,7 +21,7 @@ class xLSTM(torch.nn.Module):
         model_size: int,
         num_of_features: int,
         loss_fn: Optional[Callable[..., torch.Tensor]] = torch.nn.L1Loss(),
-        model_adapter: Optional[ModelAdapterProtocol] = None,
+        normalizer: Optional[Normalizer] = None,
         ) -> None:
         """
         Args:
@@ -30,14 +30,13 @@ class xLSTM(torch.nn.Module):
             num_of_features (int): Number of model input features.
             loss_fn (Callable[..., torch.Tensor]): Loss function to be used during 
                 training. E.g., torch.nn.L1Loss(), torch.nn.MSELoss(), pytorch_helpers.smape, ...
-            model_adapter (ModelAdapterProtocol, optional): Custom model adapter, especially
-                used for X and Y normalization and denormalization.    
+            normalizer (Normalizer): Used for X and Y normalization and denormalization.
         """
 
         super().__init__()
 
         self.loss_fn = loss_fn
-        self.model_adapter = model_adapter
+        self.normalizer = normalizer
 
         # The following xLSTM config variables are overtaken from the xLSTM authors
         conv1d_kernel_size=4
