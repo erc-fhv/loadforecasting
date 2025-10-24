@@ -10,6 +10,7 @@ from demandlib import bdew
 import torch
 
 from loadforecasting_framework import simulation_config
+from loadforecasting_framework.simulation_config import ConfigOfOneRun
 from loadforecasting_framework.data_preprocessor import DataPreprocessor
 from loadforecasting_framework import utils
 from loadforecasting_framework import import_weather_data
@@ -25,8 +26,8 @@ class ModelTrainer:
         self.test_set_size_days = 131    # Size of the testset is fixed to 131 days ~ 4 month
 
     def run(self, my_configs):
+        """Run every single simulation given in my_configs."""
 
-        # Run every single config
         all_train_histories, all_trained_models = {}, {}
         for act_sim_config_index, act_sim_config in enumerate(my_configs):
 
@@ -57,67 +58,108 @@ class ModelTrainer:
 
     # Do Model training and evaluation
     #
-    def optimize_model(self, model_type, load_profile, configs, act_sim_config_index):
+    def optimize_model(self, model_type, load_profile, my_configs, act_sim_config_index):
         """
         Train and evaluate the given model_type on the given load_profile.
         """
-
         print(f"\nProcessing model {model_type} with load profile {load_profile} and sim_config \
-            {act_sim_config_index+1}/{len(configs)}.", flush=True)
+            {act_sim_config_index+1}/{len(my_configs)}.", flush=True)
 
         # Load a new powerprofile
         with open(load_profile, 'rb') as f:
             (x, y, normalizer) = pickle.load(f)
 
-        # Train and evaluate the model
-        sim_config = configs[act_sim_config_index]
-        num_of_features = x['train'].shape[2]
-
-        # Initialize, train and evaluate the given model
-        if model_type == 'Knn':
-            my_model = Knn(k=40, weights = 'distance', normalizer=normalizer)
-            history = my_model.train_model(x['train'], y['train'])
-            history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
-        elif model_type == 'Persistence':
-            my_model = Persistence(lagged_load_feature=11, normalizer=normalizer)
-            history = my_model.train_model()
-            history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
-        elif model_type == 'Perfect':
-            my_model = Perfect(normalizer=normalizer)
-            history = my_model.train_model()
-            history = my_model.evaluate(y['test'], results=history, de_normalize=True)
-        elif model_type in ('xLstm', 'Lstm', 'Transformer'):
-            # Machine Learning Models chosen
-            if model_type == 'xLstm':
-                model_class = xLstm
-            elif model_type == 'Lstm':
-                model_class = Lstm
-            else:
-                model_class = Transformer
-            my_model = model_class(sim_config.modelSize, num_of_features, normalizer=normalizer)
-            history = my_model.train_model(x['train'], y['train'], pretrain_now=False,
-                finetune_now=sim_config.doTransferLearning, epochs=sim_config.epochs)
-            history = my_model.evaluate(x['test'], y['test'], results=history, de_normalize=True)
-        else:
-            assert False, f"Unimplemented model_type given: {model_type}"
+        # Create the given model and train and evaluate it
+        sim_config = my_configs[act_sim_config_index]
+        my_model, history = ModelTrainer.create_model(
+            model_type,
+            normalizer,
+            num_of_features = x['train'].shape[2],
+            train_and_evaluate = True,
+            sim_config = sim_config,
+            x_train = x['train'],
+            y_train = y['train'],
+            x_test = x['test'],
+            y_test = y['test'],
+            pretrain_now = False,
+            finetune_now = sim_config.doTransferLearning,
+            )
 
         ret_tuple = (model_type, load_profile, sim_config, history, my_model)
         return ret_tuple
 
-    def preprocess_data(self, configs, act_sim_config_index):
+    @staticmethod
+    def create_model(
+        model_type: str,
+        normalizer: Normalizer,
+        num_of_features: int,
+        train_and_evaluate: bool,
+        sim_config: ConfigOfOneRun,
+        x_train: torch.Tensor,
+        y_train: torch.Tensor,
+        x_test: torch.Tensor,
+        y_test: torch.Tensor,
+        pretrain_now: bool,
+        finetune_now: bool,
+        ) -> tuple:
+        """
+        Create an instance of the given model_type and (optionally) train and evaluate it.
+        """
+        history = {}
+
+        if model_type == 'Knn':
+            my_model = Knn(k=40, weights = 'distance', normalizer=normalizer)
+            if train_and_evaluate:
+                history = my_model.train_model(x_train, y_train)
+                history = my_model.evaluate(x_test, y_test, results=history, de_normalize=True)
+        elif model_type == 'Persistence':
+            my_model = Persistence(lagged_load_feature=11, normalizer=normalizer)
+            if train_and_evaluate:
+                history = my_model.train_model()
+                history = my_model.evaluate(x_test, y_test, results=history, de_normalize=True)
+        elif model_type == 'Perfect':
+            my_model = Perfect(normalizer=normalizer)
+            if train_and_evaluate:
+                history = my_model.train_model()
+                history = my_model.evaluate(y_test, results=history, de_normalize=True)
+        else:   # Machine Learning Models
+
+            if model_type == 'xLstm':
+                my_class = xLstm
+            elif model_type == 'Lstm':
+                my_class = Lstm
+            elif model_type == 'Transformer':
+                my_class = Transformer
+            else:
+                assert False, f"Unimplemented model_type given: {model_type}"
+
+            model_size = sim_config.modelSize
+            my_model = my_class(model_size, num_of_features, normalizer=normalizer)
+
+            if train_and_evaluate:
+                history = my_model.train_model(x_train, y_train, pretrain_now=pretrain_now,
+                    finetune_now=finetune_now, epochs=sim_config.epochs)
+                history = my_model.evaluate(x_test, y_test, results=history, de_normalize=True)
+
+        return my_model, history
+
+    def preprocess_data(self, my_configs, act_sim_config_index):
+        """
+        Preprocess the data for the given simulation configuration.
+        """
         
-        sim_config = configs[act_sim_config_index]
+        sim_config = my_configs[act_sim_config_index]
         if sim_config.epochs <= 5:
             print(f"WARNING: Only {sim_config.epochs} epochs chosen. Please check, if this really \
                 fits your needs.")
         print(f"\n\nDo Data Preprocessing for run config={sim_config}.", flush=True)
 
-        loadProfiles, weatherData, public_holidays_timestamps = self.load_data(sim_config)
+        load_profiles, weather_data, public_holidays_timestamps = self.load_data(sim_config)
 
         # Bring the power profiles to the model shape of (nr_of_batches, timesteps, features)
         #
-        loadProfiles_filenames = []
-        for i, powerProfile in enumerate(loadProfiles[:sim_config.nrOfComunities]):
+        load_profiles_filenames = []
+        for i, power_profile in enumerate(load_profiles[:sim_config.nrOfComunities]):
 
             # Preprocess data to get X and Y for the model
             normalizer = Normalizer()
@@ -128,26 +170,27 @@ class ModelTrainer:
                                             trainFuture = sim_config.TrainSetFuture,
                                             normalizer = normalizer,
                                             )
-            X, Y = model_preprocessor.transformData(powerProfile, weatherData)
+            X, Y = model_preprocessor.transformData(power_profile, weather_data)
 
-            output_path = os.path.join(os.path.dirname(__file__), 'outputs', 'file_' + str(i) + '.pkl')
+            output_path = os.path.join(os.path.dirname(__file__), 'outputs', 
+                'file_' + str(i) + '.pkl')
             with open(output_path, 'wb') as file:
                 pickle.dump((X, Y, normalizer), file)
-            loadProfiles_filenames.append(output_path)
+            load_profiles_filenames.append(output_path)
 
         # Load the BDEW standard load profiles for the desired datetime range
         standard_loadprofiles = []
-        startDate = loadProfiles[0].index[0].to_pydatetime().replace(tzinfo=None)
-        endDate = loadProfiles[0].index[-1].to_pydatetime().replace(tzinfo=None)
-        for year in range(startDate.year, endDate.year + 1):
+        start_date = load_profiles[0].index[0].to_pydatetime().replace(tzinfo=None)
+        end_date = load_profiles[0].index[-1].to_pydatetime().replace(tzinfo=None)
+        for year in range(start_date.year, end_date.year + 1):
             load_profile = bdew.ElecSlp(year, holidays=public_holidays_timestamps)\
                 .get_profile({"h0": 1000})
             standard_loadprofiles.append(load_profile)
         all_standard_loadprofiles = pd.concat(standard_loadprofiles)['h0']
-        all_standard_loadprofiles = all_standard_loadprofiles[(all_standard_loadprofiles.index >= startDate)
-                                                                & (all_standard_loadprofiles.index <= endDate)]
+        all_standard_loadprofiles = all_standard_loadprofiles[(all_standard_loadprofiles.index
+            >= start_date) & (all_standard_loadprofiles.index <= end_date)]
         all_standard_loadprofiles = all_standard_loadprofiles.tz_localize("UTC")
-        
+
         # Preprocess data to get X and Y for the model
         normalizer = Normalizer()
         model_preprocessor = DataPreprocessor(public_holidays_timestamps,
@@ -157,53 +200,62 @@ class ModelTrainer:
                                         trainFuture = sim_config.TrainSetFuture,
                                         normalizer = normalizer,
                                         )
-        X, Y = model_preprocessor.transformData(all_standard_loadprofiles, weatherData=None)
-        pretraining_filename = os.path.join(os.path.dirname(__file__), 'outputs', 'standard_loadprofile.pkl')
+        x, y = model_preprocessor.transformData(all_standard_loadprofiles, weatherData=None)
+        pretraining_filename = os.path.join(os.path.dirname(__file__), 'outputs',
+            'standard_loadprofile.pkl')
         with open(pretraining_filename, 'wb') as file:
-            pickle.dump((X, Y, normalizer), file)
+            pickle.dump((x, y, normalizer), file)
 
         # If required, do pretraining
         if sim_config.doPretraining:
 
             for model_type in sim_config.usedModels:
                 if model_type in ('xLstm', 'Lstm', 'Transformer'):
+
                     # Pretraining possible for Machine Learning Models
-                    if model_type == 'xLstm':
-                        model_class = xLstm
-                    elif model_type == 'Lstm':
-                        model_class = Lstm
-                    else:
-                        model_class = Transformer
                     print(f"\nPretraining {model_type} model and and sim_config \
-                        {act_sim_config_index+1}/{len(configs)}.", flush=True)
-                    num_of_features = X['all'].shape[2]
-                    my_model = model_class(sim_config.modelSize, num_of_features)                    
-                    my_model.train_model(X['all'], Y['all'], pretrain_now=True,
-                        finetune_now=False, epochs=sim_config.epochs)
+                        {act_sim_config_index+1}/{len(my_configs)}.", flush=True)
+                    ModelTrainer.create_model(
+                        model_type,
+                        normalizer,
+                        num_of_features = x['all'].shape[2],
+                        train_and_evaluate = False,
+                        sim_config = my_configs[act_sim_config_index],
+                        x_train = x['all'],
+                        y_train = y['all'],
+                        x_test = torch.Tensor([]),
+                        y_test = torch.Tensor([]),
+                        pretrain_now = True,
+                        finetune_now = False,
+                        )
+
                 else:
                     print(f"\nNo pretraining possible for baseline model {model_type}. Sim_config \
-                        {act_sim_config_index+1}/{len(configs)}.", flush=True)
+                        {act_sim_config_index+1}/{len(my_configs)}.", flush=True)
 
-        return loadProfiles_filenames
+        return load_profiles_filenames
 
     def load_data(self, sim_config):
+        """
+        Load all needed data: power profiles, weather data and public holidays.
+        """
 
-        # Readout the power profiles, bring them to the format needed by the model and store those 
+        # Readout the power profiles, bring them to the format needed by the model and store those
         # profiles
         #
         file_path = os.path.join(os.path.dirname(__file__), sim_config.aggregation_Count[1])
-        loadProfiles = pd.read_pickle(file_path)
-        loadProfiles = loadProfiles[:sim_config.nrOfComunities]
+        load_profiles = pd.read_pickle(file_path)
+        load_profiles = load_profiles[:sim_config.nrOfComunities]
 
         # Readout the weather data
         #
-        startDate = loadProfiles[0].index[0].to_pydatetime().replace(tzinfo=None)
-        endDate = loadProfiles[0].index[-1].to_pydatetime().replace(tzinfo=None)
+        start_date = load_profiles[0].index[0].to_pydatetime().replace(tzinfo=None)
+        end_date = load_profiles[0].index[-1].to_pydatetime().replace(tzinfo=None)
         weather_measurements = import_weather_data.WeatherMeasurements()
 
-        weatherData = weather_measurements.get_data(
-                    startDate = startDate,
-                    endDate = endDate,
+        weather_data = weather_measurements.get_data(
+                    startDate = start_date,
+                    endDate = end_date,
                     lat = 51.5085,      # Location:
                     lon = -0.1257,      # London Heathrow,
                     alt = 25,           # Weatherstation
@@ -211,20 +263,22 @@ class ModelTrainer:
                     tz = 'UTC',
                     )
 
-        weatherData = weatherData.loc[:, (weatherData != 0).any(axis=0)]    # remove empty columns
+        weather_data = weather_data.loc[:, (weather_data != 0).any(axis=0)] # remove empty columns
 
         # Load the public holiday calendar
         #
-        public_holidays_dict = holidays.CountryHoliday('GB', prov='ENG', years=range(startDate.year, endDate.year + 1))
+        public_holidays = holidays.CountryHoliday('GB', prov='ENG',
+            years=range(start_date.year, end_date.year + 1))
 
         # Add Christmas holidays from Dec 24 to Dec 31 for each year
-        for year in range(startDate.year, endDate.year + 1):
+        for year in range(start_date.year, end_date.year + 1):
             for day in range(8):  # 9 days from Dec 24 to Dec 31 inclusive
-                public_holidays_dict[date(year, 12, 24) + timedelta(days=day)] = "Christmas Holidays"
+                public_holidays[date(year, 12, 24) + timedelta(days=day)] = "Christmas Holidays"
 
-        public_holidays_timestamps = [pd.Timestamp(date, tzinfo=pytz.utc) for date in public_holidays_dict.keys()]
+        public_holidays_timestamps = \
+            [pd.Timestamp(date, tzinfo=pytz.utc) for date in public_holidays.keys()]
 
-        return loadProfiles, weatherData, public_holidays_timestamps
+        return load_profiles, weather_data, public_holidays_timestamps
 
 if __name__ == "__main__":
 
@@ -235,7 +289,7 @@ if __name__ == "__main__":
 
     # Load the simulations configs
     if mode == 'default':
-        configs = simulation_config.configs_for_the_ci
+        configs = simulation_config.configs
     else:
         configs = simulation_config.configs_for_the_ci
 

@@ -94,8 +94,8 @@ class PytorchHelper():
 
         # Load pretrained weights
         if finetune_now:
-            pretrained_weights_path = f'{os.path.dirname(__file__)} \
-                /outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+            pretrained_weights_path = f'{os.path.dirname(__file__)}' + \
+                f'/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
             self.my_model.load_state_dict(torch.load(pretrained_weights_path))
 
         # Start training
@@ -144,13 +144,13 @@ class PytorchHelper():
 
         # Save the trained weights
         if pretrain_now:
-            pretrained_weights_path = f'{os.path.dirname(__file__)} \
-                /outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+            pretrained_weights_path = f'{os.path.dirname(__file__)}' + \
+                f'/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
             torch.save(self.my_model.state_dict(), pretrained_weights_path)
 
         return history
 
-    def smape(self, y_true, y_pred, dim=None):
+    def s_mape(self, y_true, y_pred, dim=None):
         """
         Compute the Symmetric Mean Absolute Percentage Error (sMAPE).
         """
@@ -202,24 +202,20 @@ class PytorchHelper():
                 # Compute Metrics
                 loss = self.my_model.loss_fn(output, batch_y.float())
                 loss_sum += loss.item() * batch_x.size(0)
-                smape_val = self.smape(batch_y.float(), output)
-                smape_sum += smape_val * batch_x.size(0)
                 total_samples += batch_x.size(0)
 
                 prediction = torch.cat([prediction, output], dim=1)
 
-        # Calculate average loss and sMAPE
+        # Calculate average test loss
         if total_samples > 0:
             test_loss = loss_sum / total_samples
             reference = float(torch.mean(y_test))
             results['test_loss'] = [test_loss]
             results['test_loss_relative'] = [100.0 * test_loss / reference]
-            results['test_sMAPE'] = [smape_sum / total_samples]
             results['predicted_profile'] = prediction
         else:
             results['test_loss'] = [0.0]
             results['test_loss_relative'] = [0.0]
-            results['test_sMAPE'] = [0.0]
             results['predicted_profile'] = [0.0]
 
         return results

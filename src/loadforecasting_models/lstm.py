@@ -10,7 +10,7 @@ class Lstm(torch.nn.Module):
 
     def __init__(
         self,
-        model_size: int,
+        model_size: str,
         num_of_features: int,
         loss_fn: Optional[Callable[..., torch.Tensor]] = torch.nn.L1Loss(),
         normalizer: Optional[Normalizer] = None,

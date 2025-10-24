@@ -1,5 +1,6 @@
-# This file contains the configuration for an automated simulation run.
-#
+"""
+This file contains the configuration for an automated simulation run.
+"""
 
 from collections import namedtuple
 
@@ -24,7 +25,7 @@ class Model():
     SIZE_10k = "10k"
     SIZE_20k = "20k"
     SIZE_40k = "40k"      # <= Baseline
-    SIZE_80K = "80k"
+    SIZE_80k = "80k"
 
 class AggregationCount():
     """Different numbers of sizes of energy communities ."""
@@ -117,7 +118,7 @@ configs = [
     ConfigOfOneRun(Model.SIZE_40k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
         FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
         TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_80K, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
+    ConfigOfOneRun(Model.SIZE_80k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
         FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
         TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
 
@@ -201,12 +202,12 @@ configs = [
 ###################################################################################################
 configs_for_the_ci = [
     # Test the Baseline
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.NO, DoTransferLearning.NO, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH, 
+    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
+        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
         TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.SMOKE_TEST),
 
     # Test the Baseline, but without transfer learning
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
+    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.NO, DoTransferLearning.NO, AggregationCount.
         FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
         TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.SMOKE_TEST),
 ]
