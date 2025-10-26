@@ -75,14 +75,15 @@ class ModelTrainer:
             model_type,
             normalizer,
             num_of_features = x['train'].shape[2],
-            train_and_evaluate = True,
             sim_config = sim_config,
+            do_training = True,
             x_train = x['train'],
             y_train = y['train'],
-            x_test = x['test'],
-            y_test = y['test'],
             pretrain_now = False,
             finetune_now = sim_config.doTransferLearning,
+            do_evaluation = True,
+            x_test = x['test'],
+            y_test = y['test'],
             )
 
         ret_tuple = (model_type, load_profile, sim_config, history, my_model)
@@ -93,37 +94,61 @@ class ModelTrainer:
         model_type: str,
         normalizer: Normalizer,
         num_of_features: int,
-        train_and_evaluate: bool,
-        sim_config: ConfigOfOneRun,
-        x_train: torch.Tensor,
-        y_train: torch.Tensor,
-        x_test: torch.Tensor,
-        y_test: torch.Tensor,
-        pretrain_now: bool,
-        finetune_now: bool,
+        sim_config: ConfigOfOneRun | None = None,
+        do_training: bool = False,
+        x_train: torch.Tensor | None = None,
+        y_train: torch.Tensor | None = None,
+        pretrain_now: bool = False,
+        finetune_now: bool = True,
+        do_evaluation: bool = False,
+        x_test: torch.Tensor | None = None,
+        y_test: torch.Tensor | None = None,
         ) -> tuple:
         """
         Create an instance of the given model_type and (optionally) train and evaluate it.
         """
+
         history = {}
+
+        # Check the inputs
+        #
+        if x_train is None:
+            x_train = torch.Tensor([])
+        if y_train is None:
+            y_train = torch.Tensor([])
+        if x_test is None:
+            x_test = torch.Tensor([])
+        if y_test is None:
+            y_test = torch.Tensor([])
+        if do_training:
+            assert x_train.numel() > 0, "x_train must be given, if do_training is True!"
+            assert y_train.numel() > 0, "y_train must be given, if do_training is True!"
+        if do_evaluation:
+            assert x_test.numel() > 0, "x_test must be given, if do_evaluation is True!"
+            assert y_test.numel() > 0, "y_test must be given, if do_evaluation is True!"
 
         if model_type == 'Knn':
             my_model = Knn(k=40, weights = 'distance', normalizer=normalizer)
-            if train_and_evaluate:
+            if do_training:
                 history = my_model.train_model(x_train, y_train)
+            if do_evaluation:
                 history = my_model.evaluate(x_test, y_test, results=history, de_normalize=True)
+
         elif model_type == 'Persistence':
             my_model = Persistence(lagged_load_feature=11, normalizer=normalizer)
-            if train_and_evaluate:
+            if do_training:
                 history = my_model.train_model()
+            if do_evaluation:
                 history = my_model.evaluate(x_test, y_test, results=history, de_normalize=True)
+
         elif model_type == 'Perfect':
             my_model = Perfect(normalizer=normalizer)
-            if train_and_evaluate:
+            if do_training:
                 history = my_model.train_model()
+            if do_evaluation:
                 history = my_model.evaluate(y_test, results=history, de_normalize=True)
-        else:   # Machine Learning Models
 
+        else:   # Machine Learning Models
             if model_type == 'xLstm':
                 my_class = xLstm
             elif model_type == 'Lstm':
@@ -136,9 +161,10 @@ class ModelTrainer:
             model_size = sim_config.modelSize
             my_model = my_class(model_size, num_of_features, normalizer=normalizer)
 
-            if train_and_evaluate:
+            if do_training:
                 history = my_model.train_model(x_train, y_train, pretrain_now=pretrain_now,
                     finetune_now=finetune_now, epochs=sim_config.epochs)
+            if do_evaluation:
                 history = my_model.evaluate(x_test, y_test, results=history, de_normalize=True)
 
         return my_model, history
@@ -172,7 +198,7 @@ class ModelTrainer:
                                             )
             X, Y = model_preprocessor.transformData(power_profile, weather_data)
 
-            output_path = os.path.join(os.path.dirname(__file__), 'outputs', 
+            output_path = os.path.join(os.path.dirname(__file__), 'outputs',
                 'file_' + str(i) + '.pkl')
             with open(output_path, 'wb') as file:
                 pickle.dump((X, Y, normalizer), file)
@@ -219,12 +245,10 @@ class ModelTrainer:
                         model_type,
                         normalizer,
                         num_of_features = x['all'].shape[2],
-                        train_and_evaluate = False,
                         sim_config = my_configs[act_sim_config_index],
+                        do_training = True,
                         x_train = x['all'],
                         y_train = y['all'],
-                        x_test = torch.Tensor([]),
-                        y_test = torch.Tensor([]),
                         pretrain_now = True,
                         finetune_now = False,
                         )

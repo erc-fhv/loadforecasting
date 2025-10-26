@@ -173,9 +173,9 @@ class Transformer(torch.nn.Module):
             torch.Tensor: Predicted y tensor of shape (batch_len, sequence_len, 1).
         """
 
-        self.my_model.eval()
+        self.eval()
         with torch.no_grad():
-            y = self.my_model(x)
+            y = self(x)
 
         return y
 

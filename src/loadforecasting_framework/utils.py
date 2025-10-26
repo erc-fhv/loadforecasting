@@ -143,17 +143,12 @@ class Deserialize:
                     model_type,
                     normalizer,
                     num_of_features = num_of_features,
-                    train_and_evaluate = False,
                     sim_config = chosen_config,
-                    x_train = torch.Tensor([]),
-                    y_train = torch.Tensor([]),
-                    x_test = torch.Tensor([]),
-                    y_test = torch.Tensor([]),
-                    pretrain_now = False,
-                    finetune_now = False,
+                    do_training = False,
+                    do_evaluation = False,
                     )
 
-                act_model.my_model.load_state_dict(state_dict)
+                act_model.load_state_dict(state_dict)
                 return act_model
 
         assert False, "Model not found!"

@@ -1,3 +1,8 @@
+""" 
+This module implements a Plotly Dash application for visualizing load forecasting results.
+"""
+
+import os
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
@@ -6,32 +11,35 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-import os
 os.environ['HOST'] = '127.0.0.1'
 
 class PlotlyApp:
+    """A Plotly Dash application for visualizing load forecasting results."""
+    
     def __init__(
                 self,
-                X_model,
-                Y_model,
+                x_model,
+                y_model,
                 model,
-                modelAdapter,
+                model_adapter,
+                normalizer,
                 predictions = None,
                 timezone = 'UTC',
-                Y_model_pretrain = None,
-                modelAdapter_pretrain = None
-                 ):
-        
+                y_model_pretrain = None,
+                normalizer_pretrain = None
+                ) -> None:
+
         # Initialize the Dash app
         self.app = dash.Dash(__name__)
-        self.X_plot = X_model
-        self.Y_plot = Y_model
+        self.x_plot = x_model
+        self.y_plot = y_model
         self.model_plot = model
-        self.modelAdapter = modelAdapter
+        self.model_adapter = model_adapter
+        self.normalizer = normalizer
         self.predictions = predictions
         self.timezone = timezone
-        self.Y_model_pretrain = Y_model_pretrain
-        self.modelAdapter_pretrain = modelAdapter_pretrain
+        self.y_model_pretrain = y_model_pretrain
+        self.normalizer_pretrain = normalizer_pretrain
 
         # Define the layout of the app
         self.app.layout = html.Div([
@@ -79,69 +87,75 @@ class PlotlyApp:
             
         # Validate the inputs
         #
-        if selected_dataset == None:
+        if selected_dataset is None:
             selected_dataset = 'test'
-        if selected_date == None:
+        if selected_date is None:
             selected_date = 1
-        elif selected_date >= self.Y_plot[selected_dataset].shape[0] - 1:
-            selected_date = self.Y_plot[selected_dataset].shape[0] - 1
+        elif selected_date >= self.y_plot[selected_dataset].shape[0] - 1:
+            selected_date = self.y_plot[selected_dataset].shape[0] - 1
 
         # Get the currently choosen data subset (train, dev or test)
         if selected_dataset == 'all':
-            subset = self.modelAdapter.getDatasetTypeFromIndex(selected_date)
+            subset = self.model_adapter.getDatasetTypeFromIndex(selected_date)
             subset_text = f" Subset: {subset}."
         else:
             subset_text = ""
 
         # Convert the one-hot weekday encoding to a short string representation
-        weekday_one_hot = self.X_plot[selected_dataset][selected_date, 0, :7]
+        weekday_one_hot = self.x_plot[selected_dataset][selected_date, 0, :7]
         weekday_str = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][np.argmax(weekday_one_hot)]
 
         # Display information about the currently chosen date
-        available_days = self.Y_plot[selected_dataset].shape[0] - 1
-        returnValue = f"   ... selected day from [1 ... {available_days}]. Weekday of the prediction timestep: {weekday_str}." + subset_text
+        available_days = self.y_plot[selected_dataset].shape[0] - 1
+        return_value = f'   ... selected day from [1 ... {available_days}]. Weekday of the' + \
+            f'prediction timestep: {weekday_str}.' + subset_text
 
-        return returnValue
-    
+        return return_value
+
     def update_date_plot(self, selected_dataset, selected_date):
+        """
+        Update the plot based on the selected date."""
 
-        try: # use a try-catch to prevent a kernel crash
+        try:
 
             # Validate the inputs
             #
-            if selected_dataset == None:
+            if selected_dataset is None:
                 selected_dataset = 'all'
-            if selected_date == None:
+            if selected_date is None:
                 selected_date = 1
-            elif selected_date >= self.Y_plot[selected_dataset].shape[0] - 1:
-                selected_date = self.Y_plot[selected_dataset].shape[0] - 1
+            elif selected_date >= self.y_plot[selected_dataset].shape[0] - 1:
+                selected_date = self.y_plot[selected_dataset].shape[0] - 1
 
             # Get the real measured power profile of the selected day
-            Y_real = self.Y_plot[selected_dataset][selected_date,:,0]
-            Y_real = self.modelAdapter.de_normalize_y(Y_real)
+            y_real = self.y_plot[selected_dataset][selected_date,:,0]
+            y_real = self.normalizer.de_normalize_y(y_real)
 
             # Get the predicted power profile of the selected day
-            X_selected = self.X_plot[selected_dataset]
-            Y_selected = self.Y_plot[selected_dataset]
+            x_selected = self.x_plot[selected_dataset]
             if self.predictions is not None:
-                Y_pred = self.predictions[selected_date][0,:,0]
+                y_pred = self.predictions[selected_date][0,:,0]
                 if selected_dataset != 'all':
-                    print("Warning: Without given model, the visualiation only works for the 'all' dataset", flush=True)
+                    print("Warning: Without given model, the visualiation only works for the " + \
+                        "'all' dataset", flush=True)
             else:
-                Y_pred = self.model_plot.predict(X_selected)
-                Y_pred = Y_pred[selected_date,:,0]
-            Y_pred = self.modelAdapter.de_normalize_y(Y_pred)
+                y_pred = self.model_plot.predict(x_selected)
+                y_pred = y_pred[selected_date,:,0]
+            y_pred = self.normalizer.de_normalize_y(y_pred)
 
             # Create a DataFrame for Plotly Express
-            startdate = self.modelAdapter.getStartDateFromIndex(selected_dataset, selected_date)
-            datetime_index = pd.date_range(start=startdate, periods=Y_pred.shape[0], freq='1h').tz_convert(self.timezone)
+            startdate = self.model_adapter.getStartDateFromIndex(selected_dataset, selected_date)
+            datetime_index = pd.date_range(start=startdate, periods=y_pred.shape[0], 
+                freq='1h').tz_convert(self.timezone)
 
-            if self.Y_model_pretrain is None:
-                df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': Y_real, 'Y_pred': Y_pred})
+            if self.y_model_pretrain is None:
+                df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': y_real, 'Y_pred': y_pred})
             else:
                 # Add scaled standard load profile
-                Y_standardload_denormalized = self.modelAdapter_pretrain.de_normalize_y(self.Y_model_pretrain[selected_dataset][selected_date,:,0])
-                df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': Y_real, 'Y_pred': Y_pred, 'Y_standardload': Y_standardload_denormalized})
+                Y_standardload_denormalized = self.normalizer_pretrain.de_normalize_y(
+                    self.y_model_pretrain[selected_dataset][selected_date,:,0])
+                df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': y_real, 'Y_pred': y_pred, 
+                    'Y_standardload': Y_standardload_denormalized})
 
             # Add one hour to the last timestep, in order to have the "hold-values" till 00:00
             last_timestep = df_Y['x'].iloc[-1]
@@ -155,53 +169,50 @@ class PlotlyApp:
 
             # Create a line chart using Plotly Express
             fig_Y = px.line()
-            fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_real']/1000.0, mode='lines', name='Real', line_color='darkgrey', line_shape='hv')
-            fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_pred']/1000.0, mode='lines', name='Predicted', line_color='blue', line_shape='hv')
-            fig_Y.update_layout(yaxis_title='Load (kW)', xaxis_title='Time (HH:MM)', 
-                                plot_bgcolor='white', legend=dict(x=0, y=1, xanchor='left', yanchor='top'),
-                                margin=dict(l=20, r=20, t=20, b=20),
-                                font=dict(size=16, color='black'),
-                                )
-            fig_Y.update_xaxes(showline = True, linewidth = 1, linecolor = 'black', mirror = True, 
-                               )
+            fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_real']/1000.0, mode='lines', name='Real',
+                line_color='darkgrey', line_shape='hv')
+            fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_pred']/1000.0, mode='lines', name='Predicted',
+                line_color='blue', line_shape='hv')
+            fig_Y.update_layout(yaxis_title='Load (kW)', xaxis_title='Time (HH:MM)',
+                plot_bgcolor='white', legend=dict(x=0, y=1, xanchor='left', yanchor='top'),
+                margin=dict(l=20, r=20, t=20, b=20), font=dict(size=16, color='black'))
+            fig_Y.update_xaxes(showline = True, linewidth = 1, linecolor = 'black', mirror = True)
             fig_Y.update_yaxes(showline = True, linewidth = 1, linecolor = 'black', mirror = True)
-            if self.Y_model_pretrain is not None:
-                fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_standardload']/1000.0, mode='lines', name='Y_standardload')
+            if self.y_model_pretrain is not None:
+                fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_standardload']/1000.0, mode='lines',
+                    name='Y_standardload')
 
             # Additionally visualize the input Data of the LSTM
             # Create a dataframe
-            startdate = self.modelAdapter.getStartDateFromIndex(selected_dataset, selected_date)
-            datetime_index = pd.date_range(start=startdate, periods=X_selected.shape[1], freq='1h')
-            X_visualized = X_selected[selected_date,:,:]
+            startdate = self.model_adapter.getStartDateFromIndex(selected_dataset, selected_date)
+            datetime_index = pd.date_range(start=startdate, periods=x_selected.shape[1], freq='1h')
+            X_visualized = x_selected[selected_date,:,:]
             df_X = pd.DataFrame(X_visualized, index=datetime_index)
 
             # Create a figure with subplots and shared x-axis
-            fig_X = make_subplots(rows=df_X.shape[1], cols=1, shared_xaxes=True, subplot_titles=df_X.columns)
+            fig_X = make_subplots(rows=df_X.shape[1], cols=1, shared_xaxes=True,
+                subplot_titles=df_X.columns)
             for i, column in enumerate(df_X.columns):
-                fig_X.add_trace(go.Scatter(x=df_X.index, y=df_X[column], mode='lines', name=column), row=i+1, col=1)
+                fig_X.add_trace(go.Scatter(x=df_X.index, y=df_X[column], mode='lines',
+                    name=column), row=i+1, col=1)
             fig_X.update_layout(
-                                #yaxis_title='LSTM inputs', 
-                                height=1200, 
-                                plot_bgcolor='white', showlegend=False,
-                                #yaxis_title_shift=-50, yaxis_title_standoff=0
-                                )
+                #yaxis_title='LSTM inputs',
+                height=1200,
+                plot_bgcolor='white', showlegend=False,
+                #yaxis_title_shift=-50, yaxis_title_standoff=0
+                )
             fig_X.update_xaxes(showgrid=True, gridcolor='lightgrey')
             fig_X.update_yaxes(showgrid=True, gridcolor='lightgrey')
 
             # Store the create figure
-            fig_Y.write_image('scripts/outputs/figs/plotly_profile_Y.pdf', format='pdf')
-            fig_X.write_image('scripts/outputs/figs/plotly_profile_X.pdf', format='pdf')
+            fig_Y.write_image('outputs/figs/plotly_profile_Y.pdf', format='pdf')
+            fig_X.write_image('outputs/figs/plotly_profile_X.pdf', format='pdf')
 
             return fig_Y, fig_X
-        
+
         except Exception as e:
             raise RuntimeError("An error occurred during visualization!") from e
-        
 
     def run(self, myport=8050):
-        # Run the app
+        """Run the Dash app."""
         self.app.run(debug=True, port=myport)
-
-if __name__ == '__main__':
-    lstm_app = PlotlyApp()
-    lstm_app.run()
