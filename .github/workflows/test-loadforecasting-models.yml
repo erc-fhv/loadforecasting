@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-latest    
     strategy:
       matrix:
-        python-version: [3.9, 3.12]
+        python-version: [3.11]
+        # python-version: [3.9, 3.12]
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -27,6 +28,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install pytest
+        ls
         pip install ./src/loadforecasting_models
 
     - name: Run tests
