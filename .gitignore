@@ -10,3 +10,4 @@
 **/dist/*
 **/loadforecasting_models.egg-info/*
 **/loadforecasting_framework.egg-info/*
+**/loadforecasting_models/build/*
