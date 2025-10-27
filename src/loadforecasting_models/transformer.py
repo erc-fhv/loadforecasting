@@ -104,7 +104,7 @@ class Transformer(torch.nn.Module):
         x_dev: Optional[torch.Tensor] = None,
         y_dev: Optional[torch.Tensor] = None,
         pretrain_now: bool = False,
-        finetune_now: bool = True,
+        finetune_now: bool = False,
         epochs: int = 100,
         learning_rates: Optional[Sequence[float]] = None,
         batch_size: int = 256,

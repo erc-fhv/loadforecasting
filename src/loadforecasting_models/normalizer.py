@@ -5,10 +5,10 @@ class Normalizer():
     """Simple normalizer class for input and output normalization and denormalization."""
 
     def __init__(self):
-        self.mean_x = 0
-        self.std_x = 0
-        self.mean_y = 0
-        self.std_y = 0
+        self.mean_x = 0.
+        self.std_x = 1.
+        self.mean_y = 0.
+        self.std_y = 1.
 
     def normalize(self, x, y, training=True):
         """Normalize both input and output data of the model."""
