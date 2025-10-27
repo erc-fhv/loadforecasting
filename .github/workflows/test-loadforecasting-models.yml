@@ -9,7 +9,7 @@ on:
       - 'src/loadforecasting_models/*.py'
 
 jobs:
-  test:
+  test_loadforecasting_models:
     runs-on: ubuntu-latest    
     strategy:
       matrix:
@@ -27,7 +27,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install pytest
-        pip install ../../src/loadforecasting_models
+        pip install ./src/loadforecasting_models
 
     - name: Run tests
       run: |
