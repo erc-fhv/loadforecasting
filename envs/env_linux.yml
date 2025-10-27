@@ -155,6 +155,7 @@ dependencies:
   - packaging=24.1=pyhd8ed1ab_0
   - pcre2=10.44=hba22ea6_2
   - pip=24.2=pyh8b19718_1
+  - ply=3.11=py311h06a4308_0
   - pthread-stubs=0.4=h36c2ea0_1001
   - pyomo=6.9.5=py311h1ddb823_0
   - python=3.11.9=hb806964_0_cpython
@@ -302,6 +303,7 @@ dependencies:
       - rpds-py==0.20.0
       - scikit-learn==1.7.1
       - scipy==1.16.0
+      - seaborn==0.13.2
       - send2trash==1.8.3
       - six==1.16.0
       - sniffio==1.3.1
