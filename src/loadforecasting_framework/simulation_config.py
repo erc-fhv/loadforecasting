@@ -78,9 +78,9 @@ class Epochs():
     DEFAULT = 100     # <= Baseline
 
 # Define all possible run settings
-run_settings = ['modelSize', 'doPretraining', 'doTransferLearning', 'aggregation_Count',
-                'nrOfComunities', 'trainingHistory', 'testSize', 'TrainSetFuture', 'devSize',
-                'usedModels', 'epochs']
+run_settings = ['model_size', 'do_pretraining', 'do_transfer_learning', 'aggregation_count',
+                'nr_of_comunities', 'training_history', 'test_size', 'train_set_future', 'dev_size',
+                'used_models', 'epochs']
 ConfigOfOneRun = namedtuple('Config_of_one_run', run_settings)
 
 

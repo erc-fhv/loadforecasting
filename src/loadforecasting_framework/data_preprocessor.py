@@ -10,8 +10,8 @@ class DataPreprocessor:
     def __init__(self,
                  public_holidays,
                  trainHistory,
-                 testSize,
-                 devSize,
+                 test_size,
+                 dev_size,
                  trainFuture,
                  normalizer,
                  addLaggedPower=True,
@@ -29,8 +29,8 @@ class DataPreprocessor:
         self.addLaggedPower = addLaggedPower
         self.shuffle_data = shuffle_data
         self.trainHistory = trainHistory
-        self.testSize = testSize
-        self.devSize = devSize
+        self.test_size = test_size
+        self.dev_size = dev_size
         self.trainFuture = trainFuture
         self.normalizer = normalizer
         self.nr_of_lagged_days = 3
@@ -260,9 +260,9 @@ class DataPreprocessor:
         #  -------------------------------------------------------------------        
         X, Y = {}, {}
         self.total_set_size = X_all.shape[0]
-        self.dev_set_start = self.total_set_size - self.devSize
+        self.dev_set_start = self.total_set_size - self.dev_size
         self.trainFuture_start = self.dev_set_start - self.trainFuture
-        self.test_set_start = self.trainFuture_start - self.testSize
+        self.test_set_start = self.trainFuture_start - self.test_size
         if self.trainHistory != -1:
             self.train_set_start = self.test_set_start - self.trainHistory
         else:

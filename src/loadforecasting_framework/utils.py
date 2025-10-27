@@ -237,7 +237,7 @@ class Evaluate_Models:
                     test_loss_relative.append(results['test_loss_relative'])
                     predicted_profile = np.array(results['predicted_profile']).flatten()
                     predicted_profiles.append(predicted_profile)
-                assert len(result_per_profile) == config.nrOfComunities
+                assert len(result_per_profile) == config.nr_of_comunities
 
                 # Rename for readability
                 if model_type == 'Transformer_Encoder_Only':
@@ -280,13 +280,13 @@ class Evaluate_Models:
                 if expected_config == available_config:
 
                     if given_key == 'community_size':
-                        key = available_config.aggregation_Count[0]
+                        key = available_config.aggregation_count[0]
                     elif given_key == 'trainingSize':
-                        key = available_config.trainingHistory
-                    elif given_key == 'modelSize':
-                        key = available_config.modelSize
+                        key = available_config.training_history
+                    elif given_key == 'model_size':
+                        key = available_config.model_size
                     elif given_key == 'testSetDate':
-                        key = available_config.trainingHistory
+                        key = available_config.training_history
                     else:
                         assert f"Unexpected function parameter: {given_key}."
 
@@ -319,7 +319,7 @@ class Evaluate_Models:
         for run_id, (run_config, history) in enumerate(filtered_train_histories.items()):
             # Define the labels of the following graph
             model_type, load_profile, act_config = run_config
-            label = (model_type, act_config.aggregation_Count, act_config.modelSize)
+            label = (model_type, act_config.aggregation_count, act_config.model_size)
 
             # Add each epoch's loss for the current run's history
             for epoch, loss_value in enumerate(history['loss']):

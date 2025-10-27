@@ -37,7 +37,7 @@ class ModelTrainer:
             # Train and test the given models
             act_sim_config = my_configs[act_sim_config_index]
             results = []
-            for model_type in act_sim_config.usedModels:
+            for model_type in act_sim_config.used_models:
                 for load_profile in loadprofiles:
                     result = self.optimize_model(model_type, load_profile, my_configs,
                         act_sim_config_index)
@@ -80,7 +80,7 @@ class ModelTrainer:
             x_train = x['train'],
             y_train = y['train'],
             pretrain_now = False,
-            finetune_now = sim_config.doTransferLearning,
+            finetune_now = sim_config.do_transfer_learning,
             do_evaluation = True,
             x_test = x['test'],
             y_test = y['test'],
@@ -158,7 +158,7 @@ class ModelTrainer:
             else:
                 assert False, f"Unimplemented model_type given: {model_type}"
 
-            model_size = sim_config.modelSize
+            model_size = sim_config.model_size
             my_model = my_class(model_size, num_of_features, normalizer=normalizer)
 
             if do_training:
@@ -185,15 +185,15 @@ class ModelTrainer:
         # Bring the power profiles to the model shape of (nr_of_batches, timesteps, features)
         #
         load_profiles_filenames = []
-        for i, power_profile in enumerate(load_profiles[:sim_config.nrOfComunities]):
+        for i, power_profile in enumerate(load_profiles[:sim_config.nr_of_comunities]):
 
             # Preprocess data to get X and Y for the model
             normalizer = Normalizer()
             model_preprocessor = DataPreprocessor(public_holidays_timestamps,
-                                            trainHistory = sim_config.trainingHistory,
-                                            testSize = sim_config.testSize,
-                                            devSize = sim_config.devSize,
-                                            trainFuture = sim_config.TrainSetFuture,
+                                            trainHistory = sim_config.training_history,
+                                            test_size = sim_config.test_size,
+                                            dev_size = sim_config.dev_size,
+                                            trainFuture = sim_config.train_set_future,
                                             normalizer = normalizer,
                                             )
             X, Y = model_preprocessor.transformData(power_profile, weather_data)
@@ -220,10 +220,10 @@ class ModelTrainer:
         # Preprocess data to get X and Y for the model
         normalizer = Normalizer()
         model_preprocessor = DataPreprocessor(public_holidays_timestamps,
-                                        trainHistory = sim_config.trainingHistory,
-                                        testSize = sim_config.testSize,
-                                        devSize = sim_config.devSize, 
-                                        trainFuture = sim_config.TrainSetFuture,
+                                        trainHistory = sim_config.training_history,
+                                        test_size = sim_config.test_size,
+                                        dev_size = sim_config.dev_size,
+                                        trainFuture = sim_config.train_set_future,
                                         normalizer = normalizer,
                                         )
         x, y = model_preprocessor.transformData(all_standard_loadprofiles, weatherData=None)
@@ -233,9 +233,9 @@ class ModelTrainer:
             pickle.dump((x, y, normalizer), file)
 
         # If required, do pretraining
-        if sim_config.doPretraining:
+        if sim_config.do_pretraining:
 
-            for model_type in sim_config.usedModels:
+            for model_type in sim_config.used_models:
                 if model_type in ('xLstm', 'Lstm', 'Transformer'):
 
                     # Pretraining possible for Machine Learning Models
@@ -267,9 +267,9 @@ class ModelTrainer:
         # Readout the power profiles, bring them to the format needed by the model and store those
         # profiles
         #
-        file_path = os.path.join(os.path.dirname(__file__), sim_config.aggregation_Count[1])
+        file_path = os.path.join(os.path.dirname(__file__), sim_config.aggregation_count[1])
         load_profiles = pd.read_pickle(file_path)
-        load_profiles = load_profiles[:sim_config.nrOfComunities]
+        load_profiles = load_profiles[:sim_config.nr_of_comunities]
 
         # Readout the weather data
         #
