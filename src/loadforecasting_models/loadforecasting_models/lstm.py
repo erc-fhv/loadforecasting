@@ -1,7 +1,7 @@
 from typing import Optional, Callable, Sequence
 import torch
-from loadforecasting_models.helpers import PytorchHelper
-from loadforecasting_models.normalizer import Normalizer
+from .helpers import PytorchHelper
+from .normalizer import Normalizer
 
 class Lstm(torch.nn.Module):
     """

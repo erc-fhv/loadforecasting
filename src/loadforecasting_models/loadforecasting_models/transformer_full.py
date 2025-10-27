@@ -1,7 +1,7 @@
 from typing import Optional, Callable, Sequence
 import torch
-from loadforecasting_models.helpers import PytorchHelper, PositionalEncoding
-from loadforecasting_models.normalizer import Normalizer
+from .helpers import PytorchHelper, PositionalEncoding
+from .normalizer import Normalizer
 
 class TransformerFull(torch.nn.Module):
     """

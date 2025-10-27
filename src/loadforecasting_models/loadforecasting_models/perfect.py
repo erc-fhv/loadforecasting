@@ -1,6 +1,6 @@
 from typing import Optional, Callable
 import torch
-from loadforecasting_models.normalizer import Normalizer
+from .normalizer import Normalizer
 
 class Perfect():
     """

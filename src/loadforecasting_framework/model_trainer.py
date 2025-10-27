@@ -14,8 +14,7 @@ from loadforecasting_framework.simulation_config import ConfigOfOneRun
 from loadforecasting_framework.data_preprocessor import DataPreprocessor
 from loadforecasting_framework import utils
 from loadforecasting_framework import import_weather_data
-from loadforecasting_models import Knn, Persistence, xLstm, Lstm, Transformer, Perfect
-from loadforecasting_models import Normalizer
+from loadforecasting_models import Knn, Persistence, xLstm, Lstm, Transformer, Perfect, Normalizer
 
 class ModelTrainer:
     """

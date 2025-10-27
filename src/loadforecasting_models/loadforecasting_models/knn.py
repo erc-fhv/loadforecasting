@@ -1,7 +1,7 @@
 from typing import Callable, Literal
 from sklearn.neighbors import KNeighborsRegressor
 import torch
-from loadforecasting_models.normalizer import Normalizer
+from .normalizer import Normalizer
 
 class Knn():
     """
