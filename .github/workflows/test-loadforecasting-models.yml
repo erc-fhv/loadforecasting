@@ -2,11 +2,11 @@ name: Test loadforecasting_models
 
 on:
   push:  
-    paths:
-      - 'src/loadforecasting_models/*.py'
+    # paths:
+    #  - 'src/loadforecasting_models/*.py'
   pull_request:  
-    paths:
-      - 'src/loadforecasting_models/*.py'
+    # paths:
+    #   - 'src/loadforecasting_models/*.py'
 
 jobs:
   test_loadforecasting_models:
