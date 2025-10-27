@@ -70,4 +70,3 @@ class Normalizer():
         x_denormalized = (x * self.std_x) + self.mean_x
 
         return x_denormalized
-
