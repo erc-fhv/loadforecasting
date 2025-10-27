@@ -30,6 +30,10 @@ jobs:
         pip install pytest
         pip install ./src/loadforecasting_models
 
+    - name: Show directory
+      run: |
+        tree -L 2 src/loadforecasting_models
+
     - name: Verify install
       run: |
         python -c "import loadforecasting_models; print(loadforecasting_models.__file__)"
