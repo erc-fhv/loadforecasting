@@ -28,11 +28,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install pytest
-        ls
-        cd src
-        ls
-        cd loadforecasting_models
-        pip install -e .
+        pip install -e ./src/loadforecasting_models
 
     - name: Run tests
       run: |
