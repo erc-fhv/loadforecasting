@@ -28,6 +28,11 @@ jobs:
         conda info
         conda list
 
+    - name: Install the local package
+      shell: bash -l {0}
+      run: |
+        pip install .
+
     - name: Run training script    
       shell: bash -l {0}
       run: |
