@@ -26,7 +26,7 @@ def test_model_prediction():
             model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
             my_model = model_class('5k', x_train.size(2), normalizer=normalizer)
             my_model.train_model(x_train, y_train, verbose=2,
-                epochs=1) # epochs=1 für schnellen Test
+                epochs=1) # epochs=1 for faster tests
 
         x_test = torch.randn(90, 24, 10)
         y_pred = my_model.predict(x_test)

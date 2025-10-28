@@ -87,7 +87,7 @@ class PytorchHelper():
 
         # Prepare Optimization
         train_dataset = SequenceDataset(x_train, y_train)
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)            
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)          
         my_optimizer = optim.Adam(self.my_model.parameters(), lr=learning_rates[0])
         lr_scheduler = CustomLRScheduler(my_optimizer, learning_rates, epochs)
         history = {"loss": []}

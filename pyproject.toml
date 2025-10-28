@@ -1,5 +1,5 @@
 [project]
-name = "loadforecasting_models"
+name = "loadforecasting_framework"
 version = "0.1.6"
 description = "Package, containing multiple state-of-the-art forecasting models."
 authors = [{ name="Lukas Moosbrugger", email="molu@fhv.at" }]
@@ -21,3 +21,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages = ["loadforecasting_framework", "loadforecasting_models"]
+
+[tool.setuptools.package-data]
+loadforecasting_models = ["outputs/*", "outputs/figs/*"]
