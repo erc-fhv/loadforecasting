@@ -31,7 +31,7 @@ jobs:
     - name: Install the local package
       shell: bash -l {0}
       run: |
-        pip install .
+        pip install -e .
 
     - name: Run training script    
       shell: bash -l {0}
