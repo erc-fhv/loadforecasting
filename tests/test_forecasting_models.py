@@ -2,8 +2,11 @@ from typing import Type, Union
 import torch
 from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
 
-def test_model_prediction():
-    """Test if creating, training and prediction works without error. """
+def test_if_models_are_running():
+    """
+    Test if creating, training and prediction runs without error,
+    i.e. no accuracy is checked here.
+    """
 
     for model_class in [Knn, Lstm, Transformer, xLstm, Persistence]:
 
@@ -100,4 +103,8 @@ def test_model_linear_prediction():
 
 
 if __name__ == "__main__":
-    test_model_linear_prediction()
+
+    for name, func in list(globals().items()):
+        if name.startswith("test_") and callable(func):
+            print(f"\nRunning {name}()")
+            func()

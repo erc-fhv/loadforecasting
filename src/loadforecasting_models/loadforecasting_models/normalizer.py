@@ -13,21 +13,6 @@ class Normalizer():
         self.mean_y = 0.
         self.std_y = 1.
 
-    def _is_tensor(self, x):
-        return torch.is_tensor(x)
-
-    def _mean(self, x, axis=None):
-        return torch.mean(x, dim=axis) if self._is_tensor(x) else np.mean(x, axis=axis)
-
-    def _std(self, x, axis=None):
-        return torch.std(x, dim=axis, unbiased=False) if self._is_tensor(x) else np.std(x, axis=axis)
-
-    def _isclose(self, a, b=0):
-        return torch.isclose(a, torch.tensor(b, dtype=a.dtype, device=a.device)) if self._is_tensor(a) else np.isclose(a, b)
-
-    def _where(self, cond, a, b):
-        return torch.where(cond, a, b) if self._is_tensor(cond) else np.where(cond, a, b)
-
     def normalize(self, x, y, training=True):
         """Normalize both input and output data of the model."""
 
@@ -47,39 +32,89 @@ class Normalizer():
     def normalize_x(self, x, training=True):
         """Z-Normalize the input data of the model."""
 
-        if training:
-            self.mean_x = self._mean(x, axis=(0, 1))
-            self.std_x = self._std(x, axis=(0, 1))
+        # Optionally convert to ndarray
+        is_torch_tensor = self.is_tensor(x)
+        if is_torch_tensor:
+            x = self.convert_to_ndarray(x)
 
-            if self._isclose(self.std_x, 0).any():
-                self.std_x = self._where(self._isclose(self.std_x, 0), 
-                                         torch.tensor(1e-8, dtype=self.std_x.dtype, device=self.std_x.device) if self._is_tensor(x) else 1e-8, 
-                                         self.std_x)
+        if training:
+            # Estimate the mean and standard deviation of the data during training
+            self.mean_x = np.mean(x, axis=(0, 1))
+            self.std_x = np.std(x, axis=(0, 1))
+
+            if np.isclose(self.std_x, 0).any():
+                # Avoid a division by zero (which can occur for constant features)
+                self.std_x = np.where(np.isclose(self.std_x, 0), 1e-8, self.std_x)
 
         x_normalized = (x - self.mean_x) / self.std_x
+
+        # Optionally convert back to torch tensor
+        if is_torch_tensor:
+            x_normalized = self.convert_to_torch_tensor(x_normalized)
+
         return x_normalized
 
     def normalize_y(self, y, training=True):
         """Z-Normalize the output data of the model."""
 
-        if training:
-            self.mean_y = self._mean(y, axis=(0, 1))
-            self.std_y = self._std(y, axis=(0, 1))
+        # Optionally convert to ndarray
+        is_torch_tensor = self.is_tensor(y)
+        if is_torch_tensor:
+            y = self.convert_to_ndarray(y)
 
-        if self._is_tensor(y):
-            if torch.any(self._isclose(self.std_y, 0)):
-                raise ValueError("Normalization leads to division by zero.")
-        else:
-            if np.isclose(self.std_y, 0).any():
-                raise ValueError("Normalization leads to division by zero.")
+        if training:
+            # Estimate the mean and standard deviation of the data during training
+            self.mean_y = np.mean(y, axis=(0, 1))
+            self.std_y = np.std(y)
+
+        if np.isclose(self.std_y, 0):
+            assert False, "Normalization leads to division by zero."
 
         y_normalized = (y - self.mean_y) / self.std_y
+
+        # Optionally convert back to torch tensor
+        if is_torch_tensor:
+            y_normalized = self.convert_to_torch_tensor(y_normalized)
+
         return y_normalized
 
     def de_normalize_y(self, y):
         """Undo normalization"""
-        return (y * self.std_y) + self.mean_y
+
+        # Optionally convert to ndarray
+        is_torch_tensor = self.is_tensor(y)
+        if is_torch_tensor:
+            y = self.convert_to_ndarray(y)
+
+        y_denormalized = (y * self.std_y) + self.mean_y
+
+        # Optionally convert back to torch tensor
+        if is_torch_tensor:
+            y_denormalized = self.convert_to_torch_tensor(y_denormalized)
+
+        return y_denormalized
 
     def de_normalize_x(self, x):
         """Undo z-normalization."""
-        return (x * self.std_x) + self.mean_x
+
+        # Optionally convert to ndarray
+        is_torch_tensor = self.is_tensor(x)
+        if is_torch_tensor:
+            x = self.convert_to_ndarray(x)
+
+        x_denormalized = (x * self.std_x) + self.mean_x
+
+        # Optionally convert back to torch tensor
+        if is_torch_tensor:
+            x_denormalized = self.convert_to_torch_tensor(x_denormalized)
+
+        return x_denormalized
+
+    def is_tensor(self, x):
+        return torch.is_tensor(x)
+
+    def convert_to_ndarray(self, x):
+        return np.array(x)
+
+    def convert_to_torch_tensor(self, x):
+        return torch.tensor(x)
