@@ -12,7 +12,7 @@ class Knn():
         self,
         k: int,
         weights: Union[Literal['uniform', 'distance'], Callable] = 'distance',
-        normalizer: Normalizer | None = None,
+        normalizer: Union[Normalizer, None] = None,
         ) -> None:
         """
         Args:
@@ -81,7 +81,7 @@ class Knn():
         self,
         x_test: torch.Tensor,
         y_test: torch.Tensor,
-        results: dict | None = None,
+        results: Union[dict, None] = None,
         de_normalize: bool = False,
         eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
         ) -> dict:

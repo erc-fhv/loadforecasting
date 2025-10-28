@@ -1,4 +1,4 @@
-from typing import Optional, Callable
+from typing import Optional, Callable, Union
 import torch
 from .normalizer import Normalizer
 
@@ -36,7 +36,7 @@ class Perfect():
     def evaluate(
         self,
         y_test: torch.Tensor,
-        results: dict | None = None,
+        results: Union[dict, None] = None,
         de_normalize: bool = False,
         eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
         ) -> dict:
