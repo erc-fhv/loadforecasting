@@ -12,7 +12,7 @@ class Knn():
         self,
         k: int,
         weights: Literal['uniform', 'distance'] | Callable = 'distance',
-            normalizer: Normalizer | None = None,
+        normalizer: Normalizer | None = None,
         ) -> None:
         """
         Args:

@@ -21,26 +21,35 @@ pip install loadforecasting_models
 You can easily integrate and train our forecasting models in your Python workflow. Here's an example using the Transformer-based sequence-to-sequence model:
 
 ```python
-from loadforecasting_models import Transformer
-import torch
+from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
+import torch 
 
-# Generate dummy training data
-X_train = torch.randn(365, 24, 10)  # shape: (batch_size, sequence_length, num_features)
-Y_train = torch.randn(365, 24, 1)   # shape: (batch_size, sequence_length, 1)
+# Please define as needed
+#
+features = 10
+seq_len = 24
+batches_train = 365
+batches_test = 90
 
-# Normalize data
-my_normalizer = Normalizer()
-X_train, Y_train = my_normalizer(X_train, Y_train, training=True)
+# Train the sequence-to-sequence model
+#
+normalizer = Normalizer()
+x_train = torch.randn(batches_train, seq_len, features)  # Your train features of shape (batch_len, sequence_len, features)
+x_train = normalizer.normalize_x(x_train, training=True)  # Normalize x
+y_train = torch.randn(batches_train, seq_len, 1)  # Your train target of shape (batch_len, sequence_len, 1)
+y_train = normalizer.normalize_y(y_train, training=True)  # Normalize y
+myModel = Transformer(model_size='5k', num_of_features=features, normalizer=normalizer)   # Alternative Models: 'LSTM', 'xLSTM', 'KNN'
+myModel.train_model(x_train, y_train, epochs=100, verbose=0)
 
-# Initialize and train the model
-model = Transformer(model_size='5k', num_of_features=X_train.shape[2])
-model.train_model(X_train, Y_train, pretrain_now=False, finetune_now=False, epochs=100, verbose=0)
 
-# Generate predictions
-X_test = torch.randn(90, 24, 10)
-Y_pred = model.predict(X_test)
+# Predict
+#
+x_test = torch.randn(batches_test, seq_len, features)  # Your test features of shape (batch_len, sequence_len, features)
+x_test = normalizer.normalize_x(x_test, training=False)
+y_pred = myModel.predict(x_test)
+y_pred = normalizer.normalize_y(y_pred, training=False)
+print('\nOutput Shape = ', y_pred.shape)
 
-print(f"Prediction output shape: {Y_pred.shape}")
 ```
 
 ## Currently Available Model Types:

@@ -37,7 +37,7 @@ The repository is organized as follows:
 │   │
 │   └── loadforecasting_framework/    # Evaluation framework and visualization
 │       ├── simulation_config.py      # Config file for simulation runs
-│       ├── model_trainer.py         # Training and evaluation loop
+│       ├── model_trainer.py          # Training and evaluation loop
 │       ├── data_preprocessr.py       # Data formatting and preprocessing
 │       ├── paper_illustration.ipynb  # Plots and tables for the paper
 │       └── case_study/               # Energy community MILP optimization
@@ -118,26 +118,35 @@ Our forecasting models can be easily reused in other applications as shown below
 
 2. Use in Python:
     ```python
-    from loadforecasting_models import Model
+    from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
     import torch 
 
+    # Please define as needed
+    #
+    features = 10
+    seq_len = 24
+    batches_train = 365
+    batches_test = 90
 
     # Train the sequence-to-sequence model
     #
-
-    X_train = torch.randn(365, 24, 10)  # Your train features of shape (batch_len, sequence_len, features)
-    Y_train = torch.randn(365, 24, 1)  # Your train target of shape (batch_len, sequence_len, 1)
-    myModel = Model('Transformer', model_size='5k', num_of_features=X_train.shape[2])   # Alternative Models: 'LSTM', 'xLSTM', 'KNN', 'Perfect'
-    myModel.train_model(X_train, Y_train, pretrain_now=False, finetune_now=False, epochs=100, verbose=0)
+    normalizer = Normalizer()
+    x_train = torch.randn(batches_train, seq_len, features)  # Your train features of shape (batch_len, sequence_len, features)
+    x_train = normalizer.normalize_x(x_train, training=True)  # Normalize x
+    y_train = torch.randn(batches_train, seq_len, 1)  # Your train target of shape (batch_len, sequence_len, 1)
+    y_train = normalizer.normalize_y(y_train, training=True)  # Normalize y
+    myModel = Transformer(model_size='5k', num_of_features=features, normalizer=normalizer)   # Alternative Models: 'LSTM', 'xLSTM', 'KNN'
+    myModel.train_model(x_train, y_train, epochs=100, verbose=0)
 
 
     # Predict
     #
-
-    X_test = torch.randn(90, 24, 10)  # Your test features of shape (batch_len, sequence_len, features)
-    Y_pred = myModel.predict(X_test)
-    print('\nOutput Shape = ', Y_pred.shape)
-
+    x_test = torch.randn(batches_test, seq_len, features)  # Your test features of shape (batch_len, sequence_len, features)
+    x_test = normalizer.normalize_x(x_test, training=False)
+    y_pred = myModel.predict(x_test)
+    y_pred = normalizer.normalize_y(y_pred, training=False)
+    print('\nOutput Shape = ', y_pred.shape)
+    
     ```
 
 ## Reproduce the Complete Paper
@@ -153,6 +162,7 @@ The entire paper can be reproduced by following these steps.
     ```bash
     conda env create --name load_forecasting --file=envs/env_linux.yml -y
     conda activate load_forecasting
+    ```
 
 1. Install the local packages
     ```bash
