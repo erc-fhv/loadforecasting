@@ -1,1 +1,1 @@
-from .Model import Model
+from .loadforecasting_models import *

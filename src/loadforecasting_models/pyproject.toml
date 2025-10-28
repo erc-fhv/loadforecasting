@@ -1,23 +1,24 @@
 [project]
-name = "loadforecasting_framework"
+name = "loadforecasting_models"
 version = "0.1.6"
 description = "Package, containing multiple state-of-the-art forecasting models."
 authors = [{ name="Lukas Moosbrugger", email="molu@fhv.at" }]
-readme = "README.md"
-requires-python = ">=3.11"
+readme = "README.pypi.md"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent"
 ]
+dependencies = [
+    "torch",
+    "scikit-learn",
+    "xlstm"
+]
 license = "MIT"
-
-[project.urls]
-Homepage = "https://github.com/erc-fhv/loadforecasting"
 
 [build-system]
 requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
-packages = ["loadforecasting_framework", "loadforecasting_models"]
+packages = ["loadforecasting_models"]

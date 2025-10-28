@@ -18,6 +18,8 @@ class WeatherMeasurements:
 
         # Specify sampling periode
         if sample_periode == 'hourly':
+            # Fix deprecated warning "Use of '1H' frequency is deprecated, use '1h' instead."
+            Hourly._freq = "1h"
             self.data = Hourly(location, startDate, endDate, tz)
         elif sample_periode == 'daily':
             self.data = Daily(location, startDate, endDate, tz)
@@ -31,6 +33,7 @@ class WeatherMeasurements:
         self.data.fillna(0, inplace=True)
 
         # Check the timezone
-        assert str(self.data.index.tz) == str(tz), f"Expected tz = {tz}, received tz = {self.data.index.tz}"
+        assert str(self.data.index.tz) == str(tz), f"Expected tz = {tz}, \
+            received tz = {self.data.index.tz}"
 
         return self.data

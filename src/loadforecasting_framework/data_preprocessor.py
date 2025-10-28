@@ -5,14 +5,15 @@ import torch
 
 # Bring the data into the data format needed by the model
 #
-class ModelAdapter:
+class DataPreprocessor:
 
     def __init__(self,
                  public_holidays,
                  trainHistory,
-                 testSize,
-                 devSize,
+                 test_size,
+                 dev_size,
                  trainFuture,
+                 normalizer,
                  addLaggedPower=True,
                  shuffle_data=False,
                  seed=None,
@@ -28,18 +29,19 @@ class ModelAdapter:
         self.addLaggedPower = addLaggedPower
         self.shuffle_data = shuffle_data
         self.trainHistory = trainHistory
-        self.testSize = testSize
-        self.devSize = devSize
+        self.test_size = test_size
+        self.dev_size = dev_size
         self.trainFuture = trainFuture
+        self.normalizer = normalizer
         self.nr_of_lagged_days = 3
 
         # Optionally: Fix the random-seed for reproducibility
         if seed != None:
             np.random.seed(seed)
 
-    def transformData(self, 
-                      powerProfiles, 
-                      weatherData, 
+    def transformData(self,
+                      powerProfiles,
+                      weatherData,
                       first_prediction_clocktime = datetime.time(0, 0),
                       ):
 
@@ -94,7 +96,7 @@ class ModelAdapter:
 
         # Calculate/define the number of features of X
         nr_of_features = 11
-        if self.addLaggedPower == True:
+        if self.addLaggedPower:
             nr_of_features += 3
         if weatherData is None:
             num_of_weather_features = 6 # Default weather features
@@ -104,7 +106,8 @@ class ModelAdapter:
 
         seq_start_time = self.first_prediction_date
         seq_end_time = self.first_prediction_date + self.prediction_horizon
-        nr_of_timesteps = len(pd.date_range(start=seq_start_time, end=seq_end_time, freq=self.sampling_time))
+        nr_of_timesteps = len(pd.date_range(start=seq_start_time,
+            end=seq_end_time, freq=self.sampling_time))
         X_all = np.zeros(shape=(0, nr_of_timesteps, nr_of_features))
 
         while next_prediction_date + self.prediction_horizon <= self.last_available_datetime:
@@ -216,71 +219,22 @@ class ModelAdapter:
             Y_all[dataset] = torch.tensor(Y_all[dataset])
             
         return X_all, Y_all
-        
-    # Normalize all the inputs and targets of the model.
+
+    # Normalize all input data and target value
     #
     def normalizeAll(self, X_all, Y_all):
-        
-        X_all['train'] = self.normalizeX(X_all['train'], training=True)
-        Y_all['train'] = self.normalizeY(Y_all['train'], training=True)
-        X_all['dev'] = self.normalizeX(X_all['dev'], training=False)
-        Y_all['dev'] = self.normalizeY(Y_all['dev'], training=False)
-        X_all['test'] = self.normalizeX(X_all['test'], training=False)
-        Y_all['test'] = self.normalizeY(Y_all['test'], training=False)
-        X_all['all'] = self.normalizeX(X_all['all'], training=False)
-        Y_all['all'] = self.normalizeY(Y_all['all'], training=False)
-        
+
+        X_all['train'] = self.normalizer.normalize_x(X_all['train'], training=True)
+        Y_all['train'] = self.normalizer.normalize_y(Y_all['train'], training=True)
+        X_all['dev'] = self.normalizer.normalize_x(X_all['dev'], training=False)
+        Y_all['dev'] = self.normalizer.normalize_y(Y_all['dev'], training=False)
+        X_all['test'] = self.normalizer.normalize_x(X_all['test'], training=False)
+        Y_all['test'] = self.normalizer.normalize_y(Y_all['test'], training=False)
+        X_all['all'] = self.normalizer.normalize_x(X_all['all'], training=False)
+        Y_all['all'] = self.normalizer.normalize_y(Y_all['all'], training=False)
+
         return X_all, Y_all
-        
-    # Z-Normalize the input data of the model.
-    #
-    def normalizeX(self, X, training=False):
 
-        if training:
-            # Estimate the mean and standard deviation of the data during training
-            self.meanX = np.mean(X, axis=(0, 1))
-            self.stdX = np.std(X, axis=(0, 1))
-        
-            if np.isclose(self.stdX, 0).any():
-                # Avoid a division by zero (which can occur for constant features)
-                self.stdX = np.where(np.isclose(self.stdX, 0), 1e-8, self.stdX)
-
-        X_normalized = (X - self.meanX) / self.stdX
-
-        return X_normalized
-
-    # Undo z-normalization
-    #
-    def deNormalizeX(self, X):
-
-        X_denormalized = (X * self.stdX) + self.meanX
-
-        return X_denormalized
-
-    # Normalize the output data of the model.    
-    #
-    def normalizeY(self, Y, training=False):
-
-        if training:
-            # Estimate the mean and standard deviation of the data during training
-            self.meanY = np.mean(Y, axis=(0, 1))
-            self.stdY = np.std(Y)
-        
-        if np.isclose(self.stdY, 0):
-            assert False, "Normalization leads to division by zero."
-
-        Y_normalized = (Y - self.meanY) / self.stdY
-
-        return Y_normalized
-
-    # Undo normalization
-    #
-    def deNormalizeY(self, Y):
-
-        Y_denormalized = (Y * self.stdY) + self.meanY
-
-        return Y_denormalized
-    
     # Split up the data into train-, dev- and test-set
     #
     def splitUpData(self, X_all, Y_all):
@@ -306,9 +260,9 @@ class ModelAdapter:
         #  -------------------------------------------------------------------        
         X, Y = {}, {}
         self.total_set_size = X_all.shape[0]
-        self.dev_set_start = self.total_set_size - self.devSize
+        self.dev_set_start = self.total_set_size - self.dev_size
         self.trainFuture_start = self.dev_set_start - self.trainFuture
-        self.test_set_start = self.trainFuture_start - self.testSize
+        self.test_set_start = self.trainFuture_start - self.test_size
         if self.trainHistory != -1:
             self.train_set_start = self.test_set_start - self.trainHistory
         else:

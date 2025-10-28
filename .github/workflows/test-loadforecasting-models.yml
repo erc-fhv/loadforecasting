@@ -3,17 +3,18 @@ name: Test loadforecasting_models
 on:
   push:  
     paths:
-      - 'src/loadforecasting_models/*.py'
+     - 'src/loadforecasting_models/loadforecasting_models/*.py'
   pull_request:  
     paths:
-      - 'src/loadforecasting_models/*.py'
+      - 'src/loadforecasting_models/loadforecasting_models/*.py'
 
 jobs:
-  test:
+  test_loadforecasting_models:
     runs-on: ubuntu-latest    
     strategy:
       matrix:
-        python-version: [3.9, 3.12]
+        python-version: [3.11]
+        # python-version: [3.9, 3.12]
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -26,7 +27,8 @@ jobs:
     - name: Install dependencies
       run: |
         pip install --upgrade pip
-        pip install pytest loadforecasting_models
+        pip install pytest
+        pip install ./src/loadforecasting_models
 
     - name: Run tests
       run: |

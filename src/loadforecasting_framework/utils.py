@@ -18,8 +18,8 @@ import os
 
 # Imports own modules.
 #
-import loadforecasting_framework.simulation_config
-import loadforecasting_models as forecasting_models
+from loadforecasting_framework import simulation_config
+from loadforecasting_framework import model_trainer
 
 # Persist dicts with complex keys.
 # The dict keys are converted from multi-class into json format.
@@ -112,49 +112,52 @@ class Serialize:
 #
 class Deserialize:
 
-    # Get the training histories from disc and deserialize/unpack them.
-    #
     @staticmethod
     def get_training_histories(path):
-        
+        """ Get the training histories from disc and deserialize/unpack them. """
+
         with open(path, 'rb') as file:
             train_histories_serialized = pickle.load(file)
-        
-        train_histories = {}        
+
+        train_histories = {}
         for serialized_key, history in train_histories_serialized.items():
             deserialize_key = Deserialize.deserialize_key(serialized_key)            
             train_histories[deserialize_key] = history
-        
+
         return train_histories
-    
-    # Get the trained models from disc and deserialize/unpack them.
-    #
+
     @staticmethod
-    def get_trained_model(path_to_trained_parameters, model_type, test_profile, 
-                          chosenConfig, num_of_features, modelAdapter):
-        
+    def get_trained_model(path_to_trained_parameters, model_type, test_profile,
+                          chosen_config, num_of_features, normalizer):
+        """ Get the trained models from disc and deserialize/unpack them. """
+
         serialized_dict = torch.load(path_to_trained_parameters)
-        
+
         for serialized_key, state_dict in serialized_dict.items():
             deserialize_key = Deserialize.deserialize_key(serialized_key)
             if model_type == deserialize_key[0] and \
                 test_profile == deserialize_key[1] and \
-                chosenConfig == deserialize_key[2]:
-                act_model = forecasting_models.Model(model_type=deserialize_key[0], 
-                                            model_size=deserialize_key[2].modelSize,
-                                            num_of_features=num_of_features,
-                                            modelAdapter=modelAdapter
-                                            )
-                act_model.my_model.load_state_dict(state_dict)
+                chosen_config == deserialize_key[2]:
+
+                act_model, _ = model_trainer.ModelTrainer.create_model(
+                    model_type,
+                    normalizer,
+                    num_of_features = num_of_features,
+                    sim_config = chosen_config,
+                    do_training = False,
+                    do_evaluation = False,
+                    )
+
+                act_model.load_state_dict(state_dict)
                 return act_model
-        
+
         assert False, "Model not found!"
 
     # Convert a dict to a named tuple
     #
     @staticmethod
     def dict_to_named_tuple(**kwargs):
-        return simulation_config.Config_of_one_run(**kwargs)
+        return simulation_config.ConfigOfOneRun(**kwargs)
 
     # If the named tuple includes lists, convert it to a tuples.
     #
@@ -193,11 +196,12 @@ class Evaluate_Models:
                              skip_first_n_configs=None, 
                              skip_last_n_configs=None,                              
                              ):
-        
+
         all_train_histories = Deserialize.get_training_histories(path_to_train_histories)
 
         # Create a nested dictionary of the results
-        result_per_config = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))))
+        result_per_config = defaultdict(lambda: defaultdict(lambda: 
+            defaultdict(lambda: defaultdict(dict))))
         for key, value in all_train_histories.items():
             model_type = key[0]
             load_profile = key[1]
@@ -206,7 +210,6 @@ class Evaluate_Models:
             result_per_config[sim_config][model_type][load_profile]['loss'] = float(results['loss'][-1])
             result_per_config[sim_config][model_type][load_profile]['test_loss'] = float(results['test_loss'][-1])
             result_per_config[sim_config][model_type][load_profile]['test_loss_relative'] = float(results['test_loss_relative'][-1])
-            result_per_config[sim_config][model_type][load_profile]['test_sMAPE'] = float(results['test_sMAPE'][-1])
             result_per_config[sim_config][model_type][load_profile]['predicted_profile'] = results['predicted_profile']
 
         # Optionally: Skip given configs
@@ -217,55 +220,49 @@ class Evaluate_Models:
     # Calculate and print results for each config and model_type
     #
     @staticmethod
-    def print_results(path_to_train_histories, value_type = 'nMAE'):
+    def print_results(path_to_train_histories, value_type):
         
         result_per_config = Evaluate_Models.get_training_results(path_to_train_histories)
         result_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
 
         for config, result_per_model in result_per_config.items():
-            
+
             for model_type, result_per_profile in result_per_model.items():
-                
+
                 # Get al list of all losses of the current config and modeltype
-                train_losses, test_MAE, test_sMAPE, test_NMAE, predicted_profiles  = [], [], [], [], []
+                train_losses, test_loss, test_loss_relative, predicted_profiles  = [], [], [], []
                 for load_profile_name, results in result_per_profile.items():
                     train_losses.append(results['loss'])
-                    test_MAE.append(results['test_loss'])
-                    test_NMAE.append(results['test_loss_relative'])
-                    test_sMAPE.append(results['test_sMAPE'])
+                    test_loss.append(results['test_loss'])
+                    test_loss_relative.append(results['test_loss_relative'])
                     predicted_profile = np.array(results['predicted_profile']).flatten()
                     predicted_profiles.append(predicted_profile)
-                assert len(result_per_profile) == config.nrOfComunities
-                
+                assert len(result_per_profile) == config.nr_of_comunities
+
                 # Rename for readability
                 if model_type == 'Transformer_Encoder_Only':
                     model_type = 'Transformer'
                 elif model_type == 'PersistencePrediction':
                     model_type = 'Persistence'
-        
-                decimal_points_MAE = 4
-                decimal_points_sMAPE = 2
-                mean_test_MAE = f'{np.mean(test_MAE):.{decimal_points_MAE}f}'
-                mean_test_sMAPE = f'{np.mean(test_sMAPE):.{decimal_points_sMAPE}f}'
-                std_dev_test_MAE = f'{np.std(test_MAE):.{decimal_points_MAE}f}'
-                std_dev_test_sMAPE = f'{np.std(test_sMAPE):.{decimal_points_sMAPE}f}'
-                mean_train_MAE = f'{np.mean(train_losses):.{decimal_points_MAE}f}'
 
-                if value_type == 'nMAE':
-                    result_dict[config][model_type] = test_NMAE
+                decimal_points_loss = 4
+                mean_test_loss = f'{np.mean(test_loss):.{decimal_points_loss}f}'
+                std_dev_test_loss = f'{np.std(test_loss):.{decimal_points_loss}f}'
+                mean_train_loss = f'{np.mean(train_losses):.{decimal_points_loss}f}'
+
+                if value_type == 'test_loss_relative':
+                    result_dict[config][model_type] = test_loss_relative
                 elif value_type == 'predicted_profiles':
                     result_dict[config][model_type] = predicted_profiles
                 elif value_type == 'shell':
                     # Print the results of the current config and modeltype
                     print(f'    Model: {model_type}')
-                    print(f'      Mean Test MAE: {mean_test_MAE}')
-                    print(f'      Mean Test sMAPE: {mean_test_sMAPE}')
-                    print(f'      Standard Deviation Test MAE: {std_dev_test_MAE}')
-                    print(f'      Standard Deviation Test sMAPE: {std_dev_test_sMAPE}')
-                    print(f'      Mean Train MAE: {mean_train_MAE}\n')
+                    print(f'      Mean Test loss: {mean_test_loss}')
+                    print(f'      Standard Deviation Test loss: {std_dev_test_loss}')
+                    print(f'      Mean Train loss: {mean_train_loss}\n')
                 else:
                     assert "Please choose correct 'value_type' argument."
-        
+
         return result_dict
 
     # Check, if all data are available and create a nested dictionary of 
@@ -274,55 +271,55 @@ class Evaluate_Models:
     #
     @staticmethod
     def get_testrun_results(expected_configs, resuts_filename, given_key = 'community_size', value_type = 'predicted_profiles'):
-        
+
         result_dict = Evaluate_Models.print_results(resuts_filename, value_type)
-        
+
         profiles = defaultdict(dict)
         for expected_config in expected_configs:
-            for available_config in result_dict:                
+            for available_config in result_dict:
                 if expected_config == available_config:
-                    
+
                     if given_key == 'community_size':
-                        key = available_config.aggregation_Count[0]
+                        key = available_config.aggregation_count[0]
                     elif given_key == 'trainingSize':
-                        key = available_config.trainingHistory
-                    elif given_key == 'modelSize':
-                        key = available_config.modelSize
+                        key = available_config.training_history
+                    elif given_key == 'model_size':
+                        key = available_config.model_size
                     elif given_key == 'testSetDate':
-                        key = available_config.trainingHistory
+                        key = available_config.training_history
                     else:
                         assert f"Unexpected function parameter: {given_key}."
-                    
+
                     profiles[key] = result_dict[available_config]
         assert len(profiles) == len(expected_configs), \
             f"Not all expected test-runs found: {len(profiles)} != {len(expected_configs)}."
-        
+
         return profiles
 
     # Calculate and print results for each config and model_type
     #
     @staticmethod
-    def plot_training_losses_over_epochs(path_to_train_histories, 
+    def plot_training_losses_over_epochs(path_to_train_histories,
                                          plot_only_single_config = False,
                                          plotted_config = None):
-        
+
         all_train_histories = Deserialize.get_training_histories(path_to_train_histories)
 
         # Target config(s) to plot
         if plot_only_single_config:
-            print(f"Plotted Config:")
+            print("Plotted Config:")
             pprint(f"{plotted_config}")
-        filtered_train_histories = dict(
-            (key, value) for key, value in all_train_histories.items() 
-            if plot_only_single_config == False or key[2] == plotted_config
-        )
+        filtered_train_histories = {}
+        for key, value in all_train_histories.items():
+            if not plot_only_single_config or key[2] == plotted_config:
+                filtered_train_histories[key] = value
 
         # Create a combined list of loss values and corresponding run names
         combined_loss_data = []
         for run_id, (run_config, history) in enumerate(filtered_train_histories.items()):
             # Define the labels of the following graph
             model_type, load_profile, act_config = run_config
-            label = (model_type, act_config.aggregation_Count, act_config.modelSize)
+            label = (model_type, act_config.aggregation_count, act_config.model_size)
 
             # Add each epoch's loss for the current run's history
             for epoch, loss_value in enumerate(history['loss']):
@@ -333,10 +330,10 @@ class Evaluate_Models:
 
         # Use plotly express to plot the line graph
         fig = px.line(
-            df, 
-            x='Epoch', 
-            y='Loss', 
-            color='Run_History', 
+            df,
+            x='Epoch',
+            y='Loss',
+            color='Run_History',
             line_group='Run_History',
             labels={'Loss': 'Training Loss (MAE)', 'Epoch': 'Epochs'},
             color_discrete_sequence=px.colors.sequential.Blues,
@@ -344,18 +341,18 @@ class Evaluate_Models:
 
         # Customize axes and grid
         fig.update_yaxes(
-            showline=True, 
-            linewidth=1, 
-            linecolor='black', 
+            showline=True,
+            linewidth=1,
+            linecolor='black',
             mirror=True,
             gridcolor='lightgrey',
             gridwidth=0.5,
             range=[0, 1]
         )
         fig.update_xaxes(
-            showline=True, 
-            linewidth=1, 
-            linecolor='black', 
+            showline=True,
+            linewidth=1,
+            linecolor='black',
             mirror=True,
             gridcolor='lightgrey',
             gridwidth=0.5,
@@ -365,13 +362,13 @@ class Evaluate_Models:
         # Additional layout customizations
         fig.update_traces(marker=dict(size=5))
         fig.update_layout(
-            showlegend=False, 
+            showlegend=False,
             plot_bgcolor='white',
             width=1000,
             height=500
         )
 
-        # Save and show the plot        
+        # Save and show the plot
         base_dir = os.path.dirname(__file__)
         output_path = os.path.join(base_dir, 'outputs', 'figs', 'loss_over_epochs.pdf')
         fig.write_image(output_path, format='pdf')

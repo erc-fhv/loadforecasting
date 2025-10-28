@@ -3,11 +3,12 @@
 *.pkl
 *.csv
 *.h5
-data/Smartmeter data of London Households/
 *.pyc
 *.png
+*.prof
 **/outputs/
-.env
 **/dist/*
+**/build/*
 **/loadforecasting_models.egg-info/*
-envs/condaenv*
+**/loadforecasting_framework.egg-info/*
+**/loadforecasting_models/build/*
