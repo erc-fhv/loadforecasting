@@ -1,4 +1,4 @@
-from typing import Callable, Literal
+from typing import Callable, Literal, Union
 from sklearn.neighbors import KNeighborsRegressor
 import torch
 from .normalizer import Normalizer
@@ -11,7 +11,7 @@ class Knn():
     def __init__(
         self,
         k: int,
-        weights: Literal['uniform', 'distance'] | Callable = 'distance',
+        weights: Union[Literal['uniform', 'distance'], Callable] = 'distance',
         normalizer: Normalizer | None = None,
         ) -> None:
         """
