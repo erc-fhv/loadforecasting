@@ -132,7 +132,7 @@ class PytorchHelper():
                     eval_value = self.evaluate(x_dev, y_dev, results={}, de_normalize=False)
                     dev_loss = float(eval_value['test_loss'][-1])
                     self.my_model.train()  # Switch back to training mode after evaluation
-                print(f"Epoch {epoch + 1}/{epochs} - " + 
+                print(f"Epoch {epoch + 1}/{epochs} - " +
                     f"Loss = {epoch_loss:.4f} - " + 
                     f"Dev_Loss = {dev_loss:.4f} - " + 
                     f"LR = {my_optimizer.param_groups[0]['lr']}", 

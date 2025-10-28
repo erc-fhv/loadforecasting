@@ -7,12 +7,12 @@ readme = "README.pypi.md"
 requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
+    "Operating System :: OS Independent"
 ]
 dependencies = [
     "torch",
     "scikit-learn",
-    "xlstm",
+    "xlstm"
 ]
 license = "MIT"
 
