@@ -17,8 +17,8 @@ class Knn():
         """
         Args:
             k (int): Number of neighbors to use.
-            weights: Weight function used in prediction. Possible 
-                values: 'uniform', 'distance' or a callable distance function.
+            weights: Weight function used in prediction. Possible values: 'uniform',
+                'distance' or a callable distance function.
             normalizer (Normalizer): Used for X and Y normalization and denormalization.
         """
 
