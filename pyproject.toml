@@ -23,4 +23,5 @@ package-dir = {"" = "src"}
 packages = ["loadforecasting_framework", "loadforecasting_models"]
 
 [tool.setuptools.package-data]
-loadforecasting_models = ["outputs/*", "outputs/figs/*"]
+loadforecasting_framework = ["outputs/*", "outputs/figs/*"]
+loadforecasting_models = ["outputs/*""]

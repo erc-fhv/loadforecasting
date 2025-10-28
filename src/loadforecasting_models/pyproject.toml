@@ -24,4 +24,4 @@ build-backend = "setuptools.build_meta"
 packages = ["loadforecasting_models"]
 
 [tool.setuptools.package-data]
-loadforecasting_models = ["outputs/*", "outputs/figs/*"]
+loadforecasting_models = ["outputs/*"]

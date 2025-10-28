@@ -14,8 +14,8 @@ class Persistence:
             ) -> None:
         """
         Args:
-            lagged_load_feature (int): The feature index in the input tensor
-                that contains the lagged load to be used for prediction.
+            lagged_load_feature (int): The feature index in the input tensor that
+                contains the lagged load to be used for prediction.
             normalizer (Normalizer): Used for X and Y normalization and denormalization.
         """
         self.normalizer = normalizer
