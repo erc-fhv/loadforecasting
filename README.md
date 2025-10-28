@@ -158,7 +158,7 @@ Our forecasting models can be easily reused in other applications as shown below
     x_test = torch.randn(batches_test, seq_len, features)
     x_test = normalizer.normalize_x(x_test, training=False)
     y_pred = myModel.predict(x_test)
-    y_pred = normalizer.de_normalize_y(y_pred, training=False)
+    y_pred = normalizer.de_normalize_y(y_pred)
 
     print('\nOutput shape:', y_pred.shape)
     ```

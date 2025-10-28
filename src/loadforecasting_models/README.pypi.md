@@ -61,7 +61,7 @@ myModel.train_model(x_train, y_train, epochs=100, verbose=0)
 x_test = torch.randn(batches_test, seq_len, features)
 x_test = normalizer.normalize_x(x_test, training=False)
 y_pred = myModel.predict(x_test)
-y_pred = normalizer.de_normalize_y(y_pred, training=False)
+y_pred = normalizer.de_normalize_y(y_pred)
 
 print('\nOutput shape:', y_pred.shape)
 
