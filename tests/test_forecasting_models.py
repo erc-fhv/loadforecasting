@@ -43,7 +43,7 @@ def test_model_linear_prediction():
     produce the correct output shape.
     """
 
-    for model_class in [Lstm, Transformer, xLstm,]:
+    for model_class in [Lstm, Transformer, xLstm, Knn]:
 
         for seq_len in [24, 24*4, 24*7]:
 
@@ -70,10 +70,14 @@ def test_model_linear_prediction():
             x_train = normalizer.normalize_x(x_train, training=True)
             y_train = normalizer.normalize_y(y_train, training=True)
 
-            # Train the ML model
-            model_class: Type[Union[Lstm, Transformer, xLstm]]
-            my_model = model_class('5k', num_of_features=x_train.size(2), normalizer=normalizer)
-            my_model.train_model(x_train, y_train, epochs=100, verbose=2)
+            # Train the model
+            if model_class == Knn:
+                my_model = Knn(k=40, weights = 'distance', normalizer=None)
+                my_model.train_model(x_train, y_train)
+            else:
+                model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
+                my_model = model_class('5k', x_train.size(2), normalizer=normalizer)
+                my_model.train_model(x_train, y_train, verbose=2, epochs=100)
 
             # Test input data: Sine Values
             x_test_vals = torch.linspace(1, 2, batch_size * seq_len).reshape(batch_size, seq_len, 1)
