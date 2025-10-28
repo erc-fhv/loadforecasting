@@ -21,34 +21,49 @@ pip install loadforecasting_models
 You can easily integrate and train our forecasting models in your Python workflow. Here's an example using the Transformer-based sequence-to-sequence model:
 
 ```python
+
 from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
-import torch 
+import torch
 
-# Please define as needed
-#
-features = 10
-seq_len = 24
-batches_train = 365
-batches_test = 90
+# ------------------------------------------------------------------------------
+# Define dataset parameters
+# ------------------------------------------------------------------------------
+features = 10          # Number of input features
+seq_len = 24           # Sequence length (e.g., 24 hours)
+batches_train = 365    # Number of training samples (e.g., one year of daily sequences)
+batches_test = 90      # Number of test samples
 
-# Train the sequence-to-sequence model
-#
+# ------------------------------------------------------------------------------
+# Prepare training data
+# ------------------------------------------------------------------------------
 normalizer = Normalizer()
-x_train = torch.randn(batches_train, seq_len, features)  # Your train features of shape (batch_len, sequence_len, features)
-x_train = normalizer.normalize_x(x_train, training=True)  # Normalize x
-y_train = torch.randn(batches_train, seq_len, 1)  # Your train target of shape (batch_len, sequence_len, 1)
-y_train = normalizer.normalize_y(y_train, training=True)  # Normalize y
-myModel = Transformer(model_size='5k', num_of_features=features, normalizer=normalizer)   # Alternative Models: 'LSTM', 'xLSTM', 'KNN'
+
+# Generate dummy training data (replace with your own)
+x_train = torch.randn(batches_train, seq_len, features)   # Shape: (batch_size, seq_len, features)
+y_train = torch.randn(batches_train, seq_len, 1)          # Shape: (batch_size, seq_len, 1)
+
+# Normalize data
+x_train = normalizer.normalize_x(x_train, training=True)
+y_train = normalizer.normalize_y(y_train, training=True)
+
+# ------------------------------------------------------------------------------
+# Initialize and train the model
+# ------------------------------------------------------------------------------
+
+# Available models: Transformer, LSTM, xLSTM, KNN, Persistence
+myModel = Transformer(model_size='5k', num_of_features=features,
+    normalizer=normalizer)
 myModel.train_model(x_train, y_train, epochs=100, verbose=0)
 
-
-# Predict
-#
-x_test = torch.randn(batches_test, seq_len, features)  # Your test features of shape (batch_len, sequence_len, features)
+# ------------------------------------------------------------------------------
+# Make predictions
+# ------------------------------------------------------------------------------
+x_test = torch.randn(batches_test, seq_len, features)
 x_test = normalizer.normalize_x(x_test, training=False)
 y_pred = myModel.predict(x_test)
-y_pred = normalizer.normalize_y(y_pred, training=False)
-print('\nOutput Shape = ', y_pred.shape)
+y_pred = normalizer.de_normalize_y(y_pred, training=False)
+
+print('\nOutput shape:', y_pred.shape)
 
 ```
 
