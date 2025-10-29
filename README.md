@@ -116,7 +116,7 @@ Our forecasting models can be easily reused in other applications as shown below
     pip install loadforecasting_models
     ```
 
-2. Use in Python:
+2. Use of the machine learning models in Python:
 
     ```python
     from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
@@ -147,7 +147,7 @@ Our forecasting models can be easily reused in other applications as shown below
     # Initialize and train the model
     # ------------------------------------------------------------------------------
 
-    # Available models: Transformer, LSTM, xLSTM, KNN, Persistence
+    # Available ML models: Transformer, LSTM, xLSTM
     myModel = Transformer(model_size='5k', num_of_features=features,
         normalizer=normalizer)
     myModel.train_model(x_train, y_train, epochs=100, verbose=0)
@@ -162,6 +162,20 @@ Our forecasting models can be easily reused in other applications as shown below
 
     print('\nOutput shape:', y_pred.shape)
     ```
+
+3. Use of the KNN model:
+
+    ```python
+    from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
+    import torch
+    
+    # Same setup as above
+    # ...
+    myModel = KNN(k=40, weights='distance', normalizer=normalizer)
+    myModel.train_model(x_train, y_train, epochs=100, verbose=0)
+    # ...
+    ```
+
 
 ## Reproduce the Complete Paper
 

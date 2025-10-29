@@ -18,7 +18,7 @@ Install the package:
 pip install loadforecasting_models
 ```
 
-You can easily integrate and train our forecasting models in your Python workflow. Here's an example using the Transformer-based sequence-to-sequence model:
+You can easily integrate and train our forecasting machine learning models in your Python workflow:
 
 ```python
 
@@ -65,6 +65,19 @@ y_pred = normalizer.de_normalize_y(y_pred)
 
 print('\nOutput shape:', y_pred.shape)
 
+```
+
+Using a non-machine learning model is very similar, e.g. for a KNN model:
+
+```python
+from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
+import torch
+
+# Same setup as above
+# ...
+myModel = KNN(k=40, weights='distance', normalizer=normalizer)
+myModel.train_model(x_train, y_train, epochs=100, verbose=0)
+# ...
 ```
 
 ## Currently Available Model Types:
