@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from torch import optim
 from torch.utils.data import DataLoader, Dataset
-
+from pathlib import Path
 
 class SequenceDataset(Dataset):
     def __init__(self, X, Y):
@@ -94,9 +94,11 @@ class PytorchHelper():
 
         # Load pretrained weights
         if finetune_now:
-            pretrained_weights_path = f'{os.path.dirname(__file__)}' + \
-                f'/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
-            self.my_model.load_state_dict(torch.load(pretrained_weights_path))
+            filename = f'pretrained_weights_{self.my_model.__class__.__name__}.pth'
+            load_path = Path.home() / ".loadforecasting_models" / filename
+            if not load_path.exists():
+                raise FileNotFoundError(f"No weights found at {load_path}")
+            self.my_model.load_state_dict(torch.load(load_path))
 
         # Start training
         self.my_model.train()   # Switch on the training flags
@@ -144,8 +146,10 @@ class PytorchHelper():
 
         # Save the trained weights
         if pretrain_now:
-            pretrained_weights_path = f'{os.path.dirname(__file__)}' + \
-                f'/outputs/pretrained_weights_{self.my_model.__class__.__name__}.pth'
+            filename = f'pretrained_weights_{self.my_model.__class__.__name__}.pth'
+            save_dir = Path.home() / ".loadforecasting_models"
+            save_dir.mkdir(exist_ok=True)            
+            pretrained_weights_path = save_dir / filename
             torch.save(self.my_model.state_dict(), pretrained_weights_path)
 
         return history
