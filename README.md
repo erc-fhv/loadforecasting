@@ -163,7 +163,7 @@ Our forecasting models can be easily reused in other applications as shown below
     print('\nOutput shape:', y_pred.shape)
     ```
 
-3. Use of the KNN model:
+3. Use of non machine learning models. For example the KNN model:
 
     ```python
     from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
