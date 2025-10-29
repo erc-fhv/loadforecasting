@@ -172,7 +172,7 @@ Our forecasting models can be easily reused in other applications as shown below
     # Same setup as above
     # ...
     myModel = KNN(k=40, weights='distance', normalizer=normalizer)
-    myModel.train_model(x_train, y_train, epochs=100, verbose=0)
+    myModel.train_model(x_train, y_train)
     # ...
     ```
 
