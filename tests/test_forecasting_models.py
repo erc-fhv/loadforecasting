@@ -177,8 +177,7 @@ def test_transfer_learning():
     assert n_mae < treshold/100., f"Model too inaccurate: {n_mae:.2%}"
 
 if __name__ == "__main__":
-    test_transfer_learning()
-    # for name, func in list(globals().items()):
-    #     if name.startswith("test_") and callable(func):
-    #         print(f"\nRunning {name}()")
-    #         func()
+    for name, func in list(globals().items()):
+        if name.startswith("test_") and callable(func):
+            print(f"\nRunning {name}()")
+            func()
