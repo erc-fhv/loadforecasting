@@ -75,7 +75,7 @@ import torch
 
 # Same setup as above
 # ...
-myModel = KNN(k=40, weights='distance', normalizer=normalizer)
+myModel = Knn(k=40, weights='distance', normalizer=normalizer)
 myModel.train_model(x_train, y_train)
 # ...
 ```
