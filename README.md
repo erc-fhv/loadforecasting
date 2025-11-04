@@ -195,6 +195,7 @@ The entire paper can be reproduced by following these steps.
 1. Install the local packages
     ```bash
     # From the project root
+    pip install -e src/loadforecasting_models/
     pip install -e .
     ```
 

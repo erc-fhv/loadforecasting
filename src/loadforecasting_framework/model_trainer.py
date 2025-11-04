@@ -288,8 +288,13 @@ class ModelTrainer:
 
         weather_data = weather_data.loc[:, (weather_data != 0).any(axis=0)] # remove empty columns
 
-        # Load the public holiday calendar
-        #
+        public_holidays_timestamps = self.load_holidays(start_date, end_date)
+
+        return load_profiles, weather_data, public_holidays_timestamps
+
+    def load_holidays(self, start_date, end_date) -> list:
+        """Load the public holiday calendar and return as list."""
+
         public_holidays = holidays.CountryHoliday('GB', prov='ENG',
             years=range(start_date.year, end_date.year + 1))
 
@@ -298,10 +303,12 @@ class ModelTrainer:
             for day in range(8):  # 9 days from Dec 24 to Dec 31 inclusive
                 public_holidays[date(year, 12, 24) + timedelta(days=day)] = "Christmas Holidays"
 
+        # Convert from dict to list
         public_holidays_timestamps = \
             [pd.Timestamp(date, tzinfo=pytz.utc) for date in public_holidays.keys()]
 
-        return load_profiles, weather_data, public_holidays_timestamps
+        return public_holidays_timestamps
+
 
 if __name__ == "__main__":
 
