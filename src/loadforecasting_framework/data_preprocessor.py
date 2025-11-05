@@ -49,7 +49,8 @@ class DataPreprocessor:
         powerProfiles = powerProfiles.resample(self.sampling_time).mean()
 
         # Get the first and last available timestamps
-        self.first_prediction_date = self.getFirstPredictionTimestamp(powerProfiles, first_prediction_clocktime)
+        self.first_prediction_date = self.getFirstPredictionTimestamp(powerProfiles, 
+            first_prediction_clocktime)
         self.last_available_datetime = powerProfiles.index[-1]
 
         # Convert the power timeseries to a nd-array with format (nr_of_batches, timesteps, outputs)

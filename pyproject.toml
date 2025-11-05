@@ -9,6 +9,16 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent"
 ]
+dependencies = [
+    "pandas",
+    "holidays",
+    "demandlib",
+    "torch",
+    "scipy",
+    "seaborn",
+    "matplotlib",
+    "pytz",
+]
 license = "MIT"
 
 [project.urls]

@@ -2,7 +2,8 @@
 
 ## Summary
 
-This repository provides a flexible and modular framework for short-term load forecasting (STLF), suitable for both research and real-world applications. It supports:
+This repository provides a flexible and modular framework for short-term load forecasting (STLF), 
+suitable for both research and real-world applications. It supports:
 
 - Deep learning models: Transformer, Lstm, xLstm
 - Baseline model: Knn, Persistence, Perfect
@@ -13,7 +14,8 @@ This repository provides a flexible and modular framework for short-term load fo
 
 More information about the models and the framework can be found in the following paper:  
 
-> Moosbrugger et al. (2025), *Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?*, [arXiv:2501.05000](https://arxiv.org/abs/2501.05000)
+> Moosbrugger et al. (2025), *Load Forecasting for Households and Energy Communities: Are Deep 
+Learning Models Worth the Effort?*, [arXiv:2501.05000](https://arxiv.org/abs/2501.05000)
 
 
 
@@ -136,8 +138,8 @@ Our forecasting models can be easily reused in other applications as shown below
     normalizer = Normalizer()
 
     # Generate dummy training data (replace with your own)
-    x_train = torch.randn(batches_train, seq_len, features)   # Shape: (batch_size, seq_len, features)
-    y_train = torch.randn(batches_train, seq_len, 1)          # Shape: (batch_size, seq_len, 1)
+    x_train = torch.randn(batches_train, seq_len, features)   # Shape: (batches, seq_len, features)
+    y_train = torch.randn(batches_train, seq_len, 1)          # Shape: (batches, seq_len, 1)
 
     # Normalize data
     x_train = normalizer.normalize_x(x_train, training=True)
@@ -192,11 +194,11 @@ The entire paper can be reproduced by following these steps.
     conda activate load_forecasting
     ```
 
-1. Install the local packages
+1. Install the local packages (without dependencies)
     ```bash
     # From the project root
-    pip install -e src/loadforecasting_models/
-    pip install -e .
+    pip install -e --no-deps src/loadforecasting_models/
+    pip install -e --no-deps .
     ```
 
 1. Train the models:
