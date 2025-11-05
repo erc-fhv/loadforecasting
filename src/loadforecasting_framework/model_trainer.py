@@ -195,7 +195,7 @@ class ModelTrainer:
                                             trainFuture = sim_config.train_set_future,
                                             normalizer = normalizer,
                                             )
-            X, Y = model_preprocessor.transformData(power_profile, weather_data)
+            X, Y = model_preprocessor.transform_data(power_profile, weather_data)
 
             output_path = os.path.join(os.path.dirname(__file__), 'outputs',
                 'file_' + str(i) + '.pkl')
@@ -225,7 +225,7 @@ class ModelTrainer:
                                         trainFuture = sim_config.train_set_future,
                                         normalizer = normalizer,
                                         )
-        x, y = model_preprocessor.transformData(all_standard_loadprofiles, weatherData=None)
+        x, y = model_preprocessor.transform_data(all_standard_loadprofiles, weatherData=None)
         pretraining_filename = os.path.join(os.path.dirname(__file__), 'outputs',
             'standard_loadprofile.pkl')
         with open(pretraining_filename, 'wb') as file:

@@ -96,7 +96,7 @@ class PlotlyApp:
 
         # Get the currently choosen data subset (train, dev or test)
         if selected_dataset == 'all':
-            subset = self.model_adapter.getDatasetTypeFromIndex(selected_date)
+            subset = self.model_adapter.get_dataset_type_from_index(selected_date)
             subset_text = f" Subset: {subset}."
         else:
             subset_text = ""
@@ -144,7 +144,7 @@ class PlotlyApp:
             y_pred = self.normalizer.de_normalize_y(y_pred)
 
             # Create a DataFrame for Plotly Express
-            startdate = self.model_adapter.getStartDateFromIndex(selected_dataset, selected_date)
+            startdate = self.model_adapter.get_start_date_from_index(selected_dataset, selected_date)
             datetime_index = pd.date_range(start=startdate, periods=y_pred.shape[0], 
                 freq='1h').tz_convert(self.timezone)
 
@@ -184,7 +184,7 @@ class PlotlyApp:
 
             # Additionally visualize the input Data of the LSTM
             # Create a dataframe
-            startdate = self.model_adapter.getStartDateFromIndex(selected_dataset, selected_date)
+            startdate = self.model_adapter.get_start_date_from_index(selected_dataset, selected_date)
             datetime_index = pd.date_range(start=startdate, periods=x_selected.shape[1], freq='1h')
             X_visualized = x_selected[selected_date,:,:]
             df_X = pd.DataFrame(X_visualized, index=datetime_index)

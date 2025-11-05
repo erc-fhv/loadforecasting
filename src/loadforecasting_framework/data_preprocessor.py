@@ -1,20 +1,19 @@
+import datetime
 import pandas as pd
 import numpy as np
-import datetime
 import torch
 
-# Bring the data into the data format needed by the model
-#
 class DataPreprocessor:
+    """Brings the given data into the data format needed by the model"""
 
     def __init__(self,
                  public_holidays,
-                 trainHistory,
+                 train_history,
                  test_size,
                  dev_size,
-                 trainFuture,
+                 train_future,
                  normalizer,
-                 addLaggedPower=True,
+                 add_lagged_power=True,
                  shuffle_data=False,
                  seed=None,
                  sampling_time = pd.Timedelta(hours=1, minutes=0),
@@ -26,54 +25,55 @@ class DataPreprocessor:
         self.prediction_horizon = prediction_horizon
         self.sampling_time = sampling_time
         self.public_holidays = public_holidays
-        self.addLaggedPower = addLaggedPower
+        self.add_lagged_power = add_lagged_power
         self.shuffle_data = shuffle_data
-        self.trainHistory = trainHistory
+        self.train_history = train_history
         self.test_size = test_size
         self.dev_size = dev_size
-        self.trainFuture = trainFuture
+        self.train_future = train_future
         self.normalizer = normalizer
         self.nr_of_lagged_days = 3
 
         # Optionally: Fix the random-seed for reproducibility
-        if seed != None:
+        if seed is not None:
             np.random.seed(seed)
 
-    def transformData(self,
-                      powerProfiles,
-                      weatherData,
+    def transform_data(self,
+                      power_profiles,
+                      weather_data,
                       first_prediction_clocktime = datetime.time(0, 0),
                       ):
+        """Brings the given data into the data format needed by the model"""
 
         # Downsample the profiles (e.g. to a frequency of 1/1h)
-        powerProfiles = powerProfiles.resample(self.sampling_time).mean()
+        power_profiles = power_profiles.resample(self.sampling_time).mean()
 
         # Get the first and last available timestamps
-        self.first_prediction_date = self.getFirstPredictionTimestamp(powerProfiles, 
+        self.first_prediction_date = self.get_first_prediction_timestamp(power_profiles, 
             first_prediction_clocktime)
-        self.last_available_datetime = powerProfiles.index[-1]
+        self.last_available_datetime = power_profiles.index[-1]
 
-        # Convert the power timeseries to a nd-array with format (nr_of_batches, timesteps, outputs)
-        Y_all = self.formattingY(powerProfiles)
+        # Convert the power timeseries to a nd-array with format (batches, timesteps, outputs)
+        y_all = self.formatting_y(power_profiles)
 
-        # Convert the input features to a nd-array with format (nr_of_batches, timesteps, features)
-        X_all = self.formattingX(weatherData, powerProfiles)
+        # Convert the input features to a nd-array with format (batches, timesteps, features)
+        x_all = self.formatting_x(weather_data, power_profiles)
 
         # Split up the data into train, dev, test and modeldata
-        X_all, Y_all = self.splitUpData(X_all, Y_all)
+        x_all, y_all = self.split_up_data(x_all, y_all)
 
         # Normalize all input data and target value
-        X_all, Y_all = self.normalizeAll(X_all, Y_all)
-        
-        # Convert from ndarray to torch tensor
-        X_all, Y_all = self.convertToTorchTensor(X_all, Y_all)
-        
-        return X_all, Y_all
+        x_all, y_all = self.normalize_all(x_all, y_all)
 
-    def getFirstPredictionTimestamp(self, powerProfiles, first_prediction_clocktime):
+        # Convert from ndarray to torch tensor
+        x_all, y_all = self.convert_to_torch_tensor(x_all, y_all)
+
+        return x_all, y_all
+
+    def get_first_prediction_timestamp(self, power_profiles, first_prediction_clocktime):
 
         # Calculate the first possible prediction timestamp
-        first_timestamp = powerProfiles.index[0] + pd.Timedelta(days=7*(self.nr_of_lagged_days))
+        first_timestamp = power_profiles.index[0] + pd.Timedelta(days=7*(self.nr_of_lagged_days))
 
         # Choose a prediction datetime, which is on the same day as the 'first_timestamp'.
         target_timestamp = pd.Timestamp.combine(first_timestamp.date(),
@@ -87,44 +87,46 @@ class DataPreprocessor:
 
         return first_prediction_timestamp
 
-    # Convert the input data to the model format.
-    # For more informations regarding the shape see model design for this project.
-    #
-    def formattingX(self, weatherData, powerProfiles=None):
+    def formatting_x(self, weather_data, power_profiles=None):
+        """
+        Convert the input data to the model format.
+        For more informations regarding the shape see model design for this project.
+        """
 
         batch_id = 0
         next_prediction_date = self.first_prediction_date
 
-        # Calculate/define the number of features of X
+        # Calculate/define the number of features of x
         nr_of_features = 11
-        if self.addLaggedPower:
+        if self.add_lagged_power:
             nr_of_features += 3
-        if weatherData is None:
+        if weather_data is None:
             num_of_weather_features = 6 # Default weather features
         else:
-            num_of_weather_features = weatherData.shape[1]
+            num_of_weather_features = weather_data.shape[1]
         nr_of_features += num_of_weather_features
 
         seq_start_time = self.first_prediction_date
         seq_end_time = self.first_prediction_date + self.prediction_horizon
         nr_of_timesteps = len(pd.date_range(start=seq_start_time,
             end=seq_end_time, freq=self.sampling_time))
-        X_all = np.zeros(shape=(0, nr_of_timesteps, nr_of_features))
+        x_all = np.zeros(shape=(0, nr_of_timesteps, nr_of_features))
 
         while next_prediction_date + self.prediction_horizon <= self.last_available_datetime:
 
-            # Add a new batch to the X array
+            # Add a new batch to the x array
             new_values = np.zeros(shape=(1, nr_of_timesteps, nr_of_features))
-            X_all = np.concatenate((X_all, new_values), axis=0)
+            x_all = np.concatenate((x_all, new_values), axis=0)
 
             # Define the current time range
             end_of_prediction = next_prediction_date + self.prediction_horizon
-            total_input_range = pd.date_range(start=next_prediction_date, end=end_of_prediction, freq=self.sampling_time)
+            total_input_range = pd.date_range(start=next_prediction_date, end=end_of_prediction,
+                freq=self.sampling_time)
 
             # Get the current weekday indices [0 ... 6] of all nr_of_timesteps.
             # The shape of the following variable is (nr_of_timesteps, 1).
             weekday_numbers = total_input_range.weekday.values
-            
+
             # Identify public holidays and replace that day with Sunday
             public_holiday_indices = total_input_range.floor("D").isin(self.public_holidays)
             weekday_numbers[public_holiday_indices] = 6
@@ -132,118 +134,118 @@ class DataPreprocessor:
             # Create a one-hot encoding array with shape (nr_of_timesteps, 7).
             one_hot_encoding = np.eye(7)[weekday_numbers]
             index = 7
-            X_all[batch_id, :, :index] = one_hot_encoding
+            x_all[batch_id, :, :index] = one_hot_encoding
 
             # Convert clock_time to cyclical features
             hour_sin = np.sin(2 * np.pi * total_input_range.hour / 24.0)
             hour_cos = np.cos(2 * np.pi * total_input_range.hour / 24.0)
-            X_all[batch_id, :, index]  = hour_sin
+            x_all[batch_id, :, index]  = hour_sin
             index += 1
-            X_all[batch_id, :, index]  = hour_cos
+            x_all[batch_id, :, index]  = hour_cos
             index += 1
 
             # Convert day-of-year to cyclical features
             day_of_year_sin = np.sin(2 * np.pi * total_input_range.day_of_year / 366)
             day_of_year_cos = np.cos(2 * np.pi * total_input_range.day_of_year / 366)
-            X_all[batch_id, :, index]  = day_of_year_sin
+            x_all[batch_id, :, index]  = day_of_year_sin
             index += 1
-            X_all[batch_id, :, index]  = day_of_year_cos
+            x_all[batch_id, :, index]  = day_of_year_cos
             index += 1
 
             # Optionally add lagged profiles
-            if self.addLaggedPower == True:
+            if self.add_lagged_power:
                 # Add exactly the day one, two and three weeks ago.
                 for day in range(1, 1 + self.nr_of_lagged_days):                    
                     start = next_prediction_date - pd.Timedelta(days=day*7)
                     end = start + self.prediction_horizon
-                    lagged_power = powerProfiles.loc[start:end]
-                    X_all[batch_id, :, index]  = np.array(lagged_power.values)
+                    lagged_power = power_profiles.loc[start:end]
+                    x_all[batch_id, :, index]  = np.array(lagged_power.values)
                     index += 1
 
             # If available: Add past weather measurmenents to the model input
-            if weatherData is not None:
-                weatherData_slice = weatherData.loc[next_prediction_date-self.prediction_horizon:next_prediction_date]
-                weather_seq_len = weatherData_slice.shape[0]
-                for feature in weatherData_slice.columns:
-                    X_all[batch_id, :weather_seq_len, index]  = weatherData_slice[feature][:]
+            if weather_data is not None:
+                weather_data_slice = weather_data.loc[ \
+                    next_prediction_date-self.prediction_horizon:next_prediction_date]
+                weather_seq_len = weather_data_slice.shape[0]
+                for feature in weather_data_slice.columns:
+                    x_all[batch_id, :weather_seq_len, index]  = weather_data_slice[feature][:]
                     index += 1
             else:
-                X_all[batch_id, :, index:num_of_weather_features]  = 0.0
+                x_all[batch_id, :, index:num_of_weather_features]  = 0.0
                 index += num_of_weather_features
 
             # Go to the next prediction (= batch)
             next_prediction_date += self.prediction_rate
             batch_id += 1
 
-        return X_all
-    
-    # Convert the given power profiles to the model format.
-    # For more informations regarding the shape see model design for this project.
-    #
-    def formattingY(self, df):
-        
+        return x_all
+
+    def formatting_y(self, df):
+        """
+        Convert the given power profiles to the model format.
+        For more informations regarding the shape see model design for this project.
+        """
+
         batch_id = 0
         next_prediction_date = self.first_prediction_date
 
-        # Calculate/define the shape of Y
+        # Calculate/define the shape of y
         seq_end_time = self.first_prediction_date + self.prediction_horizon
-        nr_of_timesteps = len(pd.date_range(start=self.first_prediction_date, end=seq_end_time, freq=self.sampling_time))
-        Y_all = np.zeros(shape=(0, nr_of_timesteps, 1))
+        nr_of_timesteps = len(pd.date_range(start=self.first_prediction_date, end=seq_end_time,
+            freq=self.sampling_time))
+        y_all = np.zeros(shape=(0, nr_of_timesteps, 1))
 
         while next_prediction_date + self.prediction_horizon <= self.last_available_datetime:
-            
-            # Add a new batch to the Y array
+
+            # Add a new batch to the y array
             new_values = np.zeros(shape=(1, nr_of_timesteps, 1))
-            Y_all = np.concatenate((Y_all, new_values), axis=0)
+            y_all = np.concatenate((y_all, new_values), axis=0)
 
             # Get values within the specified time range
             end_prediction_horizon = next_prediction_date + self.prediction_horizon
             demandprofile_slice = df.loc[next_prediction_date:end_prediction_horizon]
-            
+
             # Set all target power values
-            Y_all[batch_id, :, 0] = demandprofile_slice
+            y_all[batch_id, :, 0] = demandprofile_slice
 
             # Go to the next prediction (= batch)
             next_prediction_date += self.prediction_rate
             batch_id += 1
 
-        return Y_all
+        return y_all
 
-    # Convert from nd-array to torch tensor
-    #
-    def convertToTorchTensor(self, X_all, Y_all):        
-        
-        for dataset in X_all:
-            X_all[dataset] = torch.tensor(X_all[dataset])       
-             
-        for dataset in Y_all:
-            Y_all[dataset] = torch.tensor(Y_all[dataset])
-            
-        return X_all, Y_all
+    def convert_to_torch_tensor(self, x_all, y_all):
+        """Convert from nd-array to torch tensor"""
 
-    # Normalize all input data and target value
-    #
-    def normalizeAll(self, X_all, Y_all):
+        for dataset in x_all:
+            x_all[dataset] = torch.tensor(x_all[dataset])
 
-        X_all['train'] = self.normalizer.normalize_x(X_all['train'], training=True)
-        Y_all['train'] = self.normalizer.normalize_y(Y_all['train'], training=True)
-        X_all['dev'] = self.normalizer.normalize_x(X_all['dev'], training=False)
-        Y_all['dev'] = self.normalizer.normalize_y(Y_all['dev'], training=False)
-        X_all['test'] = self.normalizer.normalize_x(X_all['test'], training=False)
-        Y_all['test'] = self.normalizer.normalize_y(Y_all['test'], training=False)
-        X_all['all'] = self.normalizer.normalize_x(X_all['all'], training=False)
-        Y_all['all'] = self.normalizer.normalize_y(Y_all['all'], training=False)
+        for dataset in y_all:
+            y_all[dataset] = torch.tensor(y_all[dataset])
 
-        return X_all, Y_all
+        return x_all, y_all
 
-    # Split up the data into train-, dev- and test-set
-    #
-    def splitUpData(self, X_all, Y_all):
+    def normalize_all(self, x_all, y_all):
+        """Normalize all input data and target value"""
+
+        x_all['train'] = self.normalizer.normalize_x(x_all['train'], training=True)
+        y_all['train'] = self.normalizer.normalize_y(y_all['train'], training=True)
+        x_all['dev'] = self.normalizer.normalize_x(x_all['dev'], training=False)
+        y_all['dev'] = self.normalizer.normalize_y(y_all['dev'], training=False)
+        x_all['test'] = self.normalizer.normalize_x(x_all['test'], training=False)
+        y_all['test'] = self.normalizer.normalize_y(y_all['test'], training=False)
+        x_all['all'] = self.normalizer.normalize_x(x_all['all'], training=False)
+        y_all['all'] = self.normalizer.normalize_y(y_all['all'], training=False)
+
+        return x_all, y_all
+
+    def split_up_data(self, x_all, y_all):
+        """Split up the data into train-, dev- and test-set"""
 
         # Optionally shuffle all indices
-        total_samples = X_all.shape[0]
+        total_samples = x_all.shape[0]
         self.shuffeled_indices = np.arange(total_samples)
-        if self.shuffle_data == True:
+        if self.shuffle_data:
             np.random.shuffle(self.shuffeled_indices)
 
         # Do train-dev-test data split
@@ -251,53 +253,54 @@ class DataPreprocessor:
         # --------------> time axis
         #
         #  -------------------------------------------------------------------
-        # | un-used | trainHistory  |    test      |  trainFuture  |   dev    |
+        # | un-used | train_history  |    test      |  train_future  |   dev    |
         # |-------------------------|--------------|---------------|----------|
-        # |         |  X['train']   |  X['test']   |  X['train']   | X['dev'] |
-        # |         |  Y['train']   |  Y['test']   |  Y['train']   | Y['dev'] |
+        # |         |  x['train']   |  x['test']   |  x['train']   | x['dev'] |
+        # |         |  y['train']   |  y['test']   |  y['train']   | y['dev'] |
         #  -------------------------------------------------------------------
-        # |                   X['all'] (entire timeseries)                    |
-        # |                   Y['all'] (entire timeseries)                    |
+        # |                   x['all'] (entire timeseries)                    |
+        # |                   y['all'] (entire timeseries)                    |
         #  -------------------------------------------------------------------        
-        X, Y = {}, {}
-        self.total_set_size = X_all.shape[0]
+        x, y = {}, {}
+        self.total_set_size = x_all.shape[0]
         self.dev_set_start = self.total_set_size - self.dev_size
-        self.trainFuture_start = self.dev_set_start - self.trainFuture
+        self.trainFuture_start = self.dev_set_start - self.train_future
         self.test_set_start = self.trainFuture_start - self.test_size
-        if self.trainHistory != -1:
-            self.train_set_start = self.test_set_start - self.trainHistory
+        if self.train_history != -1:
+            self.train_set_start = self.test_set_start - self.train_history
         else:
             self.train_set_start = None # Set train length to max
-        
-        X['dev'] = X_all[self.shuffeled_indices[self.dev_set_start:]]
-        X['test'] = X_all[self.shuffeled_indices[self.test_set_start:self.trainFuture_start]]
-        X['train'] = np.concatenate([
-                        X_all[self.shuffeled_indices[self.train_set_start:self.test_set_start]],
-                        X_all[self.shuffeled_indices[self.trainFuture_start:self.dev_set_start]]
-                    ])
-        X['all'] = X_all[:]
-        
-        Y['dev'] = Y_all[self.shuffeled_indices[self.dev_set_start:]]
-        Y['test'] = Y_all[self.shuffeled_indices[self.test_set_start:self.trainFuture_start]]
-        Y['train'] = np.concatenate([
-                        Y_all[self.shuffeled_indices[self.train_set_start:self.test_set_start]],
-                        Y_all[self.shuffeled_indices[self.trainFuture_start:self.dev_set_start]]
-                    ])
-        Y['all'] = Y_all[:]
 
-        return X, Y
+        x['dev'] = x_all[self.shuffeled_indices[self.dev_set_start:]]
+        x['test'] = x_all[self.shuffeled_indices[self.test_set_start:self.trainFuture_start]]
+        x['train'] = np.concatenate([
+                        x_all[self.shuffeled_indices[self.train_set_start:self.test_set_start]],
+                        x_all[self.shuffeled_indices[self.trainFuture_start:self.dev_set_start]]
+                    ])
+        x['all'] = x_all[:]
+
+        y['dev'] = y_all[self.shuffeled_indices[self.dev_set_start:]]
+        y['test'] = y_all[self.shuffeled_indices[self.test_set_start:self.trainFuture_start]]
+        y['train'] = np.concatenate([
+                        y_all[self.shuffeled_indices[self.train_set_start:self.test_set_start]],
+                        y_all[self.shuffeled_indices[self.trainFuture_start:self.dev_set_start]]
+                    ])
+        y['all'] = y_all[:]
+
+        return x, y
 
     # Return the unshuffled index in all data that corresponds to the given
     # dataset_tye and index.
     #
-    def getUnshuffeledIndex(self, dataset_type, index):
+    def get_unshuffeled_index(self, dataset_type, index):
 
         # Shuffled data
         if dataset_type == 'train':
-            if index < self.trainHistory:
+            if index < self.train_history:
                 unshuffled_index = self.shuffeled_indices[index + self.train_set_start]
-            elif index < self.trainHistory + self.trainFuture:
-                unshuffled_index = self.shuffeled_indices[index - self.trainHistory + self.trainFuture_start]
+            elif index < self.train_history + self.train_future:
+                unshuffled_index = self.shuffeled_indices[index - self.train_history \
+                    + self.trainFuture_start]
             else:
                 assert False, "Unexpected 'index' parameter received."
         elif dataset_type == 'dev':
@@ -309,19 +312,19 @@ class DataPreprocessor:
 
         return unshuffled_index
 
-    # Return the prediction date that corresponds to the given
-    # dataset_tye and index.
-    #
-    def getStartDateFromIndex(self, dataset_type, index):        
+    def get_start_date_from_index(self, dataset_type, index):
+        """
+        Return the prediction date that corresponds to the given
+        dataset_tye and index.
+        """
 
         if dataset_type != 'all':
-            index = self.getUnshuffeledIndex(dataset_type, index)
+            index = self.get_unshuffeled_index(dataset_type, index)
 
         return self.first_prediction_date + index * self.prediction_rate
 
-    # Return the dataset-type (train, test, ...) from the given unshuffeled index
-    #
-    def getDatasetTypeFromIndex(self, unshuffeled_index):
+    def get_dataset_type_from_index(self, unshuffeled_index):
+        """Return the dataset-type (train, test, ...) from the given unshuffeled index"""
 
         shuffled_index = np.where(self.shuffeled_indices == unshuffeled_index)[0][0]
 
@@ -342,4 +345,3 @@ class DataPreprocessor:
 
 if __name__ == '__main__':
     pass
-

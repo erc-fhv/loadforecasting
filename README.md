@@ -62,7 +62,7 @@ The main parts of the evaluation framework are connected as follows:
 +-----------------------------+           +------------------------------+
 | data                        |           | data_preprocessor            |
 |-----------------------------|           |------------------------------|
-| # Weather, load, standard-  +-----------+ transformData()              |
+| # Weather, load, standard-  +-----------+ transform_data()              |
 |   load, and holidays.       |           | # Preprocesses the data      |
 +-----------------------------+           +------------+-----------------+
                                                        |
