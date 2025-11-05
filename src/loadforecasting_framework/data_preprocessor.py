@@ -76,8 +76,8 @@ class DataPreprocessor:
         first_timestamp = powerProfiles.index[0] + pd.Timedelta(days=7*(self.nr_of_lagged_days))
 
         # Choose a prediction datetime, which is on the same day as the 'first_timestamp'.
-        target_timestamp = pd.Timestamp.combine(first_timestamp.date(), first_prediction_clocktime) \
-                    .tz_localize(first_timestamp.tzinfo)
+        target_timestamp = pd.Timestamp.combine(first_timestamp.date(),
+            first_prediction_clocktime).tz_localize(first_timestamp.tzinfo)
 
         # Check if the calculated timestamp is before or after the target time
         if target_timestamp < first_timestamp:

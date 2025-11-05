@@ -197,8 +197,8 @@ The entire paper can be reproduced by following these steps.
 1. Install the local packages (without dependencies)
     ```bash
     # From the project root
-    pip install -e --no-deps src/loadforecasting_models/
-    pip install -e --no-deps .
+    pip install --no-deps -e src/loadforecasting_models/
+    pip install --no-deps -e .
     ```
 
 1. Train the models:
