@@ -31,8 +31,8 @@ jobs:
     - name: Install the local package
       shell: bash -l {0}
       run: |
-        pip install -e src/loadforecasting_models/
-        pip install -e .
+        pip install -e --no-deps src/loadforecasting_models/
+        pip install -e --no-deps .
 
     - name: Run training script    
       shell: bash -l {0}
