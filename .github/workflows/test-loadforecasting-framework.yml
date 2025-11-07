@@ -34,6 +34,11 @@ jobs:
         pip install --no-deps -e src/loadforecasting_models/
         pip install --no-deps -e .
 
+    - name: Run the unittests   
+      shell: bash -l {0}
+      run: |
+        python -m unittest test_data_preprocessor.py
+    
     - name: Run training script    
       shell: bash -l {0}
       run: |
