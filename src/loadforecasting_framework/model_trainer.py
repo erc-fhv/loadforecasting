@@ -157,6 +157,8 @@ class ModelTrainer:
             else:
                 assert False, f"Unimplemented model_type given: {model_type}"
 
+            if sim_config is None:
+                raise ValueError("sim_config must be given for Machine Learning Models!")
             model_size = sim_config.model_size
             my_model = my_class(model_size, num_of_features, normalizer=normalizer)
 
@@ -172,7 +174,7 @@ class ModelTrainer:
         """
         Preprocess the data for the given simulation configuration.
         """
-        
+
         sim_config = my_configs[act_sim_config_index]
         if sim_config.epochs <= 5:
             print(f"WARNING: Only {sim_config.epochs} epochs chosen. Please check, if this really \
@@ -184,23 +186,24 @@ class ModelTrainer:
         # Bring the power profiles to the model shape of (nr_of_batches, timesteps, features)
         #
         load_profiles_filenames = []
-        for i, power_profile in enumerate(load_profiles[:sim_config.nr_of_comunities]):
+        for i, power_profile in enumerate(load_profiles[:sim_config.nr_of_communities]):
 
-            # Preprocess data to get X and Y for the model
+            # Preprocess data to get x and y for the model
             normalizer = Normalizer()
-            model_preprocessor = DataPreprocessor(public_holidays_timestamps,
-                                            trainHistory = sim_config.training_history,
-                                            test_size = sim_config.test_size,
-                                            dev_size = sim_config.dev_size,
-                                            trainFuture = sim_config.train_set_future,
-                                            normalizer = normalizer,
-                                            )
-            X, Y = model_preprocessor.transform_data(power_profile, weather_data)
+            model_preprocessor = DataPreprocessor(
+                normalizer = normalizer,
+                data_split = sim_config.data_split,
+                )
+            x, y = model_preprocessor.transform_data(
+                power_profile,
+                weather_data,
+                public_holidays_timestamps
+                )
 
             output_path = os.path.join(os.path.dirname(__file__), 'outputs',
                 'file_' + str(i) + '.pkl')
             with open(output_path, 'wb') as file:
-                pickle.dump((X, Y, normalizer), file)
+                pickle.dump((x, y, normalizer), file)
             load_profiles_filenames.append(output_path)
 
         # Load the BDEW standard load profiles for the desired datetime range
@@ -216,23 +219,24 @@ class ModelTrainer:
             >= start_date) & (all_standard_loadprofiles.index <= end_date)]
         all_standard_loadprofiles = all_standard_loadprofiles.tz_localize("UTC")
 
-        # Preprocess data to get X and Y for the model
+        # Preprocess data to get x and y for the model
         normalizer = Normalizer()
-        model_preprocessor = DataPreprocessor(public_holidays_timestamps,
-                                        trainHistory = sim_config.training_history,
-                                        test_size = sim_config.test_size,
-                                        dev_size = sim_config.dev_size,
-                                        trainFuture = sim_config.train_set_future,
-                                        normalizer = normalizer,
-                                        )
-        x, y = model_preprocessor.transform_data(all_standard_loadprofiles, weatherData=None)
+        model_preprocessor = DataPreprocessor(
+            normalizer = normalizer,
+            data_split = sim_config.data_split,
+            )
+        x, y = model_preprocessor.transform_data(
+            power_profiles=all_standard_loadprofiles,
+            weather_data=None,
+            public_holidays=public_holidays_timestamps,
+            )
         pretraining_filename = os.path.join(os.path.dirname(__file__), 'outputs',
             'standard_loadprofile.pkl')
         with open(pretraining_filename, 'wb') as file:
             pickle.dump((x, y, normalizer), file)
 
-        # If required, do pretraining
-        if sim_config.do_pretraining:
+        # If needed, do pretraining
+        if sim_config.do_transfer_learning:
 
             for model_type in sim_config.used_models:
                 if model_type in ('xLstm', 'Lstm', 'Transformer'):
@@ -268,7 +272,7 @@ class ModelTrainer:
         #
         file_path = os.path.join(os.path.dirname(__file__), sim_config.aggregation_count[1])
         load_profiles = pd.read_pickle(file_path)
-        load_profiles = load_profiles[:sim_config.nr_of_comunities]
+        load_profiles = load_profiles[:sim_config.nr_of_communities]
 
         # Readout the weather data
         #

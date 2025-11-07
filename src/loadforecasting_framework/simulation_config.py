@@ -2,15 +2,11 @@
 This file contains the configuration for an automated simulation run.
 """
 
-from collections import namedtuple
-
-class DoPretraining():
-    """"Whether to do pretraining."""
-    YES = True      # <= Baseline
-    NO = False
+from typing import NamedTuple
+from .interfaces import DataSplitType
 
 class DoTransferLearning():
-    """"Wheather to transfer learned weights from pretraining."""
+    """"Whether to transfer learned weights from pretraining."""
     YES = True      # <= Baseline
     NO = False
 
@@ -35,38 +31,32 @@ class AggregationCount():
     FIFTY_HOUSEHOLDS  = (50,  '../../data/london_loadprofiles_50households_each.pkl')  # <= Baseline
     HUNDRED_HOUSEHOLDS = (100, '../../data/london_loadprofiles_100households_each.pkl')
 
-class NrOfComunities():
+class NrOfCommunities():
     """Different numbers of communities to train on."""
     TEN = 10
     TWENTY = 20      # <= Baseline
 
-class TrainSet1():
-    """Different sizes of the past training history."""
-    PAST_0_MONTH = 0
-    PAST_2_MONTH = 61
-    PAST_3_MONTH = 92
-    PAST_4_MONTH = 122
-    PAST_6_MONTH = 183
-    PAST_9_MONTH = 275
-    PAST_12_MONTH = 365     # <= Baseline
-    PAST_15_MONTH = 447
+class DataSplit():
+    """Different train/test/dev/etc. data splits."""
 
-class TestSize():
-    """Different sizes of the test set."""
-    NEXT_3_MONTH = 92   # <= Baseline
-    NEXT_4_MONTH = 131
+    # Baseline:
+    TRAIN_12_MONTH = DataSplitType(train_set_1=365, dev_set=0, test_set=92, train_set_2=0, pad=58)
 
-class DevSize():
-    """Different sizes of the dev set."""
-    NEXT_0_MONTH = 0
-    NEXT_2_MONTH = 58   # <= Baseline
+    # Vary the historic training set size:
+    TRAIN_2_MONTH = DataSplitType(train_set_1=61, dev_set=0, test_set=92, train_set_2=0, pad=58)
+    TRAIN_4_MONTH = DataSplitType(train_set_1=122, dev_set=0, test_set=92, train_set_2=0, pad=58)
+    TRAIN_6_MONTH = DataSplitType(train_set_1=183, dev_set=0, test_set=92, train_set_2=0, pad=58)
+    TRAIN_9_MONTH = DataSplitType(train_set_1=275, dev_set=0, test_set=92, train_set_2=0, pad=58)
+    TRAIN_15_MONTH = DataSplitType(train_set_1=447, dev_set=0, test_set=92, train_set_2=0, pad=58)
 
-class TrainSet2():
-    """Optionally: Use future data for training."""
-    FUTURE_0_MONTH = 0     # <= Baseline
-    FUTURE_3_MONTH = 92
-    FUTURE_6_MONTH = 183
-    FUTURE_9_MONTH = 275
+    # Vary the tested quartals:
+    TEST_Q1 = DataSplitType(train_set_1=0, dev_set=0, test_set=92, train_set_2=275, pad=58)
+    TEST_Q2 = DataSplitType(train_set_1=92, dev_set=0, test_set=92, train_set_2=183, pad=58)
+    TEST_Q3 = DataSplitType(train_set_1=183, dev_set=0, test_set=92, train_set_2=92, pad=58)
+    TEST_Q4 = DataSplitType(train_set_1=275, dev_set=0, test_set=92, train_set_2=0, pad=58)
+
+
+# TrainSet1.PAST_2_MONTH, TestSize.NEXT_3_MONTH,TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH
 
 class UsedModels():
     """Different models to be used for the load forecasting."""
@@ -77,122 +67,95 @@ class Epochs():
     SMOKE_TEST = 1
     DEFAULT = 100     # <= Baseline
 
-# Define all possible run settings
-run_settings = ['model_size', 'do_pretraining', 'do_transfer_learning', 'aggregation_count',
-                'nr_of_comunities', 'training_history', 'test_size', 'train_set_future', 'dev_size',
-                'used_models', 'epochs']
-ConfigOfOneRun = namedtuple('Config_of_one_run', run_settings)
-
+class ConfigOfOneRun(NamedTuple):
+    """ Class that defines all possible run settings """
+    model_size: str
+    do_transfer_learning: bool
+    nr_of_communities: int
+    used_models: tuple
+    aggregation_count: tuple
+    data_split: DataSplitType
+    epochs: int
 
 ###################################################################################################
 # Create test config for all simulation runs
 ###################################################################################################
 configs = [
     # Baseline
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
 
     # Vary the model sizes
-    ConfigOfOneRun(Model.SIZE_0k1, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_0k2, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_0k5, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_1k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_2k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_10k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_20k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_40k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_80k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_0k2, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_0k1, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_0k5, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_1k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_2k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_10k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_20k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_40k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_80k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
 
     # Vary the community sizes
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        ONE_HOUSEHOLD, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        TWO_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        TEN_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        HUNDRED_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.ONE_HOUSEHOLD, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.TWO_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.TEN_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.HUNDRED_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
 
     # Vary the train set size
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_2_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_4_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_6_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_9_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_15_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_2_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_4_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_6_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_9_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_15_MONTH, Epochs.DEFAULT),
 
-   # Vary the tested quartals
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_0_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_9_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_3_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_6_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_6_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_3_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_9_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-            
-        
+   # Vary the tested quarters
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+         AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TEST_Q1, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TEST_Q2, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TEST_Q3, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TEST_Q4, Epochs.DEFAULT),
+
+
     # Without transfer learning:
     #
-    
+
     # Baseline
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.NO, DoTransferLearning.NO, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.NO, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.DEFAULT),
 
     # Vary the train set size
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.NO, DoTransferLearning.NO, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_2_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.NO, DoTransferLearning.NO, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_4_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.NO, DoTransferLearning.NO, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_6_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.NO, DoTransferLearning.NO, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_9_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.NO, DoTransferLearning.NO, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_15_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.DEFAULT),
-
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.NO, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_2_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.NO, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_4_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.NO, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_6_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.NO, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_9_MONTH, Epochs.DEFAULT),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.NO, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_15_MONTH, Epochs.DEFAULT),
 ]
 # #################################################################################################
 
@@ -202,13 +165,11 @@ configs = [
 ###################################################################################################
 configs_for_the_ci = [
     # Test the Baseline
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.YES, DoTransferLearning.YES, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.SMOKE_TEST),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.YES, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.SMOKE_TEST),
 
     # Test the Baseline, but without transfer learning
-    ConfigOfOneRun(Model.SIZE_5k, DoPretraining.NO, DoTransferLearning.NO, AggregationCount.
-        FIFTY_HOUSEHOLDS, NrOfComunities.TWENTY, TrainSet1.PAST_12_MONTH, TestSize.NEXT_3_MONTH,
-        TrainSet2.FUTURE_0_MONTH, DevSize.NEXT_2_MONTH, UsedModels.ALL, Epochs.SMOKE_TEST),
+    ConfigOfOneRun(Model.SIZE_5k, DoTransferLearning.NO, NrOfCommunities.TWENTY, UsedModels.ALL,
+        AggregationCount.FIFTY_HOUSEHOLDS, DataSplit.TRAIN_12_MONTH, Epochs.SMOKE_TEST),
 ]
 # #################################################################################################
