@@ -37,7 +37,7 @@ jobs:
     - name: Run the unittests   
       shell: bash -l {0}
       run: |
-        python -m unittest test_data_preprocessor.py
+        python -m tests/unittest test_data_preprocessor.py
     
     - name: Run training script    
       shell: bash -l {0}
