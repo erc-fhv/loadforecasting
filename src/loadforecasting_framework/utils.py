@@ -19,6 +19,7 @@ import os
 #
 from loadforecasting_framework import simulation_config
 from loadforecasting_framework import model_trainer
+from .interfaces import DataSplitType
 
 class Serialize:
     """
@@ -84,8 +85,9 @@ class Serialize:
     def serialize_complex_key(complex_key):
         """Serialize the complex key into a json-compatible format."""
 
-        # Serialize the config object by iterating over the fields and handling each type appropriately
-        config_serialized = {field: Serialize.serialize_value(getattr(complex_key[2], field)) for field in complex_key[2]._fields}
+        # Serialize the config object by iterating over the fields and handling each type
+        config_serialized = {field: Serialize.serialize_value(getattr(complex_key[2],
+            field)) for field in complex_key[2]._fields}
 
         # Convert the whole key to a json
         string_key = json.dumps({
@@ -156,7 +158,7 @@ class Deserialize:
 
     @staticmethod
     def dict_to_named_tuple(**kwargs):
-        """ Convert a dictionary to a ConfigOfOneRun named tuple. """
+        """ Convert a dictionary to a named tuple. """
         return simulation_config.ConfigOfOneRun(**kwargs)
 
     @staticmethod
@@ -164,7 +166,9 @@ class Deserialize:
         """ Convert lists in the named tuple to tuples. """ 
         config_dict = config_namedtuple._asdict()
         for field, value in config_dict.items():
-            if isinstance(value, list):
+            if field == 'data_split':
+                config_dict[field] = DataSplitType(*value)
+            elif isinstance(value, list):
                 config_dict[field] = tuple(value)
         return type(config_namedtuple)(**config_dict)
 
@@ -285,11 +289,9 @@ class Evaluate_Models:
                     if given_key == 'community_size':
                         key = available_config.aggregation_count[0]
                     elif given_key == 'trainingSize':
-                        key = available_config.training_history
+                        key = available_config.data_split.train_set_1
                     elif given_key == 'model_size':
                         key = available_config.model_size
-                    elif given_key == 'testSetDate':
-                        key = available_config.training_history
                     else:
                         assert f"Unexpected function parameter: {given_key}."
 
