@@ -61,5 +61,31 @@ class TestDataPreprocessor(unittest.TestCase):
         self.preprocessor.transform_data(self.power_data, self.weather_data)
         self.assertIsInstance(self.preprocessor._first_prediction_date, pd.Timestamp)
 
+    def test_none_datasplit(self):
+        """ 
+        Test behavior when data_split is None
+        """
+
+        preprocessor_none_split = DataPreprocessor(
+            normalizer=DummyNormalizer(),
+            data_split=None,
+            add_lagged_profiles=(7,),
+            num_of_weather_features=3,
+            first_prediction_clocktime=datetime.time(0,0),
+            prediction_horizon=pd.Timedelta(hours=23),
+            prediction_rate=pd.Timedelta(days=1)
+        )
+
+        x, y = preprocessor_none_split.transform_data(self.power_data, self.weather_data)
+
+        # Test if all keys except 'all' are empty
+        for dataset in ['train', 'dev', 'test']:
+            self.assertEqual(x[dataset].shape[0], 0)
+            self.assertEqual(y[dataset].shape[0], 0)
+
+        # Test if 'all' contains the correct data
+        self.assertTrue(x['all'].shape[0] > 0)
+        self.assertTrue(y['all'].shape[0] > 0)
+
 if __name__ == '__main__':
     unittest.main()

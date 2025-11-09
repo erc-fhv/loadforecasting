@@ -334,10 +334,10 @@ class DataPreprocessor:
         self._train_set_2_start = self._padding_start - self.data_split.train_set_2
         self._test_set_start = self._train_set_2_start - self.data_split.test_set
         self._dev_set_start = self._test_set_start - self.data_split.dev_set
-        if self.data_split.train_set_1 != -1:
-            self._train_set_1_start = self._dev_set_start - self.data_split.train_set_1
-        else:
+        if self.data_split.train_set_1 == -1:
             self._train_set_1_start = None # Set train length to max
+        else:
+            self._train_set_1_start = self._dev_set_start - self.data_split.train_set_1
 
         x['train'] = np.concatenate([
             x_all[self._train_set_1_start:self._dev_set_start],
