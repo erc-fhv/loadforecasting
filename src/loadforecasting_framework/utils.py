@@ -221,7 +221,7 @@ class Evaluate_Models:
     @staticmethod
     def print_results(path_to_train_histories, value_type):
         """ Print the results of each config and model_type. """
-        
+
         result_per_config = Evaluate_Models.get_training_results(path_to_train_histories)
         result_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
 
