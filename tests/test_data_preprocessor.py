@@ -17,7 +17,7 @@ class TestDataPreprocessor(unittest.TestCase):
 
     def setUp(self):
         # Dummy power data: 30 days of hourly data
-        date_rng = pd.date_range(start='2025-01-01', end='2025-01-30 23:00', freq='H')
+        date_rng = pd.date_range(start='2025-01-01', end='2025-01-30 23:00', freq='h')
         self.power_data = pd.DataFrame(np.random.rand(len(date_rng), 1), index=date_rng,
             columns=['load'])
 

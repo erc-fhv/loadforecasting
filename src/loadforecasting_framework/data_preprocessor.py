@@ -219,7 +219,7 @@ class DataPreprocessor:
                     start = act_prediction_date - pd.Timedelta(days=day)
                     end = start + self.prediction_horizon
                     lagged_power = power_profiles.loc[start:end]
-                    new_batch[0, :, index]  = np.array(lagged_power.values)
+                    new_batch[0, :, index]  = np.squeeze(lagged_power.values)
                     index += 1
 
             # If available: Add weather (past or forecasted) to the model input
@@ -278,7 +278,7 @@ class DataPreprocessor:
             demandprofile_slice = df.loc[act_prediction_date:end_prediction_horizon]
 
             # Set all target power values
-            y_all[batch_id, :, 0] = demandprofile_slice
+            y_all[batch_id, :, :] = demandprofile_slice
 
             # Go to the next prediction (= batch)
             act_prediction_date += self.prediction_rate
