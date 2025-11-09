@@ -71,7 +71,7 @@ class DataPreprocessor:
         self._train_set_1_start = None
 
     def transform_data(self,
-        power_profiles: pd.DataFrame,
+        power_profiles: pd.Series,
         weather_data: pd.DataFrame | None = None,
         public_holidays: list | None = None,
         ) -> tuple[np.ndarray, np.ndarray]:
@@ -102,7 +102,7 @@ class DataPreprocessor:
 
     def set_prediction_timerange(
         self,
-        power_profiles: pd.DataFrame,
+        power_profiles: pd.Series,
         ) -> None:
         """
         Set the first and last available timestamps and the sampling time.
@@ -132,7 +132,7 @@ class DataPreprocessor:
 
     def formatting_x(
         self,
-        power_profiles: pd.DataFrame,
+        power_profiles: pd.Series,
         weather_data: pd.DataFrame | None,
         public_holidays: list,
     ) -> np.ndarray:
@@ -219,7 +219,7 @@ class DataPreprocessor:
                     start = act_prediction_date - pd.Timedelta(days=day)
                     end = start + self.prediction_horizon
                     lagged_power = power_profiles.loc[start:end]
-                    new_batch[0, :, index]  = np.squeeze(lagged_power.values)
+                    new_batch[0, :, index]  = lagged_power.values
                     index += 1
 
             # If available: Add weather (past or forecasted) to the model input
@@ -244,7 +244,7 @@ class DataPreprocessor:
 
     def formatting_y(
         self,
-        df: pd.DataFrame,
+        df: pd.Series,
         ) ->  np.ndarray:
         """
         Convert the given power profiles to the model format.
@@ -278,7 +278,7 @@ class DataPreprocessor:
             demandprofile_slice = df.loc[act_prediction_date:end_prediction_horizon]
 
             # Set all target power values
-            y_all[batch_id, :, :] = demandprofile_slice
+            y_all[batch_id, :, 0] = demandprofile_slice
 
             # Go to the next prediction (= batch)
             act_prediction_date += self.prediction_rate

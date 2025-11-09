@@ -21,10 +21,10 @@ from loadforecasting_framework import simulation_config
 from loadforecasting_framework import model_trainer
 
 class Serialize:
-        """
-        Persist dicts with complex keys.
-        The dict keys are converted from multi-class into json format.
-        """
+    """
+    Persist dicts with complex keys.
+    The dict keys are converted from multi-class into json format.
+    """
 
     @staticmethod
     def store_results_with_torch(all_trained_models):
@@ -39,8 +39,8 @@ class Serialize:
         # Save all trained models with torch.save
         base_dir = os.path.dirname(__file__)
         output_path = os.path.join(base_dir, 'outputs', 'all_trained_models.pth')
-        output_path_w_timestamp = os.path.join(base_dir, 'outputs', f'all_trained_models{ \
-            Serialize.get_act_timestamp()}.pth')
+        output_path_w_timestamp = os.path.join(base_dir, 'outputs',
+            f'all_trained_models{Serialize.get_act_timestamp()}.pth')
         torch.save(all_trained_models, output_path_w_timestamp)
         torch.save(all_trained_models, output_path)
 
@@ -56,8 +56,8 @@ class Serialize:
         # Store the variables in a persistent files with the timestamp
         base_dir = os.path.dirname(__file__)
         output_path = os.path.join(base_dir, 'outputs', 'all_train_histories.pkl')
-        output_path_w_timestamp = os.path.join(base_dir, 'outputs', f'all_train_histories{ \
-            Serialize.get_act_timestamp()}.pkl')
+        output_path_w_timestamp = os.path.join(base_dir, 'outputs',
+            f'all_train_histories{Serialize.get_act_timestamp()}.pkl')
         with open(output_path_w_timestamp, 'wb') as f:
             pickle.dump(all_train_histories, f)
         with open(output_path, 'wb') as f:
@@ -203,13 +203,18 @@ class Evaluate_Models:
             load_profile = key[1]
             sim_config = key[2]
             results = value
-            result_per_config[sim_config][model_type][load_profile]['loss'] = float(results['loss'][-1])
-            result_per_config[sim_config][model_type][load_profile]['test_loss'] = float(results['test_loss'][-1])
-            result_per_config[sim_config][model_type][load_profile]['test_loss_relative'] = float(results['test_loss_relative'][-1])
-            result_per_config[sim_config][model_type][load_profile]['predicted_profile'] = results['predicted_profile']
+            result_per_config[sim_config][model_type][load_profile]['loss'] = \
+                float(results['loss'][-1])
+            result_per_config[sim_config][model_type][load_profile]['test_loss'] = \
+                float(results['test_loss'][-1])
+            result_per_config[sim_config][model_type][load_profile]['test_loss_relative'] = \
+                float(results['test_loss_relative'][-1])
+            result_per_config[sim_config][model_type][load_profile]['predicted_profile'] = \
+                results['predicted_profile']
 
         # Optionally: Skip given configs
-        result_per_config = dict(islice(result_per_config.items(), skip_first_n_configs, skip_last_n_configs))
+        result_per_config = dict(islice(result_per_config.items(), skip_first_n_configs,
+            skip_last_n_configs))
 
         return result_per_config
 
@@ -413,7 +418,8 @@ class Evaluate_Models:
         # Set up the figure and axis grid for the required months
         fig_width_inch = 190 / 25.4
         fig_height_inch = fig_width_inch /4.0 * rows
-        fig, axs = plt.subplots(rows, 3, figsize=(fig_width_inch, fig_height_inch), constrained_layout=False)
+        fig, axs = plt.subplots(rows, 3, figsize=(fig_width_inch, fig_height_inch),
+            constrained_layout=False)
 
         # Adjust the spacing between rows and columns
         plt.subplots_adjust(hspace=0.3, wspace=0.1)
@@ -493,7 +499,8 @@ class Evaluate_Models:
                 ax.set_yticks([])
 
         # Add a color bar for the legend
-        cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=axs, orientation='vertical', fraction=0.03, pad=0.04)
+        cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=axs,
+            orientation='vertical', fraction=0.03, pad=0.04)
         cbar.set_label("nMAE (%)", fontsize=10, color="0.3")
         cbar.outline.set_edgecolor(color="lightgrey")
         cbar.outline.set_linewidth(1)

@@ -224,6 +224,7 @@ class ModelTrainer:
         model_preprocessor = DataPreprocessor(
             normalizer = normalizer,
             data_split = sim_config.data_split,
+            num_of_weather_features=weather_data.shape[1],
             )
         x, y = model_preprocessor.transform_data(
             power_profiles=all_standard_loadprofiles,
