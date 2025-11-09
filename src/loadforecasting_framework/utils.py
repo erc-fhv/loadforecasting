@@ -1,4 +1,3 @@
-
 import json
 from datetime import datetime
 import torch
@@ -21,16 +20,18 @@ import os
 from loadforecasting_framework import simulation_config
 from loadforecasting_framework import model_trainer
 
-# Persist dicts with complex keys.
-# The dict keys are converted from multi-class into json format.
-#
 class Serialize:
+    """
+    Persist dicts with complex keys.
+    The dict keys are converted from multi-class into json format.
+    """
 
-    # Use torch to save a dictionary with training results to disc.
-    # Especially useful for torch models.
-    #
     @staticmethod
-    def store_results_with_torch(all_trained_models):      
+    def store_results_with_torch(all_trained_models):
+        """
+        Use torch to save a dictionary with training results to disc.
+        Especially useful for torch models.
+        """
         
         # Squeeze the dict keys
         all_trained_models = Serialize.get_serialized_dicts(all_trained_models, isModel = True)
@@ -38,31 +39,35 @@ class Serialize:
         # Save all trained models with torch.save
         base_dir = os.path.dirname(__file__)
         output_path = os.path.join(base_dir, 'outputs', 'all_trained_models.pth')
-        output_path_w_timestamp = os.path.join(base_dir, 'outputs', f'all_trained_models{Serialize.get_act_timestamp()}.pth')
+        output_path_w_timestamp = os.path.join(base_dir, 'outputs',
+            f'all_trained_models{Serialize.get_act_timestamp()}.pth')
         torch.save(all_trained_models, output_path_w_timestamp)
         torch.save(all_trained_models, output_path)
 
-    # Use pickle to save a dictionary with training results to disc.
-    #
     @staticmethod
     def store_results_with_pickle(all_train_histories):
-        
+        """
+        Use pickle to save a dictionary with training results to disc.
+        """
+
         # Squeeze the dict keys
         all_train_histories = Serialize.get_serialized_dicts(all_train_histories, isModel = False)
         
         # Store the variables in a persistent files with the timestamp
         base_dir = os.path.dirname(__file__)
         output_path = os.path.join(base_dir, 'outputs', 'all_train_histories.pkl')
-        output_path_w_timestamp = os.path.join(base_dir, 'outputs', f'all_train_histories{Serialize.get_act_timestamp()}.pkl')
+        output_path_w_timestamp = os.path.join(base_dir, 'outputs',
+            f'all_train_histories{Serialize.get_act_timestamp()}.pkl')
         with open(output_path_w_timestamp, 'wb') as f:
             pickle.dump(all_train_histories, f)
         with open(output_path, 'wb') as f:
             pickle.dump(all_train_histories, f)
 
-    # Serialize the given dicts.
-    #
     @staticmethod
     def get_serialized_dicts(dict_with_komplex_keys, isModel):
+        """
+        Serialize the given dicts.
+        """
         serialized_models = {}
         for key, data in dict_with_komplex_keys.items():
             serialized_key = Serialize.serialize_complex_key(key)
@@ -75,10 +80,9 @@ class Serialize:
 
         return serialized_models
     
-    # Change the complex key of the given train history dictionary to a simple json key.
-    #
     @staticmethod
     def serialize_complex_key(complex_key):
+        """Serialize the complex key into a json-compatible format."""
 
         # Serialize the config object by iterating over the fields and handling each type appropriately
         config_serialized = {field: Serialize.serialize_value(getattr(complex_key[2], field)) for field in complex_key[2]._fields}
@@ -91,10 +95,9 @@ class Serialize:
         })
         return string_key
 
-    # Helper function for the serialization. Return the value of the named tuple field.
-    #
     @staticmethod
     def serialize_value(value):
+        """Serialize individual values based on their type."""
         if isinstance(value, (bool, int, str, tuple)):  # Basic types
             return value
         elif isinstance(value, type):
@@ -102,15 +105,13 @@ class Serialize:
         else:
             assert False, "Unimmplemented variable occurs in the config."
 
-    # Return a current timestamp.
-    #
     @staticmethod
     def get_act_timestamp(tz='Europe/Vienna'):
+        """ Return the current timestamp as string. """
         return datetime.now(pytz.timezone(tz)).strftime("_%Y%m%d_%H%M")
 
-# Get the trained models and train history from disc.
-#
 class Deserialize:
+    """ Deserialize the stored training results. """
 
     @staticmethod
     def get_training_histories(path):
@@ -153,26 +154,23 @@ class Deserialize:
 
         assert False, "Model not found!"
 
-    # Convert a dict to a named tuple
-    #
     @staticmethod
     def dict_to_named_tuple(**kwargs):
+        """ Convert a dictionary to a ConfigOfOneRun named tuple. """
         return simulation_config.ConfigOfOneRun(**kwargs)
 
-    # If the named tuple includes lists, convert it to a tuples.
-    #
     @staticmethod
     def convert_lists_to_tuples(config_namedtuple):
+        """ Convert lists in the named tuple to tuples. """ 
         config_dict = config_namedtuple._asdict()
         for field, value in config_dict.items():
             if isinstance(value, list):
                 config_dict[field] = tuple(value)
         return type(config_namedtuple)(**config_dict)
 
-    # Helper function to deserialize keys and recreate the config namedtuple
-    #
     @staticmethod
     def deserialize_key(serialized_key):
+        """ Deserialize the complex key from json format. """
 
         # Rebuild named tuple from the dictionary
         key_dict = json.loads(serialized_key)
@@ -185,17 +183,15 @@ class Deserialize:
             config_rebuilt
         )
 
-# Evaluate the stored training results 
-#
 class Evaluate_Models:
+    """ Evaluate the stored training results."""
 
-    # Get all training results as nested dicts
-    #
     @staticmethod
     def get_training_results(path_to_train_histories, 
                              skip_first_n_configs=None, 
                              skip_last_n_configs=None,                              
                              ):
+        """ Get all training results as nested dicts. """
 
         all_train_histories = Deserialize.get_training_histories(path_to_train_histories)
 
@@ -207,20 +203,24 @@ class Evaluate_Models:
             load_profile = key[1]
             sim_config = key[2]
             results = value
-            result_per_config[sim_config][model_type][load_profile]['loss'] = float(results['loss'][-1])
-            result_per_config[sim_config][model_type][load_profile]['test_loss'] = float(results['test_loss'][-1])
-            result_per_config[sim_config][model_type][load_profile]['test_loss_relative'] = float(results['test_loss_relative'][-1])
-            result_per_config[sim_config][model_type][load_profile]['predicted_profile'] = results['predicted_profile']
+            result_per_config[sim_config][model_type][load_profile]['loss'] = \
+                float(results['loss'][-1])
+            result_per_config[sim_config][model_type][load_profile]['test_loss'] = \
+                float(results['test_loss'][-1])
+            result_per_config[sim_config][model_type][load_profile]['test_loss_relative'] = \
+                float(results['test_loss_relative'][-1])
+            result_per_config[sim_config][model_type][load_profile]['predicted_profile'] = \
+                results['predicted_profile']
 
         # Optionally: Skip given configs
-        result_per_config = dict(islice(result_per_config.items(), skip_first_n_configs, skip_last_n_configs))
+        result_per_config = dict(islice(result_per_config.items(), skip_first_n_configs,
+            skip_last_n_configs))
 
         return result_per_config
 
-    # Calculate and print results for each config and model_type
-    #
     @staticmethod
     def print_results(path_to_train_histories, value_type):
+        """ Print the results of each config and model_type. """
         
         result_per_config = Evaluate_Models.get_training_results(path_to_train_histories)
         result_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
@@ -237,7 +237,7 @@ class Evaluate_Models:
                     test_loss_relative.append(results['test_loss_relative'])
                     predicted_profile = np.array(results['predicted_profile']).flatten()
                     predicted_profiles.append(predicted_profile)
-                assert len(result_per_profile) == config.nr_of_comunities
+                assert len(result_per_profile) == config.nr_of_communities
 
                 # Rename for readability
                 if model_type == 'Transformer_Encoder_Only':
@@ -265,12 +265,15 @@ class Evaluate_Models:
 
         return result_dict
 
-    # Check, if all data are available and create a nested dictionary of 
-    # shape 'profiles[given_key][model][community_id]'
-    # containing the results of the given testrun.
-    #
     @staticmethod
-    def get_testrun_results(expected_configs, resuts_filename, given_key = 'community_size', value_type = 'predicted_profiles'):
+    def get_testrun_results(
+        expected_configs,resuts_filename,
+        given_key = 'community_size',
+        value_type = 'predicted_profiles'
+        ) -> dict:
+        """ Check, if all data are available and create a nested dictionary of
+        shape 'profiles[given_key][model][community_id]'
+        containing the results of the given testrun."""
 
         result_dict = Evaluate_Models.print_results(resuts_filename, value_type)
 
@@ -296,12 +299,11 @@ class Evaluate_Models:
 
         return profiles
 
-    # Calculate and print results for each config and model_type
-    #
     @staticmethod
     def plot_training_losses_over_epochs(path_to_train_histories,
                                          plot_only_single_config = False,
                                          plotted_config = None):
+        """ Calculate and plot the training losses over epochs for each config and model_type. """
 
         all_train_histories = Deserialize.get_training_histories(path_to_train_histories)
 
@@ -416,7 +418,8 @@ class Evaluate_Models:
         # Set up the figure and axis grid for the required months
         fig_width_inch = 190 / 25.4
         fig_height_inch = fig_width_inch /4.0 * rows
-        fig, axs = plt.subplots(rows, 3, figsize=(fig_width_inch, fig_height_inch), constrained_layout=False)
+        fig, axs = plt.subplots(rows, 3, figsize=(fig_width_inch, fig_height_inch),
+            constrained_layout=False)
 
         # Adjust the spacing between rows and columns
         plt.subplots_adjust(hspace=0.3, wspace=0.1)
@@ -496,7 +499,8 @@ class Evaluate_Models:
                 ax.set_yticks([])
 
         # Add a color bar for the legend
-        cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=axs, orientation='vertical', fraction=0.03, pad=0.04)
+        cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=axs,
+            orientation='vertical', fraction=0.03, pad=0.04)
         cbar.set_label("nMAE (%)", fontsize=10, color="0.3")
         cbar.outline.set_edgecolor(color="lightgrey")
         cbar.outline.set_linewidth(1)
@@ -511,10 +515,9 @@ class Evaluate_Models:
         plt.savefig(output_path, format="pdf", bbox_inches="tight", pad_inches=0.1)
         plt.show()
 
-    # Get the best models per energy community (i.e. the "winners")
-    #
     @staticmethod
     def get_winner_models(result_per_config, do_print=True):
+        """ Calculate the best model ("winner") for each profile. """
         
         # Calculate the best model ("winner") for each profile
         winner_per_config = {}
@@ -541,51 +544,50 @@ class Evaluate_Models:
             print(latex_string)
 
     @staticmethod
-    # Print Latex Table of given configurations
-    #
     def print_latex_table(result_dict, configs_to_print, config_groups, config_names):
-            latex_string = ''
-            decimal_points = 2
+        """ Print Latex Table of given configurations. """
+        latex_string = ''
+        decimal_points = 2
 
-            for i, expected_config in enumerate(configs_to_print):
-                    expected_config_found = False
-                    if config_groups[i] != '-':
-                            latex_string += '\\hline\n'
-                            latex_string += f"\\multirow{{{config_groups[i]['rows']}}}{{*}}"
-                            if "<br>" in config_groups[i]['name']:
-                                line1, line2 = config_groups[i]['name'].split("<br>")
-                                latex_string += f"{{\\rotatebox[origin=c]{{90}}{{\\shortstack{{\\textbf{{{line1}}} \\\\ \\textbf{{{line2}}}}}}}}} \n"
-                            else:
-                                latex_string += f"{{\\rotatebox[origin=c]{{90}}{{\\textbf{{{config_groups[i]['name']}}}}}}} \n"
+        for i, expected_config in enumerate(configs_to_print):
+                expected_config_found = False
+                if config_groups[i] != '-':
+                        latex_string += '\\hline\n'
+                        latex_string += f"\\multirow{{{config_groups[i]['rows']}}}{{*}}"
+                        if "<br>" in config_groups[i]['name']:
+                            line1, line2 = config_groups[i]['name'].split("<br>")
+                            latex_string += f"{{\\rotatebox[origin=c]{{90}}{{\\shortstack{{\\textbf{{{line1}}} \\\\ \\textbf{{{line2}}}}}}}}} \n"
+                        else:
+                            latex_string += f"{{\\rotatebox[origin=c]{{90}}{{\\textbf{{{config_groups[i]['name']}}}}}}} \n"
 
-                    latex_string += f'    & {config_names[i]}'
-                    for available_config in result_dict:
-                            if expected_config == available_config:
-                                    expected_config_found = True                                        
-                                    
-                                    # Find the best mean_test_sMAPE and its model
-                                    best_mean_test_sMAPE = float('inf')
-                                    best_model_type = None
-                                    for model_type, test_sMAPE in result_dict[available_config].items():
-                                            mean_test_sMAPE = np.mean(test_sMAPE)
-                                            if mean_test_sMAPE < best_mean_test_sMAPE:
-                                                    best_mean_test_sMAPE = mean_test_sMAPE
-                                                    best_model_type = model_type
+                latex_string += f'    & {config_names[i]}'
+                for available_config in result_dict:
+                        if expected_config == available_config:
+                                expected_config_found = True                                        
+                                
+                                # Find the best mean_test_sMAPE and its model
+                                best_mean_test_sMAPE = float('inf')
+                                best_model_type = None
+                                for model_type, test_sMAPE in result_dict[available_config].items():
+                                        mean_test_sMAPE = np.mean(test_sMAPE)
+                                        if mean_test_sMAPE < best_mean_test_sMAPE:
+                                                best_mean_test_sMAPE = mean_test_sMAPE
+                                                best_model_type = model_type
 
-                                    # Print the metrics per model and mark the best model
-                                    for model_type, test_sMAPE in result_dict[available_config].items():                                
+                                # Print the metrics per model and mark the best model
+                                for model_type, test_sMAPE in result_dict[available_config].items():                                
 
-                                            mean_test_sMAPE_str = f'{np.mean(test_sMAPE):.{decimal_points}f}'
-                                            std_test_sMAPE_str = f'{np.std(test_sMAPE):.{decimal_points}f}'
+                                        mean_test_sMAPE_str = f'{np.mean(test_sMAPE):.{decimal_points}f}'
+                                        std_test_sMAPE_str = f'{np.std(test_sMAPE):.{decimal_points}f}'
 
-                                            if model_type == best_model_type:
-                                                    latex_string += f' & \\textbf{{{mean_test_sMAPE_str}}} ({std_test_sMAPE_str})'
-                                            else:
-                                                    latex_string += f' & {mean_test_sMAPE_str} ({std_test_sMAPE_str})'
-                                            
-                                    latex_string += ' \\\ \n'
-                    if expected_config_found == False:
-                            # expected config wasn't found in the test run file
-                            latex_string += ' & - & - & - & - & - & - \\\ \n'
-            print(latex_string)
+                                        if model_type == best_model_type:
+                                                latex_string += f' & \\textbf{{{mean_test_sMAPE_str}}} ({std_test_sMAPE_str})'
+                                        else:
+                                                latex_string += f' & {mean_test_sMAPE_str} ({std_test_sMAPE_str})'
+                                        
+                                latex_string += ' \\\ \n'
+                if expected_config_found == False:
+                        # expected config wasn't found in the test run file
+                        latex_string += ' & - & - & - & - & - & - \\\ \n'
+        print(latex_string)
 
