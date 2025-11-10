@@ -38,6 +38,7 @@ jobs:
       shell: bash -l {0}
       run: |
         python tests/test_data_preprocessor.py
+        python tests/test_formatting_x.py
     
     - name: Run training script    
       shell: bash -l {0}
