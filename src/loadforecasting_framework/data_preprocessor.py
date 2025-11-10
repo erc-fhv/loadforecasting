@@ -42,7 +42,7 @@ class DataPreprocessor:
                 Prediction horizon of the model.
                 Default is 23 hours (i.e. one day ahead prediction with hourly resolution).
             prediction_rate (pd.Timedelta): 
-                Time between two consecutive predictions.
+                Time between two consecutive prediction starts.
                 Default is 1 day.
         """
 
@@ -71,23 +71,34 @@ class DataPreprocessor:
         self._train_set_1_start = None
 
     def transform_data(self,
-        power_profiles: pd.Series,
+        power_profile: pd.Series,
         weather_data: pd.DataFrame | None = None,
         public_holidays: list | None = None,
         ) -> tuple[np.ndarray, np.ndarray]:
-        """Brings the given data into the data format needed by the model"""
+        """
+        Brings the given data into the data format needed by the model.
+        Args:
+            power_profile (pd.Series):
+                Power profile time series with DatetimeIndex.
+            weather_data (pd.DataFrame | None):
+                Weather data time series with DatetimeIndex.
+                If None, no weather data is used.
+            public_holidays (list | None):
+                List of public holiday dates (pd.Timestamp).
+                If None, no public holidays are considered.
+        """
 
         if public_holidays is None:
             public_holidays = []
 
         # Set the first and last available timestamps
-        self.set_prediction_timerange(power_profiles)
+        self.set_prediction_timerange(power_profile)
 
         # Convert the power timeseries to a nd-array with format (batches, timesteps, outputs)
-        y_all = self.formatting_y(power_profiles)
+        y_all = self.formatting_y(power_profile)
 
         # Convert the input features to a nd-array with format (batches, timesteps, features)
-        x_all = self.formatting_x(power_profiles, weather_data, public_holidays)
+        x_all = self.formatting_x(power_profile, weather_data, public_holidays)
 
         # Split up the data into train, dev, test and modeldata
         x_all, y_all = self.split_up_data(x_all, y_all)
@@ -102,7 +113,7 @@ class DataPreprocessor:
 
     def set_prediction_timerange(
         self,
-        power_profiles: pd.Series,
+        power_profile: pd.Series,
         ) -> None:
         """
         Set the first and last available timestamps and the sampling time.
@@ -110,12 +121,12 @@ class DataPreprocessor:
 
         # Calculate the first possible prediction timestamp
         nr_of_lagged_days = len(self.add_lagged_profiles)
-        first_timestamp = power_profiles.index[0] + pd.Timedelta(days=7*nr_of_lagged_days)
+        first_timestamp = power_profile.index[0] + pd.Timedelta(days=7*nr_of_lagged_days)
 
         # Calculate and store the sampling time
-        if not isinstance(power_profiles.index, pd.DatetimeIndex):
-            raise TypeError("power_profiles.index must be a DatetimeIndex")
-        self._sampling_time = power_profiles.index.to_series().diff().median()
+        if not isinstance(power_profile.index, pd.DatetimeIndex):
+            raise TypeError("power_profile.index must be a DatetimeIndex")
+        self._sampling_time = power_profile.index.to_series().diff().median()
 
         # Choose a prediction datetime, which is on the same day as the 'first_timestamp'.
         target_timestamp = pd.Timestamp.combine(first_timestamp.date(),
@@ -128,11 +139,11 @@ class DataPreprocessor:
             self._first_prediction_date = target_timestamp
 
         # Additionally set the last available timestep
-        self._last_available_datetime = power_profiles.index[-1]
+        self._last_available_datetime = power_profile.index[-1]
 
     def formatting_x(
         self,
-        power_profiles: pd.Series,
+        power_profile: pd.Series,
         weather_data: pd.DataFrame | None,
         public_holidays: list,
     ) -> np.ndarray:
@@ -218,7 +229,7 @@ class DataPreprocessor:
                 for day in self.add_lagged_profiles:
                     start = act_prediction_date - pd.Timedelta(days=day)
                     end = start + self.prediction_horizon
-                    lagged_power = power_profiles.loc[start:end]
+                    lagged_power = power_profile.loc[start:end]
                     new_batch[0, :, index]  = lagged_power.values
                     index += 1
 
