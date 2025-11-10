@@ -17,7 +17,7 @@ class DataPreprocessor:
         add_lagged_profiles: tuple = (7, 14, 21),
         num_of_weather_features: int | None = None,
         first_prediction_clocktime: datetime.time = datetime.time(0, 0),
-        prediction_horizon: pd.Timedelta = pd.Timedelta(days=0, hours=23, minutes=0),
+        prediction_horizon: pd.Timedelta = pd.Timedelta(days=0, hours=23, minutes=59),
         prediction_rate: pd.Timedelta = pd.Timedelta(days=1),
         ) -> None:
         """
