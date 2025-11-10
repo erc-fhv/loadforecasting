@@ -227,7 +227,7 @@ class ModelTrainer:
             num_of_weather_features=weather_data.shape[1],
             )
         x, y = model_preprocessor.transform_data(
-            power_profiles=all_standard_loadprofiles,
+            power_profile=all_standard_loadprofiles,
             weather_data=None,
             public_holidays=public_holidays_timestamps,
             )
