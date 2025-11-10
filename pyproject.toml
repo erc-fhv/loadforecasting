@@ -18,6 +18,8 @@ dependencies = [
     "seaborn",
     "matplotlib",
     "pytz",
+    "plotly",
+    "meteostat",
 ]
 license = "MIT"
 
