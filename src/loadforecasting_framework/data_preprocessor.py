@@ -75,7 +75,7 @@ class DataPreprocessor:
         power_profile: pd.Series,
         weather_data: pd.DataFrame | None = None,
         public_holidays: list | None = None,
-        ) -> tuple[np.ndarray, np.ndarray]:
+        ) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
         """
         Brings the given data into the data format needed by the model.
         Args:
