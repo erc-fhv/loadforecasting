@@ -35,7 +35,7 @@ class Serialize:
         """
         
         # Squeeze the dict keys
-        all_trained_models = Serialize.get_serialized_dicts(all_trained_models, isModel = True)
+        all_trained_models = Serialize.get_serialized_dicts(all_trained_models, isModel=True)
 
         # Save all trained models with torch.save
         base_dir = os.path.dirname(__file__)
