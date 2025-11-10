@@ -13,8 +13,8 @@ class TestFormattingX(unittest.TestCase):
 
     def setUp(self):
         """Set up test data"""
-        # Create 60 days of hourly power data to ensure we have enough for lagged profiles
-        date_rng = pd.date_range(start='2025-01-01', end='2025-03-01 23:00', freq='h')
+        # Create 60 days of quarter-hourly power data to ensure we have enough for lagged profiles
+        date_rng = pd.date_range(start='2025-01-01', end='2025-03-01 23:59', freq='15min')
         self.power_data = pd.Series(
             np.random.rand(len(date_rng)) * 100,  # Power values between 0-100
             index=date_rng,
@@ -40,7 +40,7 @@ class TestFormattingX(unittest.TestCase):
             add_lagged_profiles=(7, 14, 21),
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
-            prediction_horizon=pd.Timedelta(hours=23),
+            prediction_horizon=pd.Timedelta(days=0, hours=23, minutes=59),
             prediction_rate=pd.Timedelta(days=1)
         )
 
@@ -57,7 +57,7 @@ class TestFormattingX(unittest.TestCase):
         # Check shape
         self.assertEqual(len(x_all.shape), 3, "x_all should be 3-dimensional")
         self.assertGreater(x_all.shape[0], 0, "Should have at least one batch")
-        self.assertEqual(x_all.shape[1], 24, "Should have 24 timesteps (hourly for 23h horizon)")
+        self.assertEqual(x_all.shape[1], 96, "Should have 96 timesteps (quarter-hourly for 24h, i.e., 4*24)")
         
         # Calculate expected number of features:
         # 7 (weekday one-hot) + 2 (hour cyclical) + 2 (day-of-year cyclical) 
@@ -72,7 +72,7 @@ class TestFormattingX(unittest.TestCase):
             add_lagged_profiles=(7,),
             num_of_weather_features=3,  # Must specify when no weather data provided
             first_prediction_clocktime=datetime.time(0, 0),
-            prediction_horizon=pd.Timedelta(hours=23),
+            prediction_horizon=pd.Timedelta(hours=24),
             prediction_rate=pd.Timedelta(days=1)
         )
 
@@ -100,7 +100,7 @@ class TestFormattingX(unittest.TestCase):
             add_lagged_profiles=(),  # No lagged profiles
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
-            prediction_horizon=pd.Timedelta(hours=23),
+            prediction_horizon=pd.Timedelta(hours=24),
             prediction_rate=pd.Timedelta(days=1)
         )
 
@@ -122,7 +122,7 @@ class TestFormattingX(unittest.TestCase):
             add_lagged_profiles=(),
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
-            prediction_horizon=pd.Timedelta(hours=23),
+            prediction_horizon=pd.Timedelta(hours=24),
             prediction_rate=pd.Timedelta(days=1)
         )
 
@@ -148,7 +148,7 @@ class TestFormattingX(unittest.TestCase):
             add_lagged_profiles=(),
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
-            prediction_horizon=pd.Timedelta(hours=23),
+            prediction_horizon=pd.Timedelta(hours=24),
             prediction_rate=pd.Timedelta(days=1)
         )
 
@@ -182,7 +182,7 @@ class TestFormattingX(unittest.TestCase):
             add_lagged_profiles=(),
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
-            prediction_horizon=pd.Timedelta(hours=23),
+            prediction_horizon=pd.Timedelta(hours=24),
             prediction_rate=pd.Timedelta(days=1)
         )
 
@@ -213,7 +213,7 @@ class TestFormattingX(unittest.TestCase):
             add_lagged_profiles=(7,),
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
-            prediction_horizon=pd.Timedelta(hours=23),
+            prediction_horizon=pd.Timedelta(hours=24),
             prediction_rate=pd.Timedelta(days=1)  # Daily
         )
         preprocessor_daily.set_prediction_timerange(self.power_data)
@@ -224,7 +224,7 @@ class TestFormattingX(unittest.TestCase):
             add_lagged_profiles=(7,),
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
-            prediction_horizon=pd.Timedelta(hours=23),
+            prediction_horizon=pd.Timedelta(hours=24),
             prediction_rate=pd.Timedelta(days=7)  # Weekly
         )
         preprocessor_weekly.set_prediction_timerange(self.power_data)
@@ -240,7 +240,7 @@ class TestFormattingX(unittest.TestCase):
             add_lagged_profiles=(7,),
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
-            prediction_horizon=pd.Timedelta(hours=23),
+            prediction_horizon=pd.Timedelta(hours=24),
             prediction_rate=pd.Timedelta(days=1)
         )
 
