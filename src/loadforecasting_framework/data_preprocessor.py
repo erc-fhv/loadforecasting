@@ -8,7 +8,8 @@ from loadforecasting_models import Normalizer
 from .interfaces import DataSplitType
 
 class DataPreprocessor:
-    """Brings the given data into the data format needed by the model"""
+    """Brings the given data into the data format needed by the model
+    """
 
     def __init__(self,
         normalizer: Normalizer | None = None,
@@ -308,20 +309,20 @@ class DataPreprocessor:
 
         return x_all, y_all
 
-    def normalize_all(self, x_all, y_all):
+    def normalize_all(self, x, y):
         """Normalize all input data and target value, if a normalizer was given."""
 
         if self.normalizer is not None:
-            x_all['train'] = self.normalizer.normalize_x(x_all['train'], training=True)
-            y_all['train'] = self.normalizer.normalize_y(y_all['train'], training=True)
-            x_all['dev'] = self.normalizer.normalize_x(x_all['dev'], training=False)
-            y_all['dev'] = self.normalizer.normalize_y(y_all['dev'], training=False)
-            x_all['test'] = self.normalizer.normalize_x(x_all['test'], training=False)
-            y_all['test'] = self.normalizer.normalize_y(y_all['test'], training=False)
-            x_all['all'] = self.normalizer.normalize_x(x_all['all'], training=False)
-            y_all['all'] = self.normalizer.normalize_y(y_all['all'], training=False)
+            x['train'] = self.normalizer.normalize_x(x['train'], training=True)
+            y['train'] = self.normalizer.normalize_y(y['train'], training=True)
+            x['dev'] = self.normalizer.normalize_x(x['dev'], training=False)
+            y['dev'] = self.normalizer.normalize_y(y['dev'], training=False)
+            x['test'] = self.normalizer.normalize_x(x['test'], training=False)
+            y['test'] = self.normalizer.normalize_y(y['test'], training=False)
+            x['all'] = self.normalizer.normalize_x(x['all'], training=False)
+            y['all'] = self.normalizer.normalize_y(y['all'], training=False)
 
-        return x_all, y_all
+        return x, y
 
     def split_up_data(self, x_all, y_all):
         """Split up the data into train-, dev- and test-set"""
