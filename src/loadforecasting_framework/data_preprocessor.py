@@ -126,7 +126,7 @@ class DataPreprocessor:
         """
 
         # Calculate the first possible prediction timestamp
-        max_nr_of_lagged_days = max(self.add_lagged_profiles)
+        max_nr_of_lagged_days = max(self.add_lagged_profiles, default=0)
         first_timestamp = power_profile.index[0] + pd.Timedelta(days=max_nr_of_lagged_days)
 
         # Calculate and store the sampling time
