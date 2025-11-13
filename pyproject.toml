@@ -20,6 +20,8 @@ dependencies = [
     "pytz",
     "plotly",
     "meteostat",
+    "dash",
+    "kaleido",
 ]
 license = "MIT"
 

@@ -20,11 +20,12 @@ class PlotlyApp:
                 self,
                 x_model,
                 y_model,
-                model,
-                model_adapter,
+                data_preprocessor,
                 normalizer,
+                model = None,
                 predictions = None,
                 timezone = 'UTC',
+                freq = '1h',
                 y_model_pretrain = None,
                 normalizer_pretrain = None
                 ) -> None:
@@ -34,7 +35,8 @@ class PlotlyApp:
         self.x_plot = x_model
         self.y_plot = y_model
         self.model_plot = model
-        self.model_adapter = model_adapter
+        self.freq = freq
+        self.data_preprocessor = data_preprocessor
         self.normalizer = normalizer
         self.predictions = predictions
         self.timezone = timezone
@@ -96,7 +98,7 @@ class PlotlyApp:
 
         # Get the currently choosen data subset (train, dev or test)
         if selected_dataset == 'all':
-            subset = self.model_adapter.get_dataset_type_from_index(selected_date)
+            subset = self.data_preprocessor.get_dataset_type_from_index(selected_date)
             subset_text = f" Subset: {subset}."
         else:
             subset_text = ""
@@ -134,7 +136,7 @@ class PlotlyApp:
             # Get the predicted power profile of the selected day
             x_selected = self.x_plot[selected_dataset]
             if self.predictions is not None:
-                y_pred = self.predictions[selected_date][0,:,0]
+                y_pred = self.predictions[selected_date,:,0]
                 if selected_dataset != 'all':
                     print("Warning: Without given model, the visualiation only works for the " + \
                         "'all' dataset", flush=True)
@@ -144,11 +146,11 @@ class PlotlyApp:
             y_pred = self.normalizer.de_normalize_y(y_pred)
 
             # Create a DataFrame for Plotly Express
-            startdate = self.model_adapter.get_start_date_from_index(
+            startdate = self.data_preprocessor.get_start_date_from_index(
                 selected_dataset,
                 selected_date)
             datetime_index = pd.date_range(start=startdate, periods=y_pred.shape[0],
-                freq='1h').tz_convert(self.timezone)
+                freq=self.freq)  # .tz_convert(self.timezone)
 
             if self.y_model_pretrain is None:
                 df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': y_real, 'Y_pred': y_pred})
@@ -186,10 +188,10 @@ class PlotlyApp:
 
             # Additionally visualize the input Data of the LSTM
             # Create a dataframe
-            startdate = self.model_adapter.get_start_date_from_index(
+            startdate = self.data_preprocessor.get_start_date_from_index(
                 selected_dataset,
                 selected_date)
-            datetime_index = pd.date_range(start=startdate, periods=x_selected.shape[1], freq='1h')
+            datetime_index = pd.date_range(start=startdate, periods=x_selected.shape[1], freq=self.freq)
             X_visualized = x_selected[selected_date,:,:]
             df_X = pd.DataFrame(X_visualized, index=datetime_index)
 
@@ -209,8 +211,8 @@ class PlotlyApp:
             fig_X.update_yaxes(showgrid=True, gridcolor='lightgrey')
 
             # Store the create figure
-            fig_Y.write_image('outputs/figs/plotly_profile_Y.pdf', format='pdf')
-            fig_X.write_image('outputs/figs/plotly_profile_X.pdf', format='pdf')
+            # fig_Y.write_image('outputs/figs/plotly_profile_Y.pdf', format='pdf')
+            # fig_X.write_image('outputs/figs/plotly_profile_X.pdf', format='pdf')
 
             return fig_Y, fig_X
 

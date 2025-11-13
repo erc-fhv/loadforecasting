@@ -19,6 +19,7 @@ class DataPreprocessor:
         first_prediction_clocktime: datetime.time = datetime.time(0, 0),
         prediction_horizon: pd.Timedelta = pd.Timedelta(days=0, hours=23, minutes=59),
         prediction_rate: pd.Timedelta = pd.Timedelta(days=1),
+        shift_weather_feature: bool = True,
         ) -> None:
         """
         Constructor of the DataPreprocessor class.
@@ -45,6 +46,9 @@ class DataPreprocessor:
             prediction_rate (pd.Timedelta): 
                 Time between two consecutive prediction starts.
                 Default is 1 day.
+            shift_weather_feature (bool):
+                If True, the (measured) weather data is shifted into the past for model input.
+                If False, the (forecasted) weather data is used as-is for model input.
         """
 
         # Set default parameters
@@ -70,6 +74,7 @@ class DataPreprocessor:
         self._test_set_start = None
         self._dev_set_start = None
         self._train_set_1_start = None
+        self.shift_weather_feature = shift_weather_feature
 
     def transform_data(self,
         power_profile: pd.Series,
@@ -121,15 +126,15 @@ class DataPreprocessor:
         """
 
         # Calculate the first possible prediction timestamp
-        nr_of_lagged_days = len(self.add_lagged_profiles)
-        first_timestamp = power_profile.index[0] + pd.Timedelta(days=7*nr_of_lagged_days)
+        max_nr_of_lagged_days = max(self.add_lagged_profiles)
+        first_timestamp = power_profile.index[0] + pd.Timedelta(days=max_nr_of_lagged_days)
 
         # Calculate and store the sampling time
         if not isinstance(power_profile.index, pd.DatetimeIndex):
             raise TypeError("power_profile.index must be a DatetimeIndex")
         self._sampling_time = power_profile.index.to_series().diff().median()
 
-        # Choose a prediction datetime, which is on the same day as the 'first_timestamp'.
+        # Choose a prediction datetime, which is on the same day as the 'first_prediction_clocktime'
         target_timestamp = pd.Timestamp.combine(first_timestamp.date(),
             self.first_prediction_clocktime).tz_localize(first_timestamp.tzinfo)
 
@@ -236,11 +241,17 @@ class DataPreprocessor:
 
             # If available: Add weather (past or forecasted) to the model input
             if weather_data is not None:
-                weather_data_slice = weather_data.loc[ \
-                    act_prediction_date-self.prediction_horizon:act_prediction_date]
+                if self.shift_weather_feature:
+                    # Use past measured weather data
+                    weather_data_slice = weather_data.loc[ \
+                        act_prediction_date-self.prediction_horizon:act_prediction_date]
+                else:
+                    # Use forecasted weather data
+                    weather_data_slice = weather_data.loc[ \
+                        act_prediction_date:act_prediction_date+self.prediction_horizon]
                 weather_seq_len = weather_data_slice.shape[0]
                 for feature in weather_data_slice.columns:
-                    new_batch[:, :weather_seq_len, index]  = weather_data_slice[feature][:]
+                    new_batch[0, :weather_seq_len, index]  = weather_data_slice[feature][:]
                     index += 1
             else:
                 # No weather data is available: Set all weather features to zero 
