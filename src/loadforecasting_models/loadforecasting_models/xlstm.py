@@ -218,6 +218,7 @@ class xLstm(torch.nn.Module):
         y_test: torch.Tensor,
         results: Optional[dict] = None,
         de_normalize: bool = False,
+        nmae_with_mean: bool = True,
         ) -> dict:
         """
         Evaluate the model on the given x_test and y_test.
@@ -231,6 +232,7 @@ class xLstm(torch.nn.Module):
             y_test,
             results,
             de_normalize,
+            nmae_with_mean,
             )
 
         return results

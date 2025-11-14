@@ -212,14 +212,19 @@ class PytorchHelper():
                 prediction = torch.cat([prediction, output], dim=1)
 
         # Calculate average test loss
-        test_loss = loss_sum / total_samples
-        if nmae_with_mean:
-            reference = float(torch.abs(torch.mean(y_test)))
+        if total_samples > 0:
+            if nmae_with_mean:
+                reference = float(torch.abs(torch.mean(y_test)))
+            else:
+                reference = float(torch.abs(torch.max(y_test)))
+            test_loss = loss_sum / total_samples
+            results['test_loss'] = [test_loss]
+            results['test_loss_relative'] = [100.0 * test_loss / reference]
+            results['predicted_profile'] = prediction
         else:
-            reference = float(torch.abs(torch.max(y_test)))
-        results['test_loss'] = [test_loss]
-        results['test_loss_relative'] = [100.0 * test_loss / reference]
-        results['predicted_profile'] = prediction
+            results['test_loss'] = [0.0]
+            results['test_loss_relative'] = [0.0]
+            results['predicted_profile'] = [0.0]
 
         return results
 

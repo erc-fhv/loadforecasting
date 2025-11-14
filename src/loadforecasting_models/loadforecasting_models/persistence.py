@@ -66,6 +66,7 @@ class Persistence:
         results: Optional[dict] = None,
         de_normalize: bool = False,
         eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
+        nmae_with_mean: bool = True,
         ) -> dict:
         """
         Evaluate the model on the given x_test and y_test.
@@ -86,9 +87,12 @@ class Persistence:
             output = self.normalizer.de_normalize_y(output)
 
         # Compute Loss
+        if nmae_with_mean:
+            reference = float(torch.abs(torch.mean(y_test)))
+        else:
+            reference = float(torch.abs(torch.max(y_test)))
         loss = eval_fn(output, y_test)
         results['test_loss'] = [loss.item()]
-        reference = float(torch.mean(y_test))
         results['test_loss_relative'] = [100.0*loss.item()/reference]            
         results['predicted_profile'] = output
 
