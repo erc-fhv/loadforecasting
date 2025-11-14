@@ -29,4 +29,5 @@ jobs:
 
     - name: Run tests
       run: |
+        pytest tests/test_normalizer.py
         pytest tests/test_forecasting_models.py

@@ -38,13 +38,19 @@ class Normalizer():
             x = self.convert_to_ndarray(x)
 
         if training:
+
             # Estimate the mean and standard deviation of the data during training
             self.mean_x = np.mean(x, axis=(0, 1))
             self.std_x = np.std(x, axis=(0, 1))
 
             if np.isclose(self.std_x, 0).any():
-                # Avoid a division by zero (which can occur for constant features)
-                self.std_x = np.where(np.isclose(self.std_x, 0), 1e-8, self.std_x)
+                # Avoid a division by zero (which can occur for constant features).
+                # For zero-features (i.e. features that are always 0), we set the std to 1.
+                # For other constant features, we set the std to the max value of that feature.
+                max_vals = np.max(x, axis=(0, 1))
+                is_null_feature = np.isclose(max_vals, 0)
+                fallback_vals = np.where(is_null_feature, 1.0, max_vals)
+                self.std_x = np.where(np.isclose(self.std_x, 0), fallback_vals, self.std_x)
 
         x_normalized = (x - self.mean_x) / self.std_x
 
