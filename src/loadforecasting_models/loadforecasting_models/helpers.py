@@ -171,6 +171,7 @@ class PytorchHelper():
         y_test: torch.Tensor,
         results: dict,
         de_normalize: bool = False,
+        nmae_with_mean: bool = True,
         ) -> dict:
         """
         Evaluate the model on the given x_test and y_test.
@@ -211,16 +212,14 @@ class PytorchHelper():
                 prediction = torch.cat([prediction, output], dim=1)
 
         # Calculate average test loss
-        if total_samples > 0:
-            test_loss = loss_sum / total_samples
-            reference = float(torch.mean(y_test))
-            results['test_loss'] = [test_loss]
-            results['test_loss_relative'] = [100.0 * test_loss / reference]
-            results['predicted_profile'] = prediction
+        test_loss = loss_sum / total_samples
+        if nmae_with_mean:
+            reference = float(torch.abs(torch.mean(y_test)))
         else:
-            results['test_loss'] = [0.0]
-            results['test_loss_relative'] = [0.0]
-            results['predicted_profile'] = [0.0]
+            reference = float(torch.abs(torch.max(y_test)))
+        results['test_loss'] = [test_loss]
+        results['test_loss_relative'] = [100.0 * test_loss / reference]
+        results['predicted_profile'] = prediction
 
         return results
 
