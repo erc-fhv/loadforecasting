@@ -171,7 +171,7 @@ class PytorchHelper():
         y_test: torch.Tensor,
         results: dict,
         de_normalize: bool = False,
-        nmae_with_mean: bool = True,
+        loss_relative_to: str = "mean",
         ) -> dict:
         """
         Evaluate the model on the given x_test and y_test.
@@ -213,10 +213,14 @@ class PytorchHelper():
 
         # Calculate average test loss
         if total_samples > 0:
-            if nmae_with_mean:
+            if loss_relative_to == "mean":
                 reference = float(torch.abs(torch.mean(y_test)))
-            else:
+            elif loss_relative_to == "max":
                 reference = float(torch.abs(torch.max(y_test)))
+            elif loss_relative_to == "range":
+                reference = float(torch.max(y_test) - torch.min(y_test))
+            else:
+                raise ValueError(f"Unexpected parameter: loss_relative_to = {loss_relative_to}")
             test_loss = loss_sum / total_samples
             results['test_loss'] = [test_loss]
             results['test_loss_relative'] = [100.0 * test_loss / reference]

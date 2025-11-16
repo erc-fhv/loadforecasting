@@ -204,7 +204,7 @@ class Lstm(torch.nn.Module):
         y_test: torch.Tensor,
         results: Optional[dict] = None,
         de_normalize: bool = False,
-        nmae_with_mean: bool = True,
+        loss_relative_to: str = "mean",
         ) -> dict:
         """
         Evaluate the model on the given x_test and y_test.
@@ -218,7 +218,7 @@ class Lstm(torch.nn.Module):
             y_test,
             results,
             de_normalize,
-            nmae_with_mean,
+            loss_relative_to,
             )
 
         return results
