@@ -115,7 +115,7 @@ class Knn():
             raise ValueError(f"Unexpected parameter: loss_relative_to = {loss_relative_to}")
         loss = eval_fn(output, y_test)
         results['test_loss'] = [loss.item()]
-        results['test_loss_relative'] = [100.0*loss.item()/reference]            
+        results['test_loss_relative'] = [100.0 * loss.item() / reference]            
         results['predicted_profile'] = output
 
         return results
