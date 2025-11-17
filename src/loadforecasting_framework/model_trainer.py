@@ -297,10 +297,10 @@ class ModelTrainer:
 
         return load_profiles, weather_data, public_holidays_timestamps
 
-    def load_holidays(self, start_date, end_date) -> list:
+    def load_holidays(self, start_date, end_date, country='GB', province='ENG') -> list:
         """Load the public holiday calendar and return as list."""
 
-        public_holidays = holidays.CountryHoliday('GB', prov='ENG',
+        public_holidays = holidays.CountryHoliday(country, prov=province,
             years=range(start_date.year, end_date.year + 1))
 
         # Add Christmas holidays from Dec 24 to Dec 31 for each year
