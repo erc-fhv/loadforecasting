@@ -26,8 +26,6 @@ class PlotlyApp:
                 predictions = None,
                 timezone = 'UTC',
                 freq = '1h',
-                y_model_pretrain = None,
-                normalizer_pretrain = None
                 ) -> None:
 
         # Initialize the Dash app
@@ -40,8 +38,6 @@ class PlotlyApp:
         self.normalizer = normalizer
         self.predictions = predictions
         self.timezone = timezone
-        self.y_model_pretrain = y_model_pretrain
-        self.normalizer_pretrain = normalizer_pretrain
 
         # Define the layout of the app
         self.app.layout = html.Div([
@@ -152,16 +148,8 @@ class PlotlyApp:
             datetime_index = pd.date_range(start=startdate, periods=y_pred.shape[0],
                 freq=self.freq)  # .tz_convert(self.timezone)
 
-            if self.y_model_pretrain is None:
-                df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': y_real, 'Y_pred': y_pred})
-            else:
-                # Add scaled standard load profile
-                Y_standardload_denormalized = self.normalizer_pretrain.de_normalize_y(
-                    self.y_model_pretrain[selected_dataset][selected_date,:,0])
-                df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': y_real, 'Y_pred': y_pred, 
-                    'Y_standardload': Y_standardload_denormalized})
-
             # Add one hour to the last timestep, in order to have the "hold-values" till 00:00
+            df_Y = pd.DataFrame({'x': datetime_index, 'Y_real': y_real, 'Y_pred': y_pred})
             last_timestep = df_Y['x'].iloc[-1]
             last_timestep_plus_one = last_timestep + pd.Timedelta(hours=1)
             extra_row = pd.DataFrame({
@@ -181,10 +169,8 @@ class PlotlyApp:
                 plot_bgcolor='white', legend=dict(x=0, y=1, xanchor='left', yanchor='top'),
                 margin=dict(l=20, r=20, t=20, b=20), font=dict(size=16, color='black'))
             fig_Y.update_xaxes(showline = True, linewidth = 1, linecolor = 'black', mirror = True)
-            fig_Y.update_yaxes(showline = True, linewidth = 1, linecolor = 'black', mirror = True)
-            if self.y_model_pretrain is not None:
-                fig_Y.add_scatter(x=df_Y['x'], y=df_Y['Y_standardload']/1000.0, mode='lines',
-                    name='Y_standardload')
+            fig_Y.update_yaxes(showline = True, linewidth = 1, linecolor = 'black', mirror = True,
+                rangemode="tozero")
 
             # Additionally visualize the input Data of the LSTM
             # Create a dataframe
@@ -202,8 +188,7 @@ class PlotlyApp:
                 fig_X.add_trace(go.Scatter(x=df_X.index, y=df_X[column], mode='lines',
                     name=column), row=i+1, col=1)
             fig_X.update_layout(
-                #yaxis_title='LSTM inputs',
-                height=1200,
+                height = 100 * df_X.shape[1],
                 plot_bgcolor='white', showlegend=False,
                 #yaxis_title_shift=-50, yaxis_title_standoff=0
                 )
