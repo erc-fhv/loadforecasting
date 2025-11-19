@@ -247,8 +247,9 @@ class DataPreprocessor:
                         act_prediction_date-self.prediction_horizon:act_prediction_date]
                 else:
                     # Use forecasted weather data
-                    weather_data_slice = weather_data.loc[ \
-                        act_prediction_date:act_prediction_date+self.prediction_horizon]
+                    mask = (weather_data.index >= act_prediction_date) & \
+                        (weather_data.index <= act_prediction_date+self.prediction_horizon)
+                    weather_data_slice = weather_data.loc[mask]
                 weather_seq_len = weather_data_slice.shape[0]
                 for feature in weather_data_slice.columns:
                     new_batch[0, :weather_seq_len, index]  = weather_data_slice[feature][:]
