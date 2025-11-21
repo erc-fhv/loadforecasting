@@ -177,7 +177,8 @@ class PlotlyApp:
             startdate = self.data_preprocessor.get_start_date_from_index(
                 selected_dataset,
                 selected_date)
-            datetime_index = pd.date_range(start=startdate, periods=x_selected.shape[1], freq=self.freq)
+            datetime_index = pd.date_range(start=startdate, periods=x_selected.shape[1],
+                freq=self.freq)
             X_visualized = x_selected[selected_date,:,:]
             df_X = pd.DataFrame(X_visualized, index=datetime_index)
 

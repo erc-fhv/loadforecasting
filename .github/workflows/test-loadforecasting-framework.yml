@@ -47,6 +47,7 @@ jobs:
       run: |
         python tests/test_data_preprocessor.py
         python tests/test_formatting_x.py
+        python tests/test_framework_components.py
     
     - name: Run training script    
       shell: bash -l {0}
