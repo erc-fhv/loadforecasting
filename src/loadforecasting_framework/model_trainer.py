@@ -293,14 +293,19 @@ class ModelTrainer:
 
         weather_data = weather_data.loc[:, (weather_data != 0).any(axis=0)] # remove empty columns
 
-        public_holidays_timestamps = self.load_holidays(start_date, end_date)
+        public_holidays_timestamps = self.load_holidays(
+            start_date,
+            end_date,
+            country='GB',
+            subdiv='ENG'
+            )
 
         return load_profiles, weather_data, public_holidays_timestamps
 
-    def load_holidays(self, start_date, end_date, country='GB', province='ENG') -> list:
+    def load_holidays(self, start_date, end_date, country, subdiv=None) -> list:
         """Load the public holiday calendar and return as list."""
 
-        public_holidays = holidays.CountryHoliday(country, prov=province,
+        public_holidays = holidays.country_holidays(country, subdiv=subdiv,
             years=range(start_date.year, end_date.year + 1))
 
         # Add Christmas holidays from Dec 24 to Dec 31 for each year
