@@ -35,7 +35,7 @@ class TestDataPreprocessor(unittest.TestCase):
             add_lagged_profiles=(7,),
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0,0),
-            prediction_horizon=pd.Timedelta(hours=23),
+            prediction_horizon=pd.Timedelta(days=1),
             prediction_rate=pd.Timedelta(days=1)
         )
 
@@ -72,7 +72,7 @@ class TestDataPreprocessor(unittest.TestCase):
             add_lagged_profiles=(7,),
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0,0),
-            prediction_horizon=pd.Timedelta(hours=23),
+            prediction_horizon=pd.Timedelta(days=1),
             prediction_rate=pd.Timedelta(days=1)
         )
 

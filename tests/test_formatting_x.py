@@ -40,7 +40,7 @@ class TestFormattingX(unittest.TestCase):
             add_lagged_profiles=(7, 14, 21),
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
-            prediction_horizon=pd.Timedelta(days=0, hours=23, minutes=59),
+            prediction_horizon=pd.Timedelta(days=1),
             prediction_rate=pd.Timedelta(days=1)
         )
 
