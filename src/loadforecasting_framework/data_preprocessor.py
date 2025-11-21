@@ -17,7 +17,7 @@ class DataPreprocessor:
         add_lagged_profiles: tuple = (7, 14, 21),
         num_of_weather_features: int | None = None,
         first_prediction_clocktime: datetime.time = datetime.time(0, 0),
-        prediction_horizon: pd.Timedelta = pd.Timedelta(days=0, hours=23, minutes=59),
+        prediction_horizon: pd.Timedelta = pd.Timedelta(days=1),
         prediction_rate: pd.Timedelta = pd.Timedelta(days=1),
         shift_weather_feature: bool = True,
         ) -> None:
@@ -184,19 +184,23 @@ class DataPreprocessor:
             self.num_of_weather_features = n
         nr_of_features += self.num_of_weather_features
 
+        # Adjust prediction horizon to be zero-based
+        # E.g. for 1 day horizon with hourly data goes from 00:00 to 23:00 (not 24:00)
+        prediction_horizon = self.prediction_horizon - self._sampling_time
+
         # Calculate/define the shape of x
-        seq_end_time = self._first_prediction_date + self.prediction_horizon
+        seq_end_time = self._first_prediction_date + prediction_horizon
         nr_of_timesteps = len(pd.date_range(start=self._first_prediction_date, end=seq_end_time,
             freq=self._sampling_time))
         x_all = np.zeros(shape=(0, nr_of_timesteps, nr_of_features))
 
-        while act_prediction_date + self.prediction_horizon <= self._last_available_datetime:
+        while act_prediction_date + prediction_horizon <= self._last_available_datetime:
 
             # Create a new batch (= one prediction)
             new_batch = np.zeros(shape=(1, nr_of_timesteps, nr_of_features))
 
             # Define the current time range
-            end_of_prediction = act_prediction_date + self.prediction_horizon
+            end_of_prediction = act_prediction_date + prediction_horizon
             total_input_range = pd.Series(pd.date_range(start=act_prediction_date,
                 end=end_of_prediction, freq=self._sampling_time)).dt
 
@@ -234,7 +238,7 @@ class DataPreprocessor:
                 # Add the given lagged profiles, i.e. days ago.
                 for day in self.add_lagged_profiles:
                     start = act_prediction_date - pd.Timedelta(days=day)
-                    end = start + self.prediction_horizon
+                    end = start + prediction_horizon
                     lagged_power = power_profile.loc[start:end]
                     new_batch[0, :, index]  = lagged_power.values
                     index += 1
@@ -244,18 +248,18 @@ class DataPreprocessor:
                 if self.shift_weather_feature:
                     # Use past measured weather data
                     weather_data_slice = weather_data.loc[ \
-                        act_prediction_date-self.prediction_horizon:act_prediction_date]
+                        act_prediction_date-prediction_horizon:act_prediction_date]
                 else:
                     # Use forecasted weather data
                     mask = (weather_data.index >= act_prediction_date) & \
-                        (weather_data.index <= act_prediction_date+self.prediction_horizon)
+                        (weather_data.index <= act_prediction_date+prediction_horizon)
                     weather_data_slice = weather_data.loc[mask]
                 weather_seq_len = weather_data_slice.shape[0]
                 for feature in weather_data_slice.columns:
                     new_batch[0, :weather_seq_len, index]  = weather_data_slice[feature][:]
                     index += 1
             else:
-                # No weather data is available: Set all weather features to zero 
+                # No weather data is available: Set all weather features to zero
                 # (e.g. during pre-training)
                 new_batch[0, :, index:self.num_of_weather_features]  = 0.0
                 index += self.num_of_weather_features
@@ -285,20 +289,24 @@ class DataPreprocessor:
         batch_id = 0
         act_prediction_date = self._first_prediction_date
 
+        # Adjust prediction horizon to be zero-based
+        # E.g. for 1 day horizon with hourly data goes from 00:00 to 23:00 (not 24:00)
+        prediction_horizon = self.prediction_horizon - self._sampling_time
+
         # Calculate/define the shape of y
-        seq_end_time = self._first_prediction_date + self.prediction_horizon
+        seq_end_time = self._first_prediction_date + prediction_horizon
         nr_of_timesteps = len(pd.date_range(start=self._first_prediction_date, end=seq_end_time,
             freq=self._sampling_time))
         y_all = np.zeros(shape=(0, nr_of_timesteps, 1))
 
-        while act_prediction_date + self.prediction_horizon <= self._last_available_datetime:
+        while act_prediction_date + prediction_horizon <= self._last_available_datetime:
 
             # Add a new batch to the y array
             new_values = np.zeros(shape=(1, nr_of_timesteps, 1))
             y_all = np.concatenate((y_all, new_values), axis=0)
 
             # Get values within the specified time range
-            end_prediction_horizon = act_prediction_date + self.prediction_horizon
+            end_prediction_horizon = act_prediction_date + prediction_horizon
             demandprofile_slice = df.loc[act_prediction_date:end_prediction_horizon]
 
             # Set all target power values

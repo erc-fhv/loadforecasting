@@ -105,7 +105,7 @@ class PlotlyApp:
 
         # Display information about the currently chosen date
         available_days = self.y_plot[selected_dataset].shape[0] - 1
-        return_value = f'   ... selected day from [1 ... {available_days}]. Weekday of the' + \
+        return_value = f'   ... selected day from [0 ... {available_days}]. Weekday of the' + \
             f'prediction timestep: {weekday_str}.' + subset_text
 
         return return_value
