@@ -165,7 +165,7 @@ Our forecasting models can be easily reused in other applications as shown below
     print('\nOutput shape:', y_pred.shape)
     ```
 
-3. Use of non machine learning models. For example the KNN model:
+3. Use of *non-machine-learning models*. For example the KNN model:
 
     ```python
     from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
@@ -176,6 +176,80 @@ Our forecasting models can be easily reused in other applications as shown below
     myModel = Knn(k=40, weights='distance', normalizer=normalizer)
     myModel.train_model(x_train, y_train)
     # ...
+    ```
+
+## Reusing the Forecasting Models AND the Preprocessing Module
+
+1. Install the packages:
+    ```bash
+    pip install loadforecasting_models
+    pip install -e git+https://github.com/erc-fhv/loadforecasting.git
+    ```
+
+2. Short example on how to use the models and preprocessing:
+
+    ```python
+    import pandas as pd
+    import numpy as np
+
+    from loadforecasting_models import Normalizer, Transformer
+    from loadforecasting_framework import DataPreprocessor, ModelTrainer, DataSplitType
+
+    # Read in a load profile, weather data and holiday with datetime index
+    #
+    start_date = pd.Timestamp('2023-01-01')
+    end_date = pd.Timestamp('2024-01-01')
+    timestamps = pd.date_range(start=start_date, end=end_date, freq='15min')
+
+    df_load = pd.DataFrame({
+        'timestamp': timestamps,
+        'load': np.random.rand(len(timestamps)) * 1000
+    }).set_index('timestamp')
+
+    weather_data = pd.DataFrame({
+        'date': timestamps,
+        'precipitation': np.random.rand(len(timestamps)),
+        'cloud_cover': np.random.rand(len(timestamps)) * 100,
+        'global_tilted_irradiance': np.random.rand(len(timestamps)) * 1000,
+    }).set_index('date')
+
+    holidays = ModelTrainer().load_holidays(start_date, end_date, country="AT", subdiv="Vorarlberg")
+
+    # Transform inputs
+    #
+    normalizer = Normalizer()
+    pre = DataPreprocessor(
+        normalizer=normalizer,
+        add_lagged_profiles=(7, 14, 21),
+        data_split = DataSplitType(
+            train_set_1 = int(len(timestamps)*0.8), # 80% historic training data
+            test_set=int(len(timestamps)*0.2),  # 20% future test data
+            dev_set=0, train_set_2=0, pad=0),
+    )
+
+    x, y = pre.transform_data(
+        power_profile=df_load["load"],
+        weather_data=weather_data,
+        public_holidays=holidays
+    )
+
+    # Train the model
+    #
+    model = Transformer("5k", num_of_features=x["train"].shape[2], normalizer = normalizer)
+    model.train_model(x_train=x["train"], y_train=y["train"], epochs=5)
+
+    # Evaluate the model
+    #
+    results = model.evaluate(
+        x_test=x["test"],
+        y_test=y["test"],
+        de_normalize=True,
+        loss_relative_to="mean"
+    )
+
+    print(results['test_loss'])             # Print MAE
+    print(results['test_loss_relative'])    # Print nMAE
+    print(results['predicted_profile'])     # Print the predicted load profile
     ```
 
 
