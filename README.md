@@ -236,7 +236,7 @@ Our forecasting models can be easily reused in other applications as shown below
     # Train the model
     #
     model = Transformer("5k", num_of_features=x["train"].shape[2], normalizer = normalizer)
-    model.train_model(x_train=x["train"], y_train=y["train"], epochs=5)
+    model.train_model(x_train=x["train"], y_train=y["train"], epochs=100)
 
     # Evaluate the model
     #
