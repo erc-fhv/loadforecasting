@@ -12,14 +12,15 @@ class Transformer(torch.nn.Module):
 
     def __init__(
         self,
-        model_size: str,
+        model_size: str = '5k',
         loss_fn: Optional[Callable[..., torch.Tensor]] = torch.nn.L1Loss(),
         normalizer: Optional[Normalizer] = None,
         ) -> None:
         """
         Args:
             model_size (str): The model parameter count, e.g. '0.1k', '0.2k', '0.5k', '1k',
-                '2k', '5k', '10k', '20k', '40k', '80k'.
+                '2k', '5k', '10k', '20k', '40k', '80k'. Default is '5k', which is a good trade-off
+                between performance and speed, see https://arxiv.org/abs/2501.05000.
             loss_fn (Callable[..., torch.Tensor]): Loss function to be used during 
                 training. E.g., torch.nn.L1Loss(), torch.nn.MSELoss(), pytorch_helpers.smape, ...
             normalizer (Normalizer): Used for X and Y normalization and denormalization.
