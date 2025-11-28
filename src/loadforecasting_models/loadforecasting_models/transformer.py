@@ -134,7 +134,7 @@ class Transformer(torch.nn.Module):
         epochs: int = 100,
         learning_rates: Optional[Sequence[float]] = None,
         batch_size: int = 256,
-        verbose: int = 0,
+        verbose: int = 1,
         ) -> dict:
         """
         Train this model.
