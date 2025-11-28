@@ -73,7 +73,6 @@ class ModelTrainer:
         my_model, history = ModelTrainer.create_model(
             model_type,
             normalizer,
-            num_of_features = x['train'].shape[2],
             sim_config = sim_config,
             do_training = True,
             x_train = x['train'],
@@ -92,7 +91,6 @@ class ModelTrainer:
     def create_model(
         model_type: str,
         normalizer: Normalizer,
-        num_of_features: int,
         sim_config: ConfigOfOneRun | None = None,
         do_training: bool = False,
         x_train: torch.Tensor | None = None,
@@ -160,7 +158,7 @@ class ModelTrainer:
             if sim_config is None:
                 raise ValueError("sim_config must be given for Machine Learning Models!")
             model_size = sim_config.model_size
-            my_model = my_class(model_size, num_of_features, normalizer=normalizer)
+            my_model = my_class(model_size, normalizer=normalizer)
 
             if do_training:
                 history = my_model.train_model(x_train, y_train, pretrain_now=pretrain_now,
@@ -248,7 +246,6 @@ class ModelTrainer:
                     ModelTrainer.create_model(
                         model_type,
                         normalizer,
-                        num_of_features = x['all'].shape[2],
                         sim_config = my_configs[act_sim_config_index],
                         do_training = True,
                         x_train = x['all'],

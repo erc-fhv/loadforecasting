@@ -131,7 +131,7 @@ class Deserialize:
 
     @staticmethod
     def get_trained_model(path_to_trained_parameters, model_type, test_profile,
-                          chosen_config, num_of_features, normalizer):
+                          chosen_config, normalizer):
         """ Get the trained models from disc and deserialize/unpack them. """
 
         serialized_dict = torch.load(path_to_trained_parameters)
@@ -145,7 +145,6 @@ class Deserialize:
                 act_model, _ = model_trainer.ModelTrainer.create_model(
                     model_type,
                     normalizer,
-                    num_of_features = num_of_features,
                     sim_config = chosen_config,
                     do_training = False,
                     do_evaluation = False,

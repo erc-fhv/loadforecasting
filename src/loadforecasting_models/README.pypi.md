@@ -51,8 +51,7 @@ y_train = normalizer.normalize_y(y_train, training=True)
 # ------------------------------------------------------------------------------
 
 # Available models: Transformer, LSTM, xLSTM, KNN, Persistence
-myModel = Transformer(model_size='5k', num_of_features=features,
-    normalizer=normalizer)
+myModel = Transformer(model_size='5k', normalizer=normalizer)
 myModel.train_model(x_train, y_train, epochs=100, verbose=0)
 
 # ------------------------------------------------------------------------------

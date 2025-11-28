@@ -70,11 +70,7 @@ class TestDataPipeline(unittest.TestCase):
         self.assertIn("test", x)
 
         # Instantiate model
-        model = Transformer(
-            "5k",
-            num_of_features=x["train"].shape[2],
-            normalizer=self.normalizer
-        )
+        model = Transformer("5k", normalizer=self.normalizer)
 
         # Train model
         history = model.train_model(

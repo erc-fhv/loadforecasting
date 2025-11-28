@@ -11,7 +11,6 @@ class Lstm(torch.nn.Module):
     def __init__(
         self,
         model_size: str,
-        num_of_features: int,
         loss_fn: Optional[Callable[..., torch.Tensor]] = torch.nn.L1Loss(),
         normalizer: Optional[Normalizer] = None,
         ) -> None:
@@ -19,7 +18,6 @@ class Lstm(torch.nn.Module):
         Args:
             model_size (str): The model parameter count, e.g. '0.1k', '0.2k', '0.5k', '1k',
                 '2k', '5k', '10k', '20k', '40k', '80k'.
-            num_of_features (int): Number of model input features.
             loss_fn (Callable[..., torch.Tensor]): Loss function to be used during 
                 training. E.g., torch.nn.L1Loss(), torch.nn.MSELoss(), pytorch_helpers.smape, ...
             normalizer (Normalizer): Used for X and Y normalization and denormalization.
@@ -99,7 +97,7 @@ class Lstm(torch.nn.Module):
         else:
             bidirectional_factor = 1
 
-        self.lstm1 = torch.nn.LSTM(input_size=num_of_features, hidden_size=hidden_dimension_lstm1,
+        self.lstm1 = torch.nn.LazyLSTM(hidden_size=hidden_dimension_lstm1,
                                    batch_first=True, bidirectional=bidirectional)
         self.lstm2 = torch.nn.LSTM(input_size=hidden_dimension_lstm1*bidirectional_factor,
                                    hidden_size=hidden_dimension_lstm2, batch_first=True,

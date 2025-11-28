@@ -19,7 +19,6 @@ class xLstm(torch.nn.Module):
     def __init__(
         self,
         model_size: str,
-        num_of_features: int,
         loss_fn: Optional[Callable[..., torch.Tensor]] = torch.nn.L1Loss(),
         normalizer: Optional[Normalizer] = None,
         ) -> None:
@@ -27,7 +26,6 @@ class xLstm(torch.nn.Module):
         Args:
             model_size (str): The model parameter count, e.g. '0.1k', '0.2k', '0.5k', '1k',
                 '2k', '5k', '10k', '20k', '40k', '80k'.
-            num_of_features (int): Number of model input features.
             loss_fn (Callable[..., torch.Tensor]): Loss function to be used during 
                 training. E.g., torch.nn.L1Loss(), torch.nn.MSELoss(), pytorch_helpers.smape, ...
             normalizer (Normalizer): Used for X and Y normalization and denormalization.
@@ -124,7 +122,7 @@ class xLstm(torch.nn.Module):
         self.xlstm_stack = xLSTMBlockStack(self.cfg)
 
         # Adding none-xlstm layers
-        self.input_projection = torch.nn.Linear(num_of_features, d_model)
+        self.input_projection = torch.nn.LazyLinear(d_model)
         self.positional_encoding = PositionalEncoding(d_model)
         self.output_layer = torch.nn.Linear(d_model, 1)
 
