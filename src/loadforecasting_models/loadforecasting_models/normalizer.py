@@ -1,5 +1,9 @@
+from typing import Union, Tuple, Any
 import numpy as np
 import torch
+
+# Define a type that can be either a torch Tensor or a numpy ndarray
+ArrayLike = Union[torch.Tensor, np.ndarray]
 
 class Normalizer():
     """
@@ -13,7 +17,12 @@ class Normalizer():
         self.mean_y = 0.
         self.std_y = 1.
 
-    def normalize(self, x, y, training=True):
+    def normalize(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+        training: bool =True
+        ) -> Tuple[ArrayLike, ArrayLike]:
         """Normalize both input and output data of the model."""
 
         x_normalized = self.normalize_x(x, training)
@@ -21,7 +30,11 @@ class Normalizer():
 
         return x_normalized, y_normalized
 
-    def de_normalize(self, x, y):
+    def de_normalize(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+        ) -> Tuple[ArrayLike, ArrayLike]:
         """De-Normalize both input and output data of the model."""
 
         x_de_normalized = self.de_normalize_x(x)
@@ -29,7 +42,11 @@ class Normalizer():
 
         return x_de_normalized, y_de_normalized
 
-    def normalize_x(self, x, training=True):
+    def normalize_x(
+        self,
+        x: ArrayLike,
+        training: bool =True,
+        ) -> ArrayLike:
         """Z-Normalize the input data of the model."""
 
         # Optionally convert to ndarray
@@ -60,7 +77,11 @@ class Normalizer():
 
         return x_normalized
 
-    def normalize_y(self, y, training=True):
+    def normalize_y(
+        self,
+        y: ArrayLike,
+        training: bool =True,
+        ) -> ArrayLike:
         """Z-Normalize the output data of the model."""
 
         # Optionally convert to ndarray
@@ -84,7 +105,10 @@ class Normalizer():
 
         return y_normalized
 
-    def de_normalize_y(self, y):
+    def de_normalize_y(
+        self,
+        y: ArrayLike
+        ) -> ArrayLike:
         """Undo normalization"""
 
         # Optionally convert to ndarray
@@ -100,7 +124,10 @@ class Normalizer():
 
         return y_denormalized
 
-    def de_normalize_x(self, x):
+    def de_normalize_x(
+        self,
+        x: ArrayLike
+        ) -> ArrayLike:
         """Undo z-normalization."""
 
         # Optionally convert to ndarray
@@ -116,11 +143,14 @@ class Normalizer():
 
         return x_denormalized
 
-    def is_tensor(self, x):
+    def is_tensor(self, x: ArrayLike) -> bool:
+        """Check if the input is a torch tensor."""
         return torch.is_tensor(x)
 
-    def convert_to_ndarray(self, x):
+    def convert_to_ndarray(self, x: Any) -> np.ndarray:
+        """Convert input to numpy ndarray."""
         return np.array(x)
 
-    def convert_to_torch_tensor(self, x):
+    def convert_to_torch_tensor(self, x: Any) -> torch.Tensor:
+        """Convert input to torch tensor."""
         return torch.tensor(x)

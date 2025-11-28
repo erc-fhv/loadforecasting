@@ -1,4 +1,5 @@
-from typing import Optional, Callable, Sequence
+from typing import Optional, Callable, Sequence, Union
+import numpy as np
 import torch
 from xlstm import (
     xLSTMBlockStack,
@@ -12,6 +13,8 @@ from xlstm import (
 from .helpers import PytorchHelper, PositionalEncoding
 from .normalizer import Normalizer
 
+# Define a type that can be either a torch Tensor or a numpy ndarray
+ArrayLike = Union[torch.Tensor, np.ndarray]
 
 class xLstm(torch.nn.Module):
     """xLSTM configuration as provided by the xLSTM authors."""
@@ -131,21 +134,36 @@ class xLstm(torch.nn.Module):
         # Setup Pytorch helper for training and evaluation
         self.my_pytorch_helper = PytorchHelper(self)
 
-    def forward(self, x) -> torch.Tensor:
+    def forward(
+        self,
+        x: ArrayLike,
+        ) -> ArrayLike:
         """Model forward pass."""
 
-        x = self.input_projection(x.float())
-        x = self.positional_encoding(x)
-        x = self.xlstm_stack(x)
-        x = self.output_layer(x)
-        return x
+        # Convert numpy to torch if needed
+        input_was_numpy = isinstance(x, np.ndarray)
+        if input_was_numpy:
+            x_tensor  = torch.from_numpy(x).float()
+        else:
+            x_tensor  = x.float()
+
+        x_tensor = self.input_projection(x_tensor)
+        x_tensor = self.positional_encoding(x_tensor)
+        x_tensor = self.xlstm_stack(x_tensor)
+        out = self.output_layer(x_tensor)
+
+        # Convert back to numpy if needed
+        if input_was_numpy:
+            out = out.numpy()
+
+        return out
 
     def train_model(
         self,
-        x_train: torch.Tensor,
-        y_train: torch.Tensor,
-        x_dev: Optional[torch.Tensor] = None,
-        y_dev: Optional[torch.Tensor] = None,
+        x_train: ArrayLike,
+        y_train: ArrayLike,
+        x_dev: Optional[ArrayLike] = None,
+        y_dev: Optional[ArrayLike] = None,
         pretrain_now: bool = False,
         finetune_now: bool = False,
         epochs: int = 100,
@@ -156,12 +174,12 @@ class xLstm(torch.nn.Module):
         """
         Train this model.
         Args:
-            X_train (torch.Tensor): Training input features of shape (batch_len, sequence_len, 
+            X_train (ArrayLike): Training input features of shape (batch_len, sequence_len, 
                 features).
-            Y_train (torch.Tensor): Training labels of shape (batch_len, sequence_len, 1).
-            X_dev (torch.Tensor, optional): Validation input features of shape (batch_len, 
+            Y_train (ArrayLike): Training labels of shape (batch_len, sequence_len, 1).
+            X_dev (ArrayLike, optional): Validation input features of shape (batch_len, 
                 sequence_len, features).
-            Y_dev (torch.Tensor, optional): Validation labels of shape (batch_len, 
+            Y_dev (ArrayLike, optional): Validation labels of shape (batch_len, 
                 sequence_len, 1).
             pretrain_now (bool): Whether to run a pretraining phase.
             finetune_now (bool): Whether to run fine-tuning.
@@ -194,16 +212,19 @@ class xLstm(torch.nn.Module):
 
         return history
 
-    def predict(self, x: torch.Tensor) -> torch.Tensor:
+    def predict(
+        self,
+        x: ArrayLike,
+        ) -> ArrayLike:
         """
         Predict y from the given x.
 
         Args:
-            x (torch.Tensor): Input tensor of shape (batch_len, sequence_len, features) 
+            x (ArrayLike): Input tensor of shape (batch_len, sequence_len, features) 
                 containing the features for which predictions are to be made.
                 
         Returns:
-            torch.Tensor: Predicted y tensor of shape (batch_len, sequence_len, 1).
+            ArrayLike: Predicted y tensor of shape (batch_len, sequence_len, 1).
         """
 
         self.eval()
@@ -214,8 +235,8 @@ class xLstm(torch.nn.Module):
 
     def evaluate(
         self,
-        x_test: torch.Tensor,
-        y_test: torch.Tensor,
+        x_test: ArrayLike,
+        y_test: ArrayLike,
         results: Optional[dict] = None,
         de_normalize: bool = False,
         loss_relative_to: str = "mean",

@@ -1,4 +1,5 @@
 from typing import Type, Union
+import numpy as np
 import torch
 from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
 
@@ -27,15 +28,52 @@ def test_if_models_are_running():
         else:   # Machine Learning Models
 
             model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
-            my_model = model_class('5k', x_train.size(2), normalizer=normalizer)
+            my_model = model_class(model_size='5k', normalizer=normalizer)
             my_model.train_model(x_train, y_train, verbose=2,
                 epochs=1) # epochs=1 for faster tests
 
         x_test = torch.randn(90, 24, 10)
-        y_pred = my_model.predict(x_test)
+        y_test = torch.randn(90, 24, 1)
+        y_pred = my_model.evaluate(x_test, y_test)
 
+        y_pred = my_model.predict(x_test)
         assert y_pred.shape == (90, 24, 1)
 
+def test_if_models_are_running_w_numpy():
+    """
+    Do the same as test_if_models_are_running(), but with numpy arrays.
+    """
+
+    for model_class in [Knn, Lstm, Transformer, xLstm, Persistence]:
+
+        print(f'Test the {model_class.__name__} model.')
+
+        x_train = np.random.randn(365, 24, 10)
+        y_train = np.random.randn(365, 24, 1)
+        normalizer = Normalizer()
+
+        if model_class == Knn:
+            my_model = Knn(k=40, weights = 'distance', normalizer=None)
+            my_model.train_model(x_train, y_train)
+
+        elif model_class == Persistence:
+            my_model = Persistence(lagged_load_feature=3, normalizer=normalizer)
+            my_model.train_model()
+
+        else:   # Machine Learning Models
+
+            model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
+            my_model = model_class(model_size='5k', normalizer=normalizer)
+            my_model.train_model(x_train, y_train, verbose=2,
+                epochs=1) # epochs=1 for faster tests
+
+        x_test = np.random.randn(90, 24, 10)
+        y_test = np.random.randn(90, 24, 1)
+
+        y_pred = my_model.evaluate(x_test, y_test)
+
+        y_pred = my_model.predict(x_test)
+        assert y_pred.shape == (90, 24, 1)
 
 def test_model_linear_prediction():
     """
@@ -76,7 +114,7 @@ def test_model_linear_prediction():
                 my_model.train_model(x_train, y_train)
             else:
                 model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
-                my_model = model_class('5k', x_train.size(2), normalizer=normalizer)
+                my_model = model_class('5k', normalizer=normalizer)
                 my_model.train_model(x_train, y_train, verbose=2, epochs=100)
 
             # Test input data: Sine Values
@@ -132,7 +170,7 @@ def test_transfer_learning():
     x_train = normalizer.normalize_x(x_train, training=True)
     y_train = normalizer.normalize_y(y_train, training=True)
 
-    pretrain_model = Transformer('5k', x_train.size(2), normalizer=normalizer)
+    pretrain_model = Transformer('5k', normalizer=normalizer)
     pretrain_model.train_model(
         x_train,
         y_train,
@@ -142,7 +180,7 @@ def test_transfer_learning():
         epochs=100, # deteiled pre-training
         )
 
-    my_model = Transformer('5k', x_train.size(2), normalizer=normalizer)
+    my_model = Transformer('5k', normalizer=normalizer)
     my_model.train_model(
         x_train,
         y_train,

@@ -1,7 +1,10 @@
-from typing import Optional, Callable
+from typing import Optional, Callable, Union
 import numpy as np
 import torch
 from .normalizer import Normalizer
+
+# Define a type that can be either a torch Tensor or a numpy ndarray
+ArrayLike = Union[torch.Tensor, np.ndarray]
 
 class Persistence:
     """
@@ -22,18 +25,18 @@ class Persistence:
         self.lagged_load_feature = lagged_load_feature
 
     def predict(self,
-            x: torch.Tensor,
-            ) -> torch.Tensor:
+            x: ArrayLike,
+            ) -> ArrayLike:
         """
         Upcoming load profile = load profile 7 days ago.
 
         Args:
-            x (torch.Tensor): Normalised model input tensor of shape (batch_len, 
+            x (ArrayLike): Normalised model input tensor of shape (batch_len, 
                 sequence_len, features), where the feature at index `lagged_load_feature`
                 contains the lagged load values.
 
         Returns:
-            torch.Tensor: Predicted y tensor of shape (batch_len, sequence_len, 1).
+            ArrayLike: Predicted y tensor of shape (batch_len, sequence_len, 1).
         """
 
         x = self.normalizer.de_normalize_x(x)    # de-normalize all inputs
@@ -46,8 +49,6 @@ class Persistence:
         #
         y_pred = y_pred[:,:,np.newaxis]
         y_pred = self.normalizer.normalize_y(y_pred, training=False)
-        assert y_pred.shape == (x.size(0), x.size(1), 1), \
-            f"Shape mismatch: got {y_pred.shape}, expected ({x.size(0)}, {x.size(1)}, 1)"
 
         return y_pred
 
@@ -61,8 +62,8 @@ class Persistence:
 
     def evaluate(
         self,
-        x_test: torch.Tensor,
-        y_test: torch.Tensor,
+        x_test: ArrayLike,
+        y_test: ArrayLike,
         results: Optional[dict] = None,
         de_normalize: bool = False,
         eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
@@ -75,27 +76,39 @@ class Persistence:
         if results is None:
             results = {}
 
-        output = self.predict(x_test)
+        # Convert numpy to torch if needed
+        if isinstance(x_test, np.ndarray):
+            x_tensor  = torch.from_numpy(x_test).float()
+        else:
+            x_tensor  = x_test.float()
+        if isinstance(y_test, np.ndarray):
+            y_tensor  = torch.from_numpy(y_test).float()
+        else:
+            y_tensor  = y_test.float()
 
-        assert output.shape == y_test.shape, \
-            f"Shape mismatch: got {output.shape}, expected {y_test.shape})"
+        output = self.predict(x_tensor)
+
+        assert output.shape == y_tensor.shape, \
+            f"Shape mismatch: got {output.shape}, expected {y_tensor.shape})"
 
         # Unnormalize the target variable, if wished.
         if de_normalize:
             assert self.normalizer is not None, "No model_adapter given."
-            y_test = self.normalizer.de_normalize_y(y_test)
+            y_tensor = self.normalizer.de_normalize_y(y_tensor)
+            assert isinstance(y_tensor, torch.Tensor), "Denormalized y_tensor is not a torch.Tensor"
             output = self.normalizer.de_normalize_y(output)
+            assert isinstance(output, torch.Tensor), "Denormalized output is not a torch.Tensor"
 
         # Compute Loss
         if loss_relative_to == "mean":
-            reference = float(torch.abs(torch.mean(y_test)))
+            reference = float(torch.abs(torch.mean(y_tensor)))
         elif loss_relative_to == "max":
-            reference = float(torch.abs(torch.max(y_test)))
+            reference = float(torch.abs(torch.max(y_tensor)))
         elif loss_relative_to == "range":
-            reference = float(torch.max(y_test) - torch.min(y_test))
+            reference = float(torch.max(y_tensor) - torch.min(y_tensor))
         else:
             raise ValueError(f"Unexpected parameter: loss_relative_to = {loss_relative_to}")
-        loss = eval_fn(output, y_test)
+        loss = eval_fn(output, y_tensor)
         results['test_loss'] = [loss.item()]
         results['test_loss_relative'] = [100.0*loss.item()/reference]            
         results['predicted_profile'] = output

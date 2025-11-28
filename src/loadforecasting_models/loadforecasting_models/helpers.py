@@ -2,28 +2,33 @@
 This module contains common (mainly pytorch) code for the forecasting models.
 """
 
-import os
-from typing import Sequence
+from pathlib import Path
+from typing import Sequence, Union
 import math
 import numpy as np
 import torch
 from torch import optim
 from torch.utils.data import DataLoader, Dataset
-from pathlib import Path
+
+# Define a type that can be either a torch Tensor or a numpy ndarray
+ArrayLike = Union[torch.Tensor, np.ndarray]
 
 class SequenceDataset(Dataset):
-    def __init__(self, X, Y):
-        self.X = X
-        self.Y = Y
+    """Custom Dataset for sequence data."""
+
+    def __init__(self, x: ArrayLike, y: ArrayLike):
+        self.x = x
+        self.y = y
 
     def __len__(self):
-        return len(self.X)
+        return len(self.x)
 
     def __getitem__(self, idx):
-        return self.X[idx], self.Y[idx]
-
+        return self.x[idx], self.y[idx]
 
 class CustomLRScheduler:
+    """Custom learning rate scheduler for PyTorch optimizers."""
+
     def __init__(self, optimizer, set_learning_rates, max_epochs):
         self.optimizer = optimizer
         self.set_learning_rates = set_learning_rates
@@ -59,10 +64,10 @@ class PytorchHelper():
 
     def train(
         self,
-        x_train: torch.Tensor,
-        y_train: torch.Tensor,
-        x_dev: torch.Tensor,
-        y_dev: torch.Tensor,
+        x_train: ArrayLike,
+        y_train: ArrayLike,
+        x_dev: ArrayLike,
+        y_dev: ArrayLike,
         pretrain_now: bool,
         finetune_now: bool,
         epochs: int,
@@ -73,10 +78,14 @@ class PytorchHelper():
         """
         Train a pytorch model.
         Args:
-            X_train (torch.Tensor): Training input features of shape (batch_len, sequence_len, features).
-            Y_train (torch.Tensor): Training labels of shape (batch_len, sequence_len, 1).
-            X_dev (torch.Tensor, optional): Validation input features of shape (batch_len, sequence_len, features).
-            Y_dev (torch.Tensor, optional): Validation labels of shape (batch_len, sequence_len, 1).
+            X_train (torch.Tensor or np.ndarray): Training input features of 
+                shape (batch_len, sequence_len, features).
+            Y_train (torch.Tensor or np.ndarray): Training labels of 
+                shape (batch_len, sequence_len, 1).
+            X_dev (torch.Tensor or np.ndarray, optional): Validation input features of 
+                shape (batch_len, sequence_len, features).
+            Y_dev (torch.Tensor or np.ndarray, optional): Validation labels of 
+                shape (batch_len, sequence_len, 1).
             pretrain_now (bool): Whether to run a pretraining phase.
             finetune_now (bool): Whether to run fine-tuning.
             epochs (int): Number of training epochs.
@@ -84,6 +93,16 @@ class PytorchHelper():
             batch_size (int): Batch size for training.
             verbose (int): Verbosity level.
         """
+
+        # Convert numpy to torch if needed
+        if isinstance(x_train, np.ndarray):
+            x_train  = torch.from_numpy(x_train)
+        if isinstance(y_train, np.ndarray):
+            y_train  = torch.from_numpy(y_train)
+        if isinstance(x_dev, np.ndarray):
+            x_dev  = torch.from_numpy(x_dev)
+        if isinstance(y_dev, np.ndarray):
+            y_dev  = torch.from_numpy(y_dev)
 
         # Prepare Optimization
         train_dataset = SequenceDataset(x_train, y_train)
@@ -167,8 +186,8 @@ class PytorchHelper():
 
     def evaluate(
         self,
-        x_test: torch.Tensor,
-        y_test: torch.Tensor,
+        x_test: ArrayLike,
+        y_test: ArrayLike,
         results: dict,
         de_normalize: bool = False,
         loss_relative_to: str = "mean",
@@ -177,9 +196,14 @@ class PytorchHelper():
         Evaluate the model on the given x_test and y_test.
         """
 
+        # Convert numpy to torch if needed
+        if isinstance(x_test, np.ndarray):
+            x_test  = torch.from_numpy(x_test)
+        if isinstance(y_test, np.ndarray):
+            y_test  = torch.from_numpy(y_test)
+
         # Initialize metrics
         loss_sum = 0
-        smape_sum = 0
         total_samples = 0
         prediction = torch.zeros(size=(y_test.size(0), 0, y_test.size(2)))
 
@@ -231,40 +255,6 @@ class PytorchHelper():
             results['predicted_profile'] = [0.0]
 
         return results
-
-
-class PositionalEncoding(torch.nn.Module):
-    """    
-    This implementation of positional encoding is based on the
-    "Attention Is All You Need" paper, and is conceptually similar to:
-    https://stackoverflow.com/questions/77444485/using-positional-encoding-in-pytorch
-    """
-
-    def __init__(self, d_model, timesteps=5000):
-        super().__init__()
-
-        pe = torch.zeros(timesteps, d_model)  # [timesteps, d_model]
-        position = torch.arange(0, timesteps, dtype=torch.float).unsqueeze(1)  # [timesteps, 1]
-        _2i = torch.arange(0, d_model, 2).float()
-        div_term = torch.exp(_2i * (-math.log(10000.0) / d_model))  # [d_model/2]
-
-        pe[:, 0::2] = torch.sin(position * div_term)  # Apply sin to even indices in the array
-        pe[:, 1::2] = torch.cos(position * div_term)  # Apply cos to odd indices in the array
-
-        pe = pe.unsqueeze(0)  # [1, timesteps, d_model]
-        self.register_buffer('pe', pe)  # Save as a non-learnable buffer
-
-    def forward(self, x):
-        """Add positional encoding to input tensor x."""
-
-        _, timesteps, features = x.shape
-        assert (self.pe.size(1) == timesteps), f"Expected timesteps: {self.pe.size(1)}, received timesteps: {timesteps}"
-        assert (self.pe.size(2) == features), f"Expected features: {self.pe.size(2)}, received features: {features}"
-
-        x = x + self.pe
-
-        return x
-
 
 class PositionalEncoding(torch.nn.Module):
     """    
