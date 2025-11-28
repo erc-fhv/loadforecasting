@@ -65,7 +65,7 @@ class TransformerFull(torch.nn.Module):
             dim_feedforward=400
             d_model=40
         else:
-            assert False, f"Unimplemented model_size parameter given: {model_size}"
+            raise ValueError(f"Unimplemented params.model_size parameter given: {model_size}")
 
         # Project input features to transformer dimension
         self.input_projection = torch.nn.LazyLinear(d_model)

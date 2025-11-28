@@ -96,7 +96,7 @@ class xLstm(torch.nn.Module):
             d_model=40
             slstm_at=[1]
         else:
-            assert False, f"Unimplemented model_size parameter given: {model_size}"
+            raise ValueError(f"Unimplemented params.model_size parameter given: {model_size}")
 
         # Configuration for the xLSTM Block
         self.cfg = xLSTMBlockStackConfig(

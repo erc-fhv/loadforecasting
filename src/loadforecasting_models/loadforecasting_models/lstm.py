@@ -31,81 +31,72 @@ class Lstm(torch.nn.Module):
         # LSTM configuration based on model size
         if model_size == "0.1k":
             bidirectional=False
-            hidden_dimension_lstm1 = 1
-            hidden_dimension_lstm2 = 1
+            d_model = 1
             hidden_dimension_dense1 = 4
             hidden_dimension_dense2 = 4
         elif  model_size == "0.2k":
             bidirectional=True
-            hidden_dimension_lstm1 = 1
-            hidden_dimension_lstm2 = 1
+            d_model = 2
             hidden_dimension_dense1 = 4
             hidden_dimension_dense2 = 4
         elif model_size == "0.5k":
             bidirectional=True
-            hidden_dimension_lstm1 = 2
-            hidden_dimension_lstm2 = 2
+            d_model = 3
             hidden_dimension_dense1 = 5
             hidden_dimension_dense2 = 5
         elif model_size == "1k":
             bidirectional=True
-            hidden_dimension_lstm1 = 3
-            hidden_dimension_lstm2 = 3
+            d_model = 4
             hidden_dimension_dense1 = 10
             hidden_dimension_dense2 = 10
         elif model_size == "2k":
             bidirectional=True
-            hidden_dimension_lstm1 = 5
-            hidden_dimension_lstm2 = 5
+            d_model = 6
             hidden_dimension_dense1 = 15
             hidden_dimension_dense2 = 10
         elif model_size == "5k":
             bidirectional=True
-            hidden_dimension_lstm1 = 8
-            hidden_dimension_lstm2 = 9
+            d_model = 9
             hidden_dimension_dense1 = 30
             hidden_dimension_dense2 = 20
         elif model_size == "10k":
             bidirectional=True
-            hidden_dimension_lstm1 = 10
-            hidden_dimension_lstm2 = 18
+            d_model = 14
             hidden_dimension_dense1 = 30
             hidden_dimension_dense2 = 20
         elif model_size == "20k":
             bidirectional=True
-            hidden_dimension_lstm1 = 22
-            hidden_dimension_lstm2 = 20
+            d_model = 21
             hidden_dimension_dense1 = 30
             hidden_dimension_dense2 = 20
         elif model_size == "40k":
             bidirectional=True
-            hidden_dimension_lstm1 = 42
-            hidden_dimension_lstm2 = 20
+            d_model = 30
             hidden_dimension_dense1 = 30
             hidden_dimension_dense2 = 20
         elif model_size == "80k":
             bidirectional=True
-            hidden_dimension_lstm1 = 70
-            hidden_dimension_lstm2 = 21
+            d_model = 43
             hidden_dimension_dense1 = 30
             hidden_dimension_dense2 = 20
         else:
-            assert False, f"Unimplemented params.model_size parameter given: {model_size}"
+            raise ValueError(f"Unimplemented params.model_size parameter given: {model_size}")
 
         if bidirectional:
             bidirectional_factor = 2
         else:
             bidirectional_factor = 1
 
-        self.lstm1 = torch.nn.LazyLSTM(hidden_size=hidden_dimension_lstm1,
+        self.input_projection = torch.nn.LazyLinear(d_model)
+        self.lstm1 = torch.nn.LSTM(input_size=d_model, hidden_size=d_model,
                                    batch_first=True, bidirectional=bidirectional)
-        self.lstm2 = torch.nn.LSTM(input_size=hidden_dimension_lstm1*bidirectional_factor,
-                                   hidden_size=hidden_dimension_lstm2, batch_first=True,
+        self.lstm2 = torch.nn.LSTM(input_size=d_model*bidirectional_factor,
+                                   hidden_size=d_model, batch_first=True,
                                    bidirectional=bidirectional)
 
         # Adding additional dense layers
         self.activation = torch.nn.ReLU()
-        self.dense1 = torch.nn.Linear(hidden_dimension_lstm2*bidirectional_factor,
+        self.dense1 = torch.nn.Linear(d_model*bidirectional_factor,
                                       hidden_dimension_dense1)
         self.dense2 = torch.nn.Linear(hidden_dimension_dense1, hidden_dimension_dense2)
         self.output_layer = torch.nn.Linear(hidden_dimension_dense2, 1)
@@ -116,7 +107,8 @@ class Lstm(torch.nn.Module):
     def forward(self, x) -> torch.Tensor:
         """Model forward pass."""
 
-        x, _ = self.lstm1(x.float())
+        x = self.input_projection(x.float())
+        x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
         x = self.activation(self.dense1(x))
         x = self.activation(self.dense2(x))
