@@ -163,7 +163,7 @@ class Lstm(torch.nn.Module):
             epochs (int): Number of training epochs.
             learning_rates (Sequence[float], optional): Learning rates schedule.
             batch_size (int): Batch size for training.
-            verbose (int): Verbosity level.
+            verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
         Returns:
             dict: Training history containing loss values.
         """
@@ -184,7 +184,8 @@ class Lstm(torch.nn.Module):
             finetune_now,
             epochs,
             learning_rates,
-            batch_size, verbose,
+            batch_size,
+            verbose,
             )
 
         return history

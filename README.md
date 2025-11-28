@@ -151,7 +151,7 @@ Our forecasting models can be easily reused in other applications as shown below
 
     # Available ML models: Transformer, LSTM, xLSTM
     myModel = Transformer(model_size='5k', normalizer=normalizer)
-    myModel.train_model(x_train, y_train, epochs=100, verbose=0)
+    myModel.train_model(x_train, y_train, epochs=100, verbose=1)
 
     # ------------------------------------------------------------------------------
     # Make predictions

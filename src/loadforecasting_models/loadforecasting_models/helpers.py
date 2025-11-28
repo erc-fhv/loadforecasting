@@ -91,7 +91,7 @@ class PytorchHelper():
             epochs (int): Number of training epochs.
             learning_rates (Sequence[float], optional): Learning rates schedule.
             batch_size (int): Batch size for training.
-            verbose (int): Verbosity level.
+            verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
         """
 
         # Convert numpy to torch if needed
@@ -145,8 +145,10 @@ class PytorchHelper():
             history['loss'].append(epoch_loss)
 
             if verbose == 0:
-                print(".", end="", flush=True)
+                pass    # silent
             elif verbose == 1:
+                print(".", end="", flush=True)
+            elif verbose == 2:
                 if x_dev.shape[0] == 0 or y_dev.shape[0] == 0:
                     dev_loss = -1.0
                 else:
@@ -158,8 +160,6 @@ class PytorchHelper():
                     f"Dev_Loss = {dev_loss:.4f} - " + 
                     f"LR = {my_optimizer.param_groups[0]['lr']}", 
                     flush=True)
-            elif verbose == 2:
-                pass    # silent
             else:
                 raise ValueError(f"Unexpected parameter value: verbose = {verbose}")
 
