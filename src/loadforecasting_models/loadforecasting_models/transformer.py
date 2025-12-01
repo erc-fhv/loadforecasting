@@ -112,6 +112,7 @@ class Transformer(torch.nn.Module):
         else:
             x_tensor  = x.float()
 
+        # Forward pass through Transformer Encoder
         x_tensor = self.input_projection(x_tensor)
         x_tensor = self.positional_encoding(x_tensor)
         x_tensor = self.transformer(x_tensor)

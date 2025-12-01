@@ -39,14 +39,13 @@ class Persistence:
             ArrayLike: Predicted y tensor of shape (batch_len, sequence_len, 1).
         """
 
-        x = self.normalizer.de_normalize_x(x)    # de-normalize all inputs
+        # De-normalize all inputs
+        x = self.normalizer.de_normalize_x(x)
 
         # Take the chosen lagged loads as predictions
-        #
         y_pred = x[:,:, self.lagged_load_feature]
 
         # Add axis and normalize y_pred again, to compare it to other models.
-        #
         y_pred = y_pred[:,:,np.newaxis]
         y_pred = self.normalizer.normalize_y(y_pred, training=False)
 

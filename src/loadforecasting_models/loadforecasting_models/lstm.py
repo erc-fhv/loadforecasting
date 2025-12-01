@@ -122,6 +122,7 @@ class Lstm(torch.nn.Module):
         else:
             x_tensor  = x.float()
 
+        # Forward pass through LSTM and dense layers
         x_tensor = self.input_projection(x_tensor)
         x_tensor, _ = self.lstm1(x_tensor)
         x_tensor, _ = self.lstm2(x_tensor)

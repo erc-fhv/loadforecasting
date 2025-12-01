@@ -147,6 +147,7 @@ class xLstm(torch.nn.Module):
         else:
             x_tensor  = x.float()
 
+        # Forward pass through xLSTM and dense layers
         x_tensor = self.input_projection(x_tensor)
         x_tensor = self.positional_encoding(x_tensor)
         x_tensor = self.xlstm_stack(x_tensor)

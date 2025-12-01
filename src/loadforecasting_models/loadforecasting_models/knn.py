@@ -50,8 +50,7 @@ class Knn():
         else:
             x_tensor  = x.float()
 
-        # Prediction on new hourly data
-        #
+        # Prediction on new data
         batches, timesteps, num_features = x_tensor.shape
         x_hourly = x_tensor.view(batches * timesteps, num_features).numpy()
         y_pred = self.knn.predict(x_hourly)
