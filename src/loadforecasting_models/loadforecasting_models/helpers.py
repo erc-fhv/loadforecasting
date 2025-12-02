@@ -3,18 +3,20 @@ This module contains common (mainly pytorch) code for the forecasting models.
 """
 
 from pathlib import Path
-from typing import Sequence, Union
+from typing import Sequence, Union, TYPE_CHECKING
 import math
 import numpy as np
 import torch
 import optuna
 from torch import optim
 from torch.utils.data import DataLoader, Dataset
-from loadforecasting_models import Transformer, Lstm, xLstm
 
-# Define own types
+# The following modules are only imported during type checking
+if TYPE_CHECKING:
+    from loadforecasting_models import Lstm, xLstm, Transformer
+
+# Define a type that can be either a torch Tensor or a numpy ndarray
 ArrayLike = Union[torch.Tensor, np.ndarray]
-MachineLearningModels = Union[Transformer, Lstm, xLstm]
 
 class SequenceDataset(Dataset):
     """Custom Dataset for sequence data."""
@@ -62,7 +64,7 @@ class CustomLRScheduler:
 class PytorchHelper():
     """Helper class for Pytorch models."""
 
-    def __init__(self, my_model: torch.nn.Module):
+    def __init__(self, my_model: "Union[Lstm, xLstm, Transformer]"):
         self.my_model = my_model
 
     def train(
@@ -225,10 +227,12 @@ class PytorchHelper():
             for batch_x, batch_y in val_loader:
 
                 # Predict
+                output: torch.Tensor
                 output = self.my_model(batch_x.float())
 
                 # Unnormalize the target variable, if wished.
                 if de_normalize:
+                    assert self.my_model.normalizer is not None, "No normalizer given."
                     output = self.my_model.normalizer.de_normalize_y(output)
 
                 # Compute Metrics
@@ -296,31 +300,47 @@ class PositionalEncoding(torch.nn.Module):
 class OptunaHelper:
     """Helper class for Optuna hyperparameter optimization."""
 
-    def __init__(self, my_model: MachineLearningModels):
+    def __init__(self, my_model: "Union[Lstm, xLstm, Transformer]"):
+
         self.my_model = my_model
 
     def train_auto(
         self,
-        x_train,
-        y_train,
-        n_trials=50,
-        n_splits=5,
-        val_size = 31,  # days for validation in each split
-        verbose=1,
+        x_train: ArrayLike,
+        y_train: ArrayLike,
+        n_trials: int = 50,
+        n_splits: int = 5,
+        val_size: int = 31,
+        verbose: int = 1,
         ) -> dict:
+        """
+        Train the model with automatic hyperparameter optimization.
+        Args:
+            x_train (ArrayLike): Training input features of the model.
+            y_train (ArrayLike): Training target values of the model.
+            n_trials (int, optional): Number of Optuna trials. Defaults to 50.
+            n_splits (int, optional): Number of Data splits. Defaults to 5.
+            val_size (int, optional): Number of days for validation in each split. Defaults to 31.
+            verbose (int, optional): Verbosity level. Defaults to 1.
+        
+        """
 
-        n_samples = x_train.shape[0]
+        # Learning rate schedules.
+        # During training, the learning rate will step through these values.
+        lr_schedules = {
+            "default": [0.01, 0.005, 0.001, 0.0005], # Default for this framework
+            "constant": [0.001],    # Default Adam Parameter as Baseline
+            "moderate_decay": [0.005, 0.0025, 0.001, 0.0005],
+            "conservative": [0.001, 0.0007, 0.0005, 0.0003],
+        }
 
         def objective(trial: 'optuna.Trial') -> float:
             """Objective function for Optuna optimization."""
 
-            # Suggest hyperparameters
-            learning_rate = trial.suggest_float(
-                'learning_rate', 1e-4, 1e-1, log=True
-                )
-            trial_finetune = trial.suggest_categorical(
-                'finetune_now', [True, False]
-                )
+            # Hyperparameters to choose from.
+            #
+            schedule_name = trial.suggest_categorical("lr_schedule_name", list(lr_schedules.keys()))
+            learning_rates = lr_schedules[schedule_name]
             trial_epochs = trial.suggest_categorical(
                 'epochs', [30, 50, 80, 100, 150, 200, 250, 300]
                 )
@@ -335,6 +355,7 @@ class OptunaHelper:
 
             # Expanding window cross-validation
             cv_losses = []
+            n_samples = x_train.shape[0]
 
             for split_idx in range(n_splits):
 
@@ -342,7 +363,8 @@ class OptunaHelper:
                 step_size = (n_samples - val_size) // n_splits
                 train_end = (split_idx + 1) * step_size
                 val_end = train_end + val_size
-                assert val_end < n_samples, "Validation end index exceeds number of samples."
+                assert val_end <= n_samples, f"Validation end index {val_end} exceeds data " + \
+                    f"size {n_samples}."
 
                 # Split data
                 x_fold_train = x_train[0:train_end]
@@ -361,17 +383,17 @@ class OptunaHelper:
                     x_dev = torch.Tensor([]),
                     y_dev = torch.Tensor([]),
                     pretrain_now=False,
-                    finetune_now = trial_finetune,
+                    finetune_now = False,
                     epochs = trial_epochs,
-                    learning_rates = [learning_rate],
+                    learning_rates = learning_rates,
                     batch_size = trial_batch_size,
-                    verbose = 0,  # silent
+                    verbose = verbose,
                 )
 
                 # Evaluate on validation set
                 eval_value = self.my_model.evaluate(x_fold_val, y_fold_val, results={},
                     de_normalize=False)
-                test_loss = float(torch.squeeze(eval_value['test_loss']))
+                test_loss = float(eval_value['test_loss'][-1])
                 cv_losses.append(test_loss)
 
             # Return mean validation loss across folds
@@ -393,8 +415,7 @@ class OptunaHelper:
 
         # Get best hyperparameters
         best_params = study.best_params
-        best_learning_rate = best_params['learning_rate']
-        best_finetune = best_params['finetune_now']
+        best_learning_rates = lr_schedules[best_params['lr_schedule_name']]
         best_epochs = best_params['epochs']
         best_batch_size = best_params['batch_size']
         best_model_size = best_params['model_size']
@@ -402,8 +423,7 @@ class OptunaHelper:
         if verbose > 0:
             print("\nBest hyperparameters found:")
             print(f"  model_size: {best_model_size}")
-            print(f"  learning_rate: {best_learning_rate:.6f}")
-            print(f"  finetune_now: {best_finetune}")
+            print(f"  learning_rate_schedule: {best_learning_rates}")
             print(f"  epochs: {best_epochs}")
             print(f"  batch_size: {best_batch_size}")
             print(f"  Best CV loss: {study.best_value:.6f}")
@@ -415,11 +435,10 @@ class OptunaHelper:
         history = self.my_model.train_model(
             x_train = x_train,
             y_train = y_train,
-            finetune_now = best_finetune,
             epochs = best_epochs,
-            learning_rates = [best_learning_rate],
+            learning_rates = best_learning_rates,
             batch_size = best_batch_size,
-            verbose = 0,  # silent
+            verbose = verbose,
             )
 
         # Add best params to history

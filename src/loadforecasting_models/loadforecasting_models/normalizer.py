@@ -149,7 +149,7 @@ class Normalizer():
 
     def convert_to_ndarray(self, x: Any) -> np.ndarray:
         """Convert input to numpy ndarray."""
-        return np.array(x)
+        return np.asarray(x)
 
     def convert_to_torch_tensor(self, x: Any) -> torch.Tensor:
         """Convert input to torch tensor."""

@@ -29,7 +29,7 @@ def test_if_models_are_running():
 
             model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
             my_model = model_class(model_size='5k', normalizer=normalizer)
-            my_model.train_model(x_train, y_train, verbose=2,
+            my_model.train_model(x_train, y_train, verbose=1,
                 epochs=1) # epochs=1 for faster tests
 
         x_test = torch.randn(90, 24, 10)
@@ -64,7 +64,7 @@ def test_if_models_are_running_w_numpy():
 
             model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
             my_model = model_class(model_size='5k', normalizer=normalizer)
-            my_model.train_model(x_train, y_train, verbose=2,
+            my_model.train_model(x_train, y_train, verbose=1,
                 epochs=1) # epochs=1 for faster tests
 
         x_test = np.random.randn(90, 24, 10)
@@ -75,9 +75,9 @@ def test_if_models_are_running_w_numpy():
         y_pred = my_model.predict(x_test)
         assert y_pred.shape == (90, 24, 1)
 
-def test_model_linear_prediction():
+def test_models_simple_prediction():
     """
-    Test if models can learn and predict a simple linear trendr and 
+    Test if models can learn and predict a simple sine wave and 
     produce the correct output shape.
     """
 
@@ -85,14 +85,12 @@ def test_model_linear_prediction():
 
         for seq_len in [24, 24*4, 24*7]:
 
-            print(f'Testing linear prediction with {model_class.__name__}' + \
+            print(f'Testing simple prediction with {model_class.__name__}' + \
                 f' model and seq_len={seq_len}.')
 
-            # Define a simple linear relationship: y = 2 * x + 1
+            # Input data: Sine Values
             batch_size = 40
             n_features = 3
-
-            # Input data: Sine Values
             full_periods = 5
             x_vals = torch.linspace(0, 1, batch_size * seq_len).reshape(batch_size, seq_len, 1)
             x_vals = torch.sin(full_periods * 2 * torch.pi * x_vals)
@@ -115,7 +113,7 @@ def test_model_linear_prediction():
             else:
                 model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
                 my_model = model_class('5k', normalizer=normalizer)
-                my_model.train_model(x_train, y_train, verbose=2, epochs=100)
+                my_model.train_model(x_train, y_train, verbose=1, epochs=100)
 
             # Test input data: Sine Values
             x_test_vals = torch.linspace(1, 2, batch_size * seq_len).reshape(batch_size, seq_len, 1)
@@ -135,14 +133,74 @@ def test_model_linear_prediction():
 
             # 2. Check relative accuracy
             treshold = 20.0 # [%]
-            mae = torch.mean(torch.abs(y_pred - y_test_true))
-            mean_true = torch.mean(torch.abs(y_test_true))
+            mae = torch.mean(torch.abs(torch.Tensor(y_pred - y_test_true)))
+            mean_true = torch.mean(torch.abs(torch.Tensor(y_test_true)))
             n_mae = mae / mean_true
             print(f"Relative error for {model_class.__name__}: {n_mae:.2%}")
             assert n_mae < treshold/100., f"{model_class.__name__} too inaccurate: {n_mae:.2%}"
 
-    print("All models passed the linear prediction test.")
+    print("All models passed the simple prediction test.")
 
+
+def test_models_simple_prediction_w_optuna():
+    """
+    Similar test as test_models_simple_prediction(), but this time with hyperparameter
+    optimization via Optuna.
+    """
+
+    for model_class in [Lstm, Transformer, xLstm]:
+
+        print(f'Testing simple prediction with {model_class.__name__}.')
+
+        # Input data: Sine Values
+        batch_size = 40
+        n_features = 3
+        full_periods = 5
+        seq_len = 24
+        x_vals = torch.linspace(0, 1, batch_size * seq_len).reshape(batch_size, seq_len, 1)
+        x_vals = torch.sin(full_periods * 2 * torch.pi * x_vals)
+        noise = 0.1 * torch.randn(batch_size, seq_len, 1)
+        y_train = 2 * x_vals + 1 + noise
+
+        # Add noise features
+        x_train = torch.cat([x_vals, torch.randn(size=(batch_size, seq_len, n_features - 1))],
+            dim=2)
+
+        # Normalize
+        normalizer = Normalizer()
+        x_train = normalizer.normalize_x(x_train, training=True)
+        y_train = normalizer.normalize_y(y_train, training=True)
+
+        # Train the model
+        model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
+        my_model = model_class(normalizer=normalizer)
+        my_model.train_model_auto(x_train, y_train, n_trials=5, n_splits=3)
+
+        # Test input data: Sine Values
+        x_test_vals = torch.linspace(1, 2, batch_size * seq_len).reshape(batch_size, seq_len, 1)
+        x_test_vals = torch.sin(full_periods * 2 * torch.pi * x_test_vals)
+        y_test_true = 2 * x_test_vals + 1
+        x_test = torch.cat([x_test_vals, torch.randn(batch_size, seq_len,
+            n_features - 1)], dim=2)
+        x_test = normalizer.normalize_x(x_test, training=False)
+
+        # Normalize and predict
+        y_pred = my_model.predict(x_test)
+        y_pred = normalizer.de_normalize_y(y_pred)
+
+        # 1. Check output shape
+        assert y_pred.shape == (batch_size, seq_len, 1), \
+            f"Unexpected output shape: {y_pred.shape}"
+
+        # 2. Check relative accuracy
+        treshold = 20.0 # [%]
+        mae = torch.mean(torch.abs(torch.Tensor(y_pred - y_test_true)))
+        mean_true = torch.mean(torch.abs(y_test_true))
+        n_mae = mae / mean_true
+        print(f"Relative error for {model_class.__name__}: {n_mae:.2%}")
+        assert n_mae < treshold/100., f"{model_class.__name__} too inaccurate: {n_mae:.2%}"
+
+    print("All models passed the prediction test with optuna.")
 
 def test_transfer_learning():
     """
@@ -176,7 +234,7 @@ def test_transfer_learning():
         y_train,
         pretrain_now = True,
         finetune_now = False,
-        verbose=2,
+        verbose=1,
         epochs=100, # deteiled pre-training
         )
 
@@ -186,7 +244,7 @@ def test_transfer_learning():
         y_train,
         pretrain_now = False,
         finetune_now = True,
-        verbose=2,
+        verbose=1,
         epochs=0, # skip fine-tuning
         )
 
@@ -208,7 +266,7 @@ def test_transfer_learning():
 
     # 2. Check relative accuracy
     treshold = 20.0 # [%]
-    mae = torch.mean(torch.abs(y_pred - y_test_true))
+    mae = torch.mean(torch.abs(torch.Tensor(y_pred - y_test_true)))
     mean_true = torch.mean(torch.abs(y_test_true))
     n_mae = mae / mean_true
     print(f"Relative error : {n_mae:.2%}")
