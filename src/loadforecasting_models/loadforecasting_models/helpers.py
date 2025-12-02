@@ -339,18 +339,17 @@ class OptunaHelper:
 
             # Hyperparameters to choose from.
             #
-            schedule_name = trial.suggest_categorical("lr_schedule_name", list(lr_schedules.keys()))
-            learning_rates = lr_schedules[schedule_name]
-            trial_epochs = trial.suggest_categorical(
-                'epochs', [30, 50, 80, 100, 150, 200, 250, 300]
+            learning_rates = lr_schedules[trial.suggest_categorical(
+                "lr_schedule_name", list(lr_schedules.keys())
+                )]
+            trial_epochs = trial.suggest_int(
+                "epochs", low=30, high=300, log=True,
                 )
             trial_batch_size = trial.suggest_categorical(
-                'batch_size', [32, 64, 128, 256, 512]
+                'batch_size', [32, 64, 128, 256]
                 )
             trial_model_size = trial.suggest_categorical(
-                'model_size',
-                ['0.1k', '0.2k', '0.5k', '1k', '2k', '5k', '10k', '20k',
-                 '40k', '80k']
+                'model_size', ['0.1k', '0.2k', '0.5k', '1k', '2k', '5k', '10k', '20k', '40k', '80k']
                 )
 
             # Expanding window cross-validation
@@ -402,7 +401,9 @@ class OptunaHelper:
         # Create and run Optuna study
         study = optuna.create_study(
             direction='minimize',
-            load_if_exists=True
+            study_name=f"loadforecasting_{self.my_model.__class__.__name__}",
+            storage="sqlite:///optuna_study.db",
+            load_if_exists=True,
         )
 
         if verbose > 0:

@@ -229,11 +229,11 @@ class Lstm(torch.nn.Module):
 
         optuna_helper = OptunaHelper(self)
         history = optuna_helper.train_auto(
-            x_train,
-            y_train,
-            n_trials,
-            n_splits,
-            verbose,
+            x_train=x_train,
+            y_train=y_train,
+            n_trials=n_trials,
+            n_splits=n_splits,
+            verbose=verbose,
             )
 
         return history
