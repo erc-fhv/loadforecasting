@@ -16,7 +16,7 @@ from .normalizer import Normalizer
 # Define a type that can be either a torch Tensor or a numpy ndarray
 ArrayLike = Union[torch.Tensor, np.ndarray]
 
-class xLstm(torch.nn.Module):
+class Xlstm(torch.nn.Module):
     """xLSTM configuration as provided by the xLSTM authors."""
 
     def __init__(

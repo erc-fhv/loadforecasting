@@ -1,6 +1,6 @@
 from .knn import Knn
 from .persistence import Persistence
-from .xlstm import xLstm
+from .xlstm import Xlstm
 from .lstm import Lstm
 from .transformer import Transformer
 from .transformer_full import TransformerFull
