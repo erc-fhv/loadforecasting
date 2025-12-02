@@ -10,7 +10,7 @@ from xlstm import (
     sLSTMLayerConfig,
     FeedForwardConfig,
 )
-from .helpers import PytorchHelper, PositionalEncoding
+from .helpers import PytorchHelper, PositionalEncoding, OptunaHelper
 from .normalizer import Normalizer
 
 # Define a type that can be either a torch Tensor or a numpy ndarray
@@ -22,23 +22,30 @@ class xLstm(torch.nn.Module):
     def __init__(
         self,
         model_size: str = '5k',
-        loss_fn: Optional[Callable[..., torch.Tensor]] = torch.nn.L1Loss(),
+        loss_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
         normalizer: Optional[Normalizer] = None,
         ) -> None:
         """
         Args:
-            model_size (str): The model parameter count, e.g. '0.1k', '0.2k', '0.5k', '1k',
-                '2k', '5k', '10k', '20k', '40k', '80k'. Default is '5k', which is a good trade-off
-                between performance and speed, see https://arxiv.org/abs/2501.05000.
-            loss_fn (Callable[..., torch.Tensor]): Loss function to be used during 
-                training. E.g., torch.nn.L1Loss(), torch.nn.MSELoss(), pytorch_helpers.smape, ...
-            normalizer (Normalizer): Used for X and Y normalization and denormalization.
+            model_size (str): The model parameter count, e.g. '0.1k',
+                '0.2k', '0.5k', '1k', '2k', '5k', '10k', '20k', '40k',
+                '80k'. Default is '5k', which is a good trade-off
+                between performance and speed, see
+                https://arxiv.org/abs/2501.05000.
+            loss_fn (Callable[..., torch.Tensor]): Loss function to be
+                used during training. E.g., torch.nn.L1Loss(),
+                torch.nn.MSELoss(), pytorch_helpers.smape, ...
+            normalizer (Normalizer): Used for X and Y normalization and
+                denormalization.
         """
 
         super().__init__()
-
         self.loss_fn = loss_fn
         self.normalizer = normalizer
+        self.create_model(model_size)
+
+    def create_model(self, model_size) -> None:
+        """ Create the Transformer model based on the specified model size. """
 
         # The following xLSTM config variables are overtaken from the xLSTM authors
         conv1d_kernel_size=4
@@ -209,6 +216,48 @@ class xLstm(torch.nn.Module):
             epochs,
             learning_rates,
             batch_size,
+            verbose,
+            )
+
+        return history
+
+    def train_model_auto(
+        self,
+        x_train: ArrayLike,
+        y_train: ArrayLike,
+        n_trials: int = 50,
+        n_splits: int = 5,
+        verbose: int = 1,
+        ) -> dict:
+        """
+        Train this model with automatic hyperparameter optimization using
+        Optuna and expanding window cross-validation.
+
+        Args:
+            x_train (ArrayLike): Training input features of
+                shape (batch_len, sequence_len, features).
+            y_train (ArrayLike): Training labels of
+                shape (batch_len, sequence_len, 1).
+            n_trials (int): Number of Optuna trials for hyperparameter
+                search.
+            n_splits (int): Number of expanding window splits for
+                cross-validation.
+            min_train_size (float): Minimum fraction of data to use for
+                training in first split.
+            pretrain_now (bool): Whether to run a pretraining phase.
+            verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
+            optuna_study_name (str, optional): Name for the Optuna study.
+
+        Returns:
+            dict: Training history and best hyperparameters.
+        """
+
+        optuna_helper = OptunaHelper(self)
+        history = optuna_helper.train_auto(
+            x_train,
+            y_train,
+            n_trials,
+            n_splits,
             verbose,
             )
 

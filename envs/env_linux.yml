@@ -272,6 +272,7 @@ dependencies:
       - numpy==1.26.4
       - omegaconf==2.3.0
       - overrides==7.7.0
+      - optuna==4.6.0
       - pandas==2.2.2
       - pandocfilters==1.5.1
       - parso==0.8.4

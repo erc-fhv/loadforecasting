@@ -7,11 +7,14 @@ from typing import Sequence, Union
 import math
 import numpy as np
 import torch
+import optuna
 from torch import optim
 from torch.utils.data import DataLoader, Dataset
+from loadforecasting_models import Transformer, Lstm, xLstm
 
-# Define a type that can be either a torch Tensor or a numpy ndarray
+# Define own types
 ArrayLike = Union[torch.Tensor, np.ndarray]
+MachineLearningModels = Union[Transformer, Lstm, xLstm]
 
 class SequenceDataset(Dataset):
     """Custom Dataset for sequence data."""
@@ -256,6 +259,7 @@ class PytorchHelper():
 
         return results
 
+
 class PositionalEncoding(torch.nn.Module):
     """    
     Implements sinusoidal positional encoding as used in Transformer models.
@@ -287,3 +291,140 @@ class PositionalEncoding(torch.nn.Module):
         """
         x = x + self.pe[:x.size(0)]
         return self.dropout(x)
+
+
+class OptunaHelper:
+    """Helper class for Optuna hyperparameter optimization."""
+
+    def __init__(self, my_model: MachineLearningModels):
+        self.my_model = my_model
+
+    def train_auto(
+        self,
+        x_train,
+        y_train,
+        n_trials=50,
+        n_splits=5,
+        val_size = 31,  # days for validation in each split
+        verbose=1,
+        ) -> dict:
+
+        n_samples = x_train.shape[0]
+
+        def objective(trial: 'optuna.Trial') -> float:
+            """Objective function for Optuna optimization."""
+
+            # Suggest hyperparameters
+            learning_rate = trial.suggest_float(
+                'learning_rate', 1e-4, 1e-1, log=True
+                )
+            trial_finetune = trial.suggest_categorical(
+                'finetune_now', [True, False]
+                )
+            trial_epochs = trial.suggest_categorical(
+                'epochs', [30, 50, 80, 100, 150, 200, 250, 300]
+                )
+            trial_batch_size = trial.suggest_categorical(
+                'batch_size', [32, 64, 128, 256, 512]
+                )
+            trial_model_size = trial.suggest_categorical(
+                'model_size',
+                ['0.1k', '0.2k', '0.5k', '1k', '2k', '5k', '10k', '20k',
+                 '40k', '80k']
+                )
+
+            # Expanding window cross-validation
+            cv_losses = []
+
+            for split_idx in range(n_splits):
+
+                # Determine train and validation indices
+                step_size = (n_samples - val_size) // n_splits
+                train_end = (split_idx + 1) * step_size
+                val_end = train_end + val_size
+                assert val_end < n_samples, "Validation end index exceeds number of samples."
+
+                # Split data
+                x_fold_train = x_train[0:train_end]
+                y_fold_train = y_train[0:train_end]
+                x_fold_val = x_train[train_end:val_end]
+                y_fold_val = y_train[train_end:val_end]
+                assert y_fold_val.shape[0] == val_size, "Validation size mismatch."
+
+                # Create a fresh model copy for this fold
+                self.my_model.create_model(trial_model_size)
+
+                # Train on this fold
+                _ = self.my_model.train_model(
+                    x_train = x_fold_train,
+                    y_train = y_fold_train,
+                    x_dev = torch.Tensor([]),
+                    y_dev = torch.Tensor([]),
+                    pretrain_now=False,
+                    finetune_now = trial_finetune,
+                    epochs = trial_epochs,
+                    learning_rates = [learning_rate],
+                    batch_size = trial_batch_size,
+                    verbose = 0,  # silent
+                )
+
+                # Evaluate on validation set
+                eval_value = self.my_model.evaluate(x_fold_val, y_fold_val, results={},
+                    de_normalize=False)
+                test_loss = float(torch.squeeze(eval_value['test_loss']))
+                cv_losses.append(test_loss)
+
+            # Return mean validation loss across folds
+            return float(np.mean(cv_losses))
+
+        # Create and run Optuna study
+        study = optuna.create_study(
+            direction='minimize',
+            load_if_exists=True
+        )
+
+        if verbose > 0:
+            print(f"Starting Optuna optimization with {n_trials} trials "
+                  f"and {n_splits} expanding window splits...")
+
+        study.optimize(
+            objective, n_trials=n_trials, show_progress_bar=(verbose > 0)
+        )
+
+        # Get best hyperparameters
+        best_params = study.best_params
+        best_learning_rate = best_params['learning_rate']
+        best_finetune = best_params['finetune_now']
+        best_epochs = best_params['epochs']
+        best_batch_size = best_params['batch_size']
+        best_model_size = best_params['model_size']
+
+        if verbose > 0:
+            print("\nBest hyperparameters found:")
+            print(f"  model_size: {best_model_size}")
+            print(f"  learning_rate: {best_learning_rate:.6f}")
+            print(f"  finetune_now: {best_finetune}")
+            print(f"  epochs: {best_epochs}")
+            print(f"  batch_size: {best_batch_size}")
+            print(f"  Best CV loss: {study.best_value:.6f}")
+
+        # Reinitialize model with best model size if different
+        self.my_model.create_model(model_size = best_model_size)
+
+        # Train final model with best hyperparameters on full training data
+        history = self.my_model.train_model(
+            x_train = x_train,
+            y_train = y_train,
+            finetune_now = best_finetune,
+            epochs = best_epochs,
+            learning_rates = [best_learning_rate],
+            batch_size = best_batch_size,
+            verbose = 0,  # silent
+            )
+
+        # Add best params to history
+        history['best_params'] = best_params
+        history['best_cv_loss'] = study.best_value
+        history['optuna_study'] = study
+
+        return history

@@ -12,7 +12,8 @@ classifiers = [
 dependencies = [
     "torch",
     "scikit-learn",
-    "xlstm"
+    "xlstm",
+    "optuna"
 ]
 license = "MIT"
 
