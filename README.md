@@ -25,8 +25,8 @@ The repository is organized as follows:
 
 ```
 ├── data/                             # Preprocessed smart meter data
-│   ├── *.pkl                         # Load profiles (varying community sizes per file)
 │   ├── *.ipynb                       # Loadprofile preprocessing script
+│   └── *.pkl                         # Loadprofiles (varying community sizes per file)
 │
 ├── envs/                             # Conda environments
 │   ├── env_linux.yml                 # Reproducible environment for the paper
@@ -35,7 +35,7 @@ The repository is organized as follows:
 ├── src/      
 │   ├── loadforecasting_models/       # All forecasting models
 |   │   ├── pyproject.toml            # Description of the 'loadforecasting_models' package
-│   │   └── *.py                      # Implementations of deep learning & baseline models
+│   │   └── **.py                     # Implementations of deep learning & baseline models
 │   │
 │   └── loadforecasting_framework/    # Evaluation framework and visualization
 │       ├── simulation_config.py      # Config file for simulation runs
@@ -109,7 +109,7 @@ The main parts of the evaluation framework are connected as follows:
 
 ```
 
-## Reusing only the Forecasting Models
+## Using our Forecasting Models
 
 Our forecasting models can be easily reused in other applications as shown below.
 
@@ -118,53 +118,48 @@ Our forecasting models can be easily reused in other applications as shown below
     pip install loadforecasting_models
     ```
 
-2. Use of the machine learning models in Python:
+2. Using machine learning models in Python:
 
     ```python
     from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
     import torch
 
     # ------------------------------------------------------------------------------
-    # Define dataset parameters
+    # Prepare training data using dummy (replace with your own) data
     # ------------------------------------------------------------------------------
-    features = 10          # Number of input features
-    seq_len = 24           # Sequence length (e.g., 24 hours)
-    batches_train = 365    # Number of training samples (e.g., one year of daily sequences)
-    batches_test = 90      # Number of test samples
+    # Generate Random Data
+    x = torch.randn(365, 24, 10)   # Shape: (batches, seq_len, features)
+    y = torch.randn(365, 24, 1)    # Shape: (batches, seq_len, 1)
 
-    # ------------------------------------------------------------------------------
-    # Prepare training data
-    # ------------------------------------------------------------------------------
-    normalizer = Normalizer()
-
-    # Generate dummy training data (replace with your own)
-    x_train = torch.randn(batches_train, seq_len, features)   # Shape: (batches, seq_len, features)
-    y_train = torch.randn(batches_train, seq_len, 1)          # Shape: (batches, seq_len, 1)
+    # Do train/test split
+    x_train = x[:330 ,: ,:]
+    y_train = y[:330 ,: ,:]
+    x_test = x[330: ,: ,:]
+    y_test = y[330: ,: ,:]
 
     # Normalize data
+    normalizer = Normalizer()
     x_train = normalizer.normalize_x(x_train, training=True)
     y_train = normalizer.normalize_y(y_train, training=True)
+    x_test = normalizer.normalize_x(x_test, training=False)
+    y_test = normalizer.normalize_y(y_test, training=False)
 
     # ------------------------------------------------------------------------------
-    # Initialize and train the model
+    # Train the model
     # ------------------------------------------------------------------------------
-
-    # Available ML models: Transformer, LSTM, xLSTM
     myModel = Transformer(model_size='5k', normalizer=normalizer)
     myModel.train_model(x_train, y_train, epochs=100, verbose=1)
 
     # ------------------------------------------------------------------------------
     # Make predictions
     # ------------------------------------------------------------------------------
-    x_test = torch.randn(batches_test, seq_len, features)
-    x_test = normalizer.normalize_x(x_test, training=False)
     y_pred = myModel.predict(x_test)
     y_pred = normalizer.de_normalize_y(y_pred)
 
-    print('\nOutput shape:', y_pred.shape)
+    print('\nOutput shape:', y_pred.shape)    # Should output 'torch.Size([35, 24, 1])'
     ```
 
-3. Use of *non-machine-learning models*. For example the KNN model:
+3. Using non-machine-learning models. For example the KNN model:
 
     ```python
     from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
@@ -177,7 +172,21 @@ Our forecasting models can be easily reused in other applications as shown below
     # ...
     ```
 
-## Reusing the Forecasting Models AND the Preprocessing Module
+4. Using automatic machine-learning hyperparameter tuning. This automatically optimizes 
+hyperparameters like nr-of-epochs, batch-sizes, model-size, and learning-rate:
+
+    ```python
+    from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
+    import torch
+    
+    # Same setup as above
+    # ...
+    myModel = Transformer()
+    myModel.train_model_auto(x_train, y_train)
+    # ...
+    ```
+
+## Using our Forecasting Models AND the Preprocessing Module
 
 1. Install the packages:
     ```bash

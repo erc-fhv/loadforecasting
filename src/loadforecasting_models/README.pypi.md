@@ -21,49 +21,42 @@ pip install loadforecasting_models
 You can easily integrate and train our forecasting machine learning models in your Python workflow:
 
 ```python
-
 from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
 import torch
 
 # ------------------------------------------------------------------------------
-# Define dataset parameters
+# Prepare training data using dummy (replace with your own) data
 # ------------------------------------------------------------------------------
-features = 10          # Number of input features
-seq_len = 24           # Sequence length (e.g., 24 hours)
-batches_train = 365    # Number of training samples (e.g., one year of daily sequences)
-batches_test = 90      # Number of test samples
+# Generate Random Data
+x = torch.randn(365, 24, 10)   # Shape: (batches, seq_len, features)
+y = torch.randn(365, 24, 1)    # Shape: (batches, seq_len, 1)
 
-# ------------------------------------------------------------------------------
-# Prepare training data
-# ------------------------------------------------------------------------------
-normalizer = Normalizer()
-
-# Generate dummy training data (replace with your own)
-x_train = torch.randn(batches_train, seq_len, features)   # Shape: (batch_size, seq_len, features)
-y_train = torch.randn(batches_train, seq_len, 1)          # Shape: (batch_size, seq_len, 1)
+# Do train/test split
+x_train = x[:330 ,: ,:]
+y_train = y[:330 ,: ,:]
+x_test = x[330: ,: ,:]
+y_test = y[330: ,: ,:]
 
 # Normalize data
+normalizer = Normalizer()
 x_train = normalizer.normalize_x(x_train, training=True)
 y_train = normalizer.normalize_y(y_train, training=True)
+x_test = normalizer.normalize_x(x_test, training=False)
+y_test = normalizer.normalize_y(y_test, training=False)
 
 # ------------------------------------------------------------------------------
-# Initialize and train the model
+# Train the model
 # ------------------------------------------------------------------------------
-
-# Available models: Transformer, LSTM, xLSTM, KNN, Persistence
 myModel = Transformer(model_size='5k', normalizer=normalizer)
 myModel.train_model(x_train, y_train, epochs=100, verbose=1)
 
 # ------------------------------------------------------------------------------
 # Make predictions
 # ------------------------------------------------------------------------------
-x_test = torch.randn(batches_test, seq_len, features)
-x_test = normalizer.normalize_x(x_test, training=False)
 y_pred = myModel.predict(x_test)
 y_pred = normalizer.de_normalize_y(y_pred)
 
-print('\nOutput shape:', y_pred.shape)
-
+print('\nOutput shape:', y_pred.shape)    # Should output 'torch.Size([35, 24, 1])'
 ```
 
 Using a non-machine learning model is very similar, e.g. for a KNN model:
@@ -76,6 +69,20 @@ import torch
 # ...
 myModel = Knn(k=40, weights='distance', normalizer=normalizer)
 myModel.train_model(x_train, y_train)
+# ...
+```
+
+Using automatic machine-learning hyperparameter tuning. This automatically optimizes 
+hyperparameters like nr-of-epochs, batch-sizes, model-size, and learning-rate:
+
+```python
+from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
+import torch
+
+# Same setup as above
+# ...
+myModel = Transformer()
+myModel.train_model_auto(x_train, y_train)
 # ...
 ```
 
