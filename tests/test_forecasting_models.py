@@ -1,7 +1,7 @@
 from typing import Type, Union
 import numpy as np
 import torch
-from loadforecasting_models import Knn, Lstm, Transformer, Xlstm, Persistence, Normalizer
+from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
 
 def test_if_models_are_running():
     """
@@ -9,7 +9,7 @@ def test_if_models_are_running():
     i.e. no accuracy is checked here.
     """
 
-    for model_class in [Knn, Lstm, Transformer, Xlstm, Persistence]:
+    for model_class in [Knn, Lstm, Transformer, xLstm, Persistence]:
 
         print(f'Test the {model_class.__name__} model.')
 
@@ -27,7 +27,7 @@ def test_if_models_are_running():
 
         else:   # Machine Learning Models
 
-            model_class: Type[Union[Lstm, Transformer, Xlstm]]   # Help the type checker
+            model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
             my_model = model_class(model_size='5k', normalizer=normalizer)
             my_model.train_model(x_train, y_train, verbose=1,
                 epochs=1) # epochs=1 for faster tests
@@ -44,7 +44,7 @@ def test_if_models_are_running_w_numpy():
     Do the same as test_if_models_are_running(), but with numpy arrays.
     """
 
-    for model_class in [Knn, Lstm, Transformer, Xlstm, Persistence]:
+    for model_class in [Knn, Lstm, Transformer, xLstm, Persistence]:
 
         print(f'Test the {model_class.__name__} model.')
 
@@ -62,7 +62,7 @@ def test_if_models_are_running_w_numpy():
 
         else:   # Machine Learning Models
 
-            model_class: Type[Union[Lstm, Transformer, Xlstm]]   # Help the type checker
+            model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
             my_model = model_class(model_size='5k', normalizer=normalizer)
             my_model.train_model(x_train, y_train, verbose=1,
                 epochs=1) # epochs=1 for faster tests
@@ -81,7 +81,7 @@ def test_models_simple_prediction():
     produce the correct output shape.
     """
 
-    for model_class in [Lstm, Transformer, Xlstm, Knn]:
+    for model_class in [Lstm, Transformer, xLstm, Knn]:
 
         for seq_len in [24, 24*4, 24*7]:
 
@@ -111,7 +111,7 @@ def test_models_simple_prediction():
                 my_model = Knn(k=40, weights = 'distance', normalizer=None)
                 my_model.train_model(x_train, y_train)
             else:
-                model_class: Type[Union[Lstm, Transformer, Xlstm]]   # Help the type checker
+                model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
                 my_model = model_class('5k', normalizer=normalizer)
                 my_model.train_model(x_train, y_train, verbose=1, epochs=100)
 
@@ -148,7 +148,7 @@ def test_models_simple_prediction_w_optuna():
     optimization via Optuna.
     """
 
-    for model_class in [Lstm, Transformer, Xlstm]:
+    for model_class in [Lstm, Transformer, xLstm]:
 
         print(f'Testing simple prediction with {model_class.__name__}.')
 
@@ -172,7 +172,7 @@ def test_models_simple_prediction_w_optuna():
         y_train = normalizer.normalize_y(y_train, training=True)
 
         # Train the model
-        model_class: Type[Union[Lstm, Transformer, Xlstm]]   # Help the type checker
+        model_class: Type[Union[Lstm, Transformer, xLstm]]   # Help the type checker
         my_model = model_class(normalizer=normalizer)
         my_model.train_model_auto(x_train, y_train, n_trials=5, n_splits=3)
 

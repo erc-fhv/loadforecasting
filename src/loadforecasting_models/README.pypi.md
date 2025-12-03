@@ -22,7 +22,7 @@ You can easily integrate and train our forecasting machine learning models in yo
 
 ```python
 
-from loadforecasting_models import Knn, Lstm, Transformer, Xlstm, Persistence, Normalizer
+from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
 import torch
 
 # ------------------------------------------------------------------------------
@@ -69,7 +69,7 @@ print('\nOutput shape:', y_pred.shape)
 Using a non-machine learning model is very similar, e.g. for a KNN model:
 
 ```python
-from loadforecasting_models import Knn, Lstm, Transformer, Xlstm, Persistence, Normalizer
+from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
 import torch
 
 # Same setup as above
@@ -85,7 +85,7 @@ myModel.train_model(x_train, y_train)
 
 -  'Lstm'
 
--  'Xlstm'
+-  'xLstm'
 
 -  'Knn'
 

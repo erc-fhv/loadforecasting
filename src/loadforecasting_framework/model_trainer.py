@@ -14,7 +14,7 @@ from loadforecasting_framework.simulation_config import ConfigOfOneRun
 from loadforecasting_framework.data_preprocessor import DataPreprocessor
 from loadforecasting_framework import utils
 from loadforecasting_framework import import_weather_data
-from loadforecasting_models import Knn, Persistence, Xlstm, Lstm, Transformer, Perfect, Normalizer
+from loadforecasting_models import Knn, Persistence, xLstm, Lstm, Transformer, Perfect, Normalizer
 
 class ModelTrainer:
     """
@@ -146,8 +146,8 @@ class ModelTrainer:
                 history = my_model.evaluate(y_test, results=history, de_normalize=True)
 
         else:   # Machine Learning Models
-            if model_type == 'Xlstm':
-                my_class = Xlstm
+            if model_type == 'xLstm':
+                my_class = xLstm
             elif model_type == 'Lstm':
                 my_class = Lstm
             elif model_type == 'Transformer':
@@ -238,7 +238,7 @@ class ModelTrainer:
         if sim_config.do_transfer_learning:
 
             for model_type in sim_config.used_models:
-                if model_type in ('Xlstm', 'Lstm', 'Transformer'):
+                if model_type in ('xLstm', 'Lstm', 'Transformer'):
 
                     # Pretraining possible for Machine Learning Models
                     print(f"\nPretraining {model_type} model and and sim_config \

@@ -60,7 +60,7 @@ class DataSplit():
 
 class UsedModels():
     """Different models to be used for the load forecasting."""
-    ALL = ('Perfect', 'Knn', 'Persistence', 'Xlstm', 'Lstm', 'Transformer')
+    ALL = ('Perfect', 'Knn', 'Persistence', 'xLstm', 'Lstm', 'Transformer')
 
 class Epochs():
     """Different numbers of training epochs."""

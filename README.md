@@ -5,7 +5,7 @@
 This repository provides a flexible and modular framework for short-term load forecasting (STLF), 
 suitable for both research and real-world applications. It supports:
 
-- Deep learning models: Transformer, Lstm, Xlstm
+- Deep learning models: Transformer, Lstm, xLstm
 - Baseline model: Knn, Persistence, Perfect
 - Full pipeline for training, evaluation, and visualization
 - Reproducibility of all experiments from the following paper
@@ -30,7 +30,7 @@ The repository is organized as follows:
 │
 ├── envs/                             # Conda environments
 │   ├── env_linux.yml                 # Reproducible environment for the paper
-│   └── env_from_nxai.yml             # Environment from Xlstm authors
+│   └── env_from_nxai.yml             # Environment from xLstm authors
 │   
 ├── src/      
 │   ├── loadforecasting_models/       # All forecasting models
@@ -88,7 +88,7 @@ The main parts of the evaluation framework are connected as follows:
        |                 |             |               |                 |
        |                 |             |               |                 |
 +------+------+ +--------+----+ +------+------+ +------+------+ +--------+----+
-| Knn         | | Persistence | | Xlstm       | | Lstm        | | Transformer |
+| Knn         | | Persistence | | xLstm       | | Lstm        | | Transformer |
 |             | |             | |             | |             | |             |
 |-------------| |-------------| |-------------| |-------------| |-------------|
 |train_model()| |train_model()| |train_model()| |train_model()| |train_model()|
@@ -121,7 +121,7 @@ Our forecasting models can be easily reused in other applications as shown below
 2. Use of the machine learning models in Python:
 
     ```python
-    from loadforecasting_models import Knn, Lstm, Transformer, Xlstm, Persistence, Normalizer
+    from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
     import torch
 
     # ------------------------------------------------------------------------------
@@ -167,7 +167,7 @@ Our forecasting models can be easily reused in other applications as shown below
 3. Use of *non-machine-learning models*. For example the KNN model:
 
     ```python
-    from loadforecasting_models import Knn, Lstm, Transformer, Xlstm, Persistence, Normalizer
+    from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
     import torch
     
     # Same setup as above
