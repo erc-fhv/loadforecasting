@@ -182,16 +182,16 @@ class Lstm(torch.nn.Module):
             learning_rates = [0.01, 0.005, 0.001, 0.0005]
 
         history = self.my_pytorch_helper.train(
-            x_train,
-            y_train,
-            x_dev,
-            y_dev,
-            pretrain_now,
-            finetune_now,
-            epochs,
-            learning_rates,
-            batch_size,
-            verbose,
+            x_train=x_train,
+            y_train=y_train,
+            x_dev=x_dev,
+            y_dev=y_dev,
+            pretrain_now=pretrain_now,
+            finetune_now=finetune_now,
+            epochs=epochs,
+            learning_rates=learning_rates,
+            batch_size=batch_size,
+            verbose=verbose,
             )
 
         return history
