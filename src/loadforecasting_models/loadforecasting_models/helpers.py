@@ -304,6 +304,14 @@ class OptunaHelper:
 
         self.my_model = my_model
 
+        # Initialize attributes for training
+        self.lr_schedules: dict
+        self.x_train: ArrayLike
+        self.y_train: ArrayLike
+        self.n_splits: int
+        self.val_size: int
+        self.verbose_level: int
+
     def train_auto(
         self,
         x_train: ArrayLike,
@@ -325,78 +333,12 @@ class OptunaHelper:
         
         """
 
-        # Learning rate schedules.
-        # During training, the learning rate will step through these values.
-        lr_schedules = {
-            "default": [0.01, 0.005, 0.001, 0.0005], # Default for this framework
-            "constant": [0.001],    # Default Adam Parameter as Baseline
-            "moderate_decay": [0.005, 0.0025, 0.001, 0.0005],
-            "conservative": [0.001, 0.0007, 0.0005, 0.0003],
-        }
-
-        def objective(trial: 'optuna.Trial') -> float:
-            """Objective function for Optuna optimization."""
-
-            # Hyperparameters to choose from.
-            #
-            learning_rates = lr_schedules[trial.suggest_categorical(
-                "lr_schedule_name", list(lr_schedules.keys())
-                )]
-            trial_epochs = trial.suggest_int(
-                "epochs", low=30, high=300, log=True,
-                )
-            trial_batch_size = trial.suggest_categorical(
-                'batch_size', [32, 64, 128, 256]
-                )
-            trial_model_size = trial.suggest_categorical(
-                'model_size', ['0.1k', '0.2k', '0.5k', '1k', '2k', '5k', '10k', '20k', '40k', '80k']
-                )
-
-            # Expanding window cross-validation
-            cv_losses = []
-            n_samples = x_train.shape[0]
-
-            for split_idx in range(n_splits):
-
-                # Determine train and validation indices
-                step_size = (n_samples - val_size) // n_splits
-                train_end = (split_idx + 1) * step_size
-                val_end = train_end + val_size
-                assert val_end <= n_samples, f"Validation end index {val_end} exceeds data " + \
-                    f"size {n_samples}."
-
-                # Split data
-                x_fold_train = x_train[0:train_end]
-                y_fold_train = y_train[0:train_end]
-                x_fold_val = x_train[train_end:val_end]
-                y_fold_val = y_train[train_end:val_end]
-                assert y_fold_val.shape[0] == val_size, "Validation size mismatch."
-
-                # Create a fresh model copy for this fold
-                self.my_model.create_model(trial_model_size)
-
-                # Train on this fold
-                _ = self.my_model.train_model(
-                    x_train = x_fold_train,
-                    y_train = y_fold_train,
-                    x_dev = torch.Tensor([]),
-                    y_dev = torch.Tensor([]),
-                    pretrain_now=False,
-                    finetune_now = False,
-                    epochs = trial_epochs,
-                    learning_rates = learning_rates,
-                    batch_size = trial_batch_size,
-                    verbose = verbose,
-                )
-
-                # Evaluate on validation set
-                eval_value = self.my_model.evaluate(x_fold_val, y_fold_val, results={},
-                    de_normalize=False)
-                test_loss = float(eval_value['test_loss'][-1])
-                cv_losses.append(test_loss)
-
-            # Return mean validation loss across folds
-            return float(np.mean(cv_losses))
+        # Store training parameters as instance attributes
+        self.x_train = x_train
+        self.y_train = y_train
+        self.n_splits = n_splits
+        self.val_size = val_size
+        self.verbose_level = verbose
 
         # Create and run Optuna study
         study = optuna.create_study(
@@ -411,12 +353,12 @@ class OptunaHelper:
                   f"and {n_splits} expanding window splits...")
 
         study.optimize(
-            objective, n_trials=n_trials, show_progress_bar=(verbose > 0)
+            self.objective, n_trials=n_trials, show_progress_bar=(verbose > 0)
         )
 
         # Get best hyperparameters
         best_params = study.best_params
-        best_learning_rates = lr_schedules[best_params['lr_schedule_name']]
+        best_learning_rates = self.lr_schedules[best_params['lr_schedule_name']]
         best_epochs = best_params['epochs']
         best_batch_size = best_params['batch_size']
         best_model_size = best_params['model_size']
@@ -448,3 +390,71 @@ class OptunaHelper:
         history['optuna_study'] = study
 
         return history
+
+    def objective(self, trial: optuna.Trial) -> float:
+        """Objective function for Optuna optimization."""
+
+        # Hyperparameters to choose from.
+        #
+
+        # Learning rate schedules. Learning rates will step through these values during training.
+        self.lr_schedules = {
+            "default": [0.01, 0.005, 0.001, 0.0005], # Default for this framework
+            "constant": [0.001],    # Default Adam Parameter as Baseline
+            "moderate_decay": [0.005, 0.0025, 0.001, 0.0005],
+            "conservative": [0.001, 0.0007, 0.0005, 0.0003],
+        }
+        learning_rates = self.lr_schedules[trial.suggest_categorical(
+            "lr_schedule_name", list(self.lr_schedules.keys())
+            )]
+        trial_epochs = trial.suggest_int(
+            "epochs", low=30, high=300, log=True,
+            )
+        trial_batch_size = trial.suggest_categorical(
+            'batch_size', [32, 64, 128, 256]
+            )
+        trial_model_size = trial.suggest_categorical(
+            'model_size', ['0.1k', '0.2k', '0.5k', '1k', '2k', '5k', '10k', '20k', '40k', '80k']
+            )
+
+        # Expanding window cross-validation
+        cv_losses = []
+        n_samples = self.x_train.shape[0]
+
+        for split_idx in range(self.n_splits):
+
+            # Determine train and validation indices
+            step_size = (n_samples - self.val_size) // self.n_splits
+            train_end = (split_idx + 1) * step_size
+            val_end = train_end + self.val_size
+            assert val_end <= n_samples, f"Validation end index {val_end} exceeds data " + \
+                f"size {n_samples}."
+
+            # Split data
+            x_fold_train = self.x_train[0:train_end]
+            y_fold_train = self.y_train[0:train_end]
+            x_fold_val = self.x_train[train_end:val_end]
+            y_fold_val = self.y_train[train_end:val_end]
+            assert y_fold_val.shape[0] == self.val_size, "Validation size mismatch."
+
+            # Create a fresh model copy for this fold
+            self.my_model.create_model(trial_model_size)
+
+            # Train on this fold
+            _ = self.my_model.train_model(
+                x_train = x_fold_train,
+                y_train = y_fold_train,
+                epochs = trial_epochs,
+                learning_rates = learning_rates,
+                batch_size = trial_batch_size,
+                verbose = self.verbose_level,
+            )
+
+            # Evaluate on validation set
+            eval_value = self.my_model.evaluate(x_fold_val, y_fold_val, results={},
+                de_normalize=False)
+            test_loss = float(eval_value['test_loss'][-1])
+            cv_losses.append(test_loss)
+
+        # Return mean validation loss across folds
+        return float(np.mean(cv_losses))

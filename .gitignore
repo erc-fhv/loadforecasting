@@ -15,3 +15,4 @@
 **/loadforecasting_models/.venv/**
 .venv/
 
+optuna_study.db
