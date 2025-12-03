@@ -4,6 +4,7 @@ This module contains common (mainly pytorch) code for the forecasting models.
 
 from pathlib import Path
 from typing import Sequence, Union, TYPE_CHECKING
+import datetime
 import math
 import numpy as np
 import torch
@@ -13,7 +14,7 @@ from torch.utils.data import DataLoader, Dataset
 
 # The following modules are only imported during type checking
 if TYPE_CHECKING:
-    from loadforecasting_models import Lstm, xLstm, Transformer
+    from loadforecasting_models import Lstm, xLstm, Transformer, TransformerFull
 
 # Define a type that can be either a torch Tensor or a numpy ndarray
 ArrayLike = Union[torch.Tensor, np.ndarray]
@@ -64,7 +65,7 @@ class CustomLRScheduler:
 class PytorchHelper():
     """Helper class for Pytorch models."""
 
-    def __init__(self, my_model: "Union[Lstm, xLstm, Transformer]"):
+    def __init__(self, my_model: "Union[Lstm, xLstm, Transformer, TransformerFull]"):
         self.my_model = my_model
 
     def train(
@@ -308,8 +309,8 @@ class OptunaHelper:
         self.lr_schedules: dict
         self.x_train: ArrayLike
         self.y_train: ArrayLike
-        self.n_splits: int
-        self.val_size: int
+        self.k_folds: int
+        self.val_ratio: float
         self.verbose_level: int
 
     def train_auto(
@@ -317,8 +318,8 @@ class OptunaHelper:
         x_train: ArrayLike,
         y_train: ArrayLike,
         n_trials: int = 50,
-        n_splits: int = 5,
-        val_size: int = 31,
+        k_folds: int = 1,
+        val_ratio: float = 0.2,
         verbose: int = 1,
         ) -> dict:
         """
@@ -326,31 +327,35 @@ class OptunaHelper:
         Args:
             x_train (ArrayLike): Training input features of the model.
             y_train (ArrayLike): Training target values of the model.
-            n_trials (int, optional): Number of Optuna trials. Defaults to 50.
-            n_splits (int, optional): Number of Data splits. Defaults to 5.
-            val_size (int, optional): Number of days for validation in each split. Defaults to 31.
-            verbose (int, optional): Verbosity level. Defaults to 1.
-        
+            n_trials (int, optional): Number of Optuna trials.
+            k_folds (int): Number of folds for the timeseries cross-validation. If set to 1,
+                this is the same as a static train-dev-split.
+            val_ratio (float, optional): Proportion of data for validation
+                compared to the total training data.
+            verbose (int, optional): Verbosity level. 0: silent, 1: dots, 2: full.
+        Returns:
+            dict: Training history containing loss values.
         """
 
         # Store training parameters as instance attributes
         self.x_train = x_train
         self.y_train = y_train
-        self.n_splits = n_splits
-        self.val_size = val_size
+        self.k_folds = k_folds
+        self.val_ratio = val_ratio
         self.verbose_level = verbose
 
         # Create and run Optuna study
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         study = optuna.create_study(
             direction='minimize',
-            study_name=f"loadforecasting_{self.my_model.__class__.__name__}",
+            study_name=f"loadforecasting_{self.my_model.__class__.__name__}_{timestamp}",
             storage="sqlite:///optuna_study.db",
-            load_if_exists=True,
+            load_if_exists=False,
         )
 
         if verbose > 0:
             print(f"Starting Optuna optimization with {n_trials} trials "
-                  f"and {n_splits} expanding window splits...")
+                  f"and {k_folds} expanding window splits...")
 
         study.optimize(
             self.objective, n_trials=n_trials, show_progress_bar=(verbose > 0)
@@ -418,15 +423,17 @@ class OptunaHelper:
             )
 
         # Expanding window cross-validation
+        #
         cv_losses = []
         n_samples = self.x_train.shape[0]
 
-        for split_idx in range(self.n_splits):
+        for split_idx in range(self.k_folds):
 
             # Determine train and validation indices
-            step_size = (n_samples - self.val_size) // self.n_splits
+            val_size = int(self.val_ratio * n_samples)
+            step_size = (n_samples - val_size) // self.k_folds
             train_end = (split_idx + 1) * step_size
-            val_end = train_end + self.val_size
+            val_end = train_end + val_size
             assert val_end <= n_samples, f"Validation end index {val_end} exceeds data " + \
                 f"size {n_samples}."
 
@@ -435,7 +442,7 @@ class OptunaHelper:
             y_fold_train = self.y_train[0:train_end]
             x_fold_val = self.x_train[train_end:val_end]
             y_fold_val = self.y_train[train_end:val_end]
-            assert y_fold_val.shape[0] == self.val_size, "Validation size mismatch."
+            assert y_fold_val.shape[0] == val_size, "Validation size mismatch."
 
             # Create a fresh model copy for this fold
             self.my_model.create_model(trial_model_size)

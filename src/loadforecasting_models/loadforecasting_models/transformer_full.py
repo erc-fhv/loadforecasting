@@ -196,7 +196,8 @@ class TransformerFull(torch.nn.Module):
         x_train: ArrayLike,
         y_train: ArrayLike,
         n_trials: int = 50,
-        n_splits: int = 5,
+        k_folds: int = 1,
+        val_ratio: float = 0.2,
         verbose: int = 1,
         ) -> dict:
         """
@@ -210,13 +211,13 @@ class TransformerFull(torch.nn.Module):
                 shape (batch_len, sequence_len, 1).
             n_trials (int): Number of Optuna trials for hyperparameter
                 search.
-            n_splits (int): Number of expanding window splits for
-                cross-validation.
-            min_train_size (float): Minimum fraction of data to use for
-                training in first split.
+            k_folds (int): Number of folds for the timeseries cross-validation. If set to 1,
+                this is the same as a static train-dev-split.
             pretrain_now (bool): Whether to run a pretraining phase.
+            val_ratio (float, optional): Proportion of data for validation
+                compared to the total training data.
             verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
-            optuna_study_name (str, optional): Name for the Optuna study.
+                optuna_study_name (str, optional): Name for the Optuna study.
 
         Returns:
             dict: Training history and best hyperparameters.
@@ -227,7 +228,8 @@ class TransformerFull(torch.nn.Module):
             x_train=x_train,
             y_train=y_train,
             n_trials=n_trials,
-            n_splits=n_splits,
+            k_folds=k_folds,
+            val_ratio=val_ratio,
             verbose=verbose,
             )
 
