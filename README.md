@@ -18,6 +18,14 @@ More information about the models and the framework can be found in the followin
 Learning Models Worth the Effort?*, [arXiv:2501.05000](https://arxiv.org/abs/2501.05000)
 
 
+## GitHub CI Status
+
+| Test Suite         | Status |
+|--------------------|--------|
+| Unit Tests      | [![Unit Tests](https://github.com/erc-fhv/loadforecasting/actions/workflows/test-loadforecasting-models.yml/badge.svg)](https://github.com/erc-fhv/loadforecasting/actions/workflows/test-loadforecasting-models.yml) |
+| Integration Tests | [![Integration Tests](https://github.com/erc-fhv/loadforecasting/actions/workflows/test-loadforecasting-framework.yml/badge.svg)](https://github.com/erc-fhv/loadforecasting/actions/workflows/test-loadforecasting-framework.yml) |
+
+
 
 ## Folder Structure
 
