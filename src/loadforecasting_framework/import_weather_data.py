@@ -1,4 +1,4 @@
-# Referenzes: 
+# Referenzes:
 #   - Code and Tutorial:
 #       https://github.com/meteostat/meteostat-python
 #   - API Documentation:

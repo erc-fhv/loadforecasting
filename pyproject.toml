@@ -19,7 +19,7 @@ dependencies = [
     "matplotlib",
     "pytz",
     "plotly",
-    "meteostat",
+    "meteostat==1.7",
     "dash",
     "kaleido",
 ]
