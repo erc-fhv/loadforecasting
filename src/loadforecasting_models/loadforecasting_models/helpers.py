@@ -84,13 +84,13 @@ class PytorchHelper():
         """
         Train a pytorch model.
         Args:
-            X_train (torch.Tensor or np.ndarray): Training input features of 
+            X_train (torch.Tensor or np.ndarray): Training input features of
                 shape (batch_len, sequence_len, features).
-            Y_train (torch.Tensor or np.ndarray): Training labels of 
+            Y_train (torch.Tensor or np.ndarray): Training labels of
                 shape (batch_len, sequence_len, 1).
-            X_dev (torch.Tensor or np.ndarray, optional): Validation input features of 
+            X_dev (torch.Tensor or np.ndarray, optional): Validation input features of
                 shape (batch_len, sequence_len, features).
-            Y_dev (torch.Tensor or np.ndarray, optional): Validation labels of 
+            Y_dev (torch.Tensor or np.ndarray, optional): Validation labels of
                 shape (batch_len, sequence_len, 1).
             pretrain_now (bool): Whether to run a pretraining phase.
             finetune_now (bool): Whether to run fine-tuning.
@@ -112,7 +112,7 @@ class PytorchHelper():
 
         # Prepare Optimization
         train_dataset = SequenceDataset(x_train, y_train)
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)          
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         my_optimizer = optim.Adam(self.my_model.parameters(), lr=learning_rates[0])
         lr_scheduler = CustomLRScheduler(my_optimizer, learning_rates, epochs)
         history = {"loss": []}
@@ -163,8 +163,8 @@ class PytorchHelper():
                     self.my_model.train()  # Switch back to training mode after evaluation
                 print(f"Epoch {epoch + 1}/{epochs} - " +
                     f"Loss = {epoch_loss:.4f} - " +
-                    f"Dev_Loss = {dev_loss:.4f} - " + 
-                    f"LR = {my_optimizer.param_groups[0]['lr']}", 
+                    f"Dev_Loss = {dev_loss:.4f} - " +
+                    f"LR = {my_optimizer.param_groups[0]['lr']}",
                     flush=True)
             else:
                 raise ValueError(f"Unexpected parameter value: verbose = {verbose}")
@@ -173,7 +173,7 @@ class PytorchHelper():
         if pretrain_now:
             filename = f'pretrained_weights_{self.my_model.__class__.__name__}.pth'
             save_dir = Path.home() / ".loadforecasting_models"
-            save_dir.mkdir(exist_ok=True)            
+            save_dir.mkdir(exist_ok=True)
             pretrained_weights_path = save_dir / filename
             torch.save(self.my_model.state_dict(), pretrained_weights_path)
 
@@ -266,7 +266,7 @@ class PytorchHelper():
 
 
 class PositionalEncoding(torch.nn.Module):
-    """    
+    """
     Implements sinusoidal positional encoding as used in Transformer models.
 
     Positional encodings provide information about the relative or absolute position
