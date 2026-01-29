@@ -52,7 +52,8 @@ class TestDataPipeline(unittest.TestCase):
                 dev_set=0,
                 train_set_2=0,
                 pad=0
-            ),
+                ),
+                add_calendar_year_feature=False,
         )
 
     def test_full_pipeline(self):

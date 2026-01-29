@@ -20,35 +20,38 @@ class DataPreprocessor:
         prediction_horizon: pd.Timedelta = pd.Timedelta(days=1),
         prediction_rate: pd.Timedelta = pd.Timedelta(days=1),
         shift_weather_feature: bool = True,
+        add_calendar_year_feature: bool = True,
         ) -> None:
         """
         Constructor of the DataPreprocessor class.
         Args:
-            normalizer (Normalizer | None): 
-                Normalizer to be used for input data and target value. 
+            normalizer (Normalizer | None):
+                Normalizer to be used for input data and target value.
                 If None, no normalization is applied.
-            data_split (DataSplitType | None): 
+            data_split (DataSplitType | None):
                 Data split to be used for train, dev and test sets.
                 If None, no data split is applied.
-            add_lagged_profiles (tuple): 
+            add_lagged_profiles (tuple):
                 Days ago of lagged profiles to be added as input features.
                 Default are the profiles from 7, 14 and 21 days ago.
-            num_of_weather_features (int | None): 
+            num_of_weather_features (int | None):
                 Number of weather features in the input data.
                 If weather data are given in the transform_data method, this parameter
                 is calculated automatically.
-            first_prediction_clocktime (datetime.time): 
+            first_prediction_clocktime (datetime.time):
                 Clock time of the first prediction.
                 Default is 00:00 (midnight).
-            prediction_horizon (pd.Timedelta): 
+            prediction_horizon (pd.Timedelta):
                 Prediction horizon of the model.
                 Default is 23 hours (i.e. one day ahead prediction with hourly resolution).
-            prediction_rate (pd.Timedelta): 
+            prediction_rate (pd.Timedelta):
                 Time between two consecutive prediction starts.
                 Default is 1 day.
             shift_weather_feature (bool):
                 If True, the (measured) weather data is shifted into the past for model input.
                 If False, the (forecasted) weather data is used as-is for model input.
+            add_calendar_year_feature (bool):
+                If True, the calendar year is added as an additional feature.
         """
 
         # Set default parameters
@@ -63,6 +66,7 @@ class DataPreprocessor:
         self.data_split = data_split
         self.normalizer = normalizer
         self.num_of_weather_features = num_of_weather_features
+        self.add_calendar_year_feature = add_calendar_year_feature
 
         # Initialize internal variables
         self._first_prediction_date = None
@@ -171,6 +175,10 @@ class DataPreprocessor:
         nr_of_features = 11     # 7 weekday one-hot + 2 hour-of-day + 2 day-of-year cyclical
         if self.add_lagged_profiles:
             nr_of_features += len(self.add_lagged_profiles)
+
+        if self.add_calendar_year_feature:
+            nr_of_features += 1 # calendar year feature
+
         if weather_data is None:
             # Weather data is not available
             if not isinstance(self.num_of_weather_features, int):
@@ -182,6 +190,7 @@ class DataPreprocessor:
             if (self.num_of_weather_features is not None) and (n != self.num_of_weather_features):
                 raise ValueError("num_of_weather_features was set incorrect in the constructor.")
             self.num_of_weather_features = n
+
         nr_of_features += self.num_of_weather_features
 
         # Adjust prediction horizon to be zero-based
@@ -232,6 +241,11 @@ class DataPreprocessor:
             index += 1
             new_batch[0, :, index]  = day_of_year_cos
             index += 1
+
+            # Add calendar year as feature
+            if self.add_calendar_year_feature:
+                new_batch[0, :, index]  = total_input_range.year
+                index += 1
 
             # Optionally add lagged profiles
             if len(self.add_lagged_profiles) > 0:
@@ -310,6 +324,9 @@ class DataPreprocessor:
             demandprofile_slice = df.loc[act_prediction_date:end_prediction_horizon]
 
             # Set all target power values
+            if len(demandprofile_slice) != nr_of_timesteps:
+                raise ValueError(("Unexpected length of demandprofile_slice: "
+                                 f"{len(demandprofile_slice)} != {nr_of_timesteps}"))
             y_all[batch_id, :, 0] = demandprofile_slice
 
             # Go to the next prediction (= batch)
@@ -367,7 +384,7 @@ class DataPreprocessor:
         self._test_set_start = self._train_set_2_start - self.data_split.test_set
         self._dev_set_start = self._test_set_start - self.data_split.dev_set
         if self.data_split.train_set_1 == -1:
-            self._train_set_1_start = None # Set train length to max
+            self._train_set_1_start = 0 # Set train length to max
         else:
             self._train_set_1_start = self._dev_set_start - self.data_split.train_set_1
 

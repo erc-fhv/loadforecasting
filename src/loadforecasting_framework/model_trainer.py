@@ -191,6 +191,7 @@ class ModelTrainer:
             model_preprocessor = DataPreprocessor(
                 normalizer = normalizer,
                 data_split = sim_config.data_split,
+                add_calendar_year_feature=False,
                 )
             x, y = model_preprocessor.transform_data(
                 power_profile,
@@ -223,6 +224,7 @@ class ModelTrainer:
             normalizer = normalizer,
             data_split = sim_config.data_split,
             num_of_weather_features=weather_data.shape[1],
+            add_calendar_year_feature=False,
             )
         x, y = model_preprocessor.transform_data(
             power_profile=all_standard_loadprofiles,

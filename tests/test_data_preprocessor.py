@@ -36,7 +36,8 @@ class TestDataPreprocessor(unittest.TestCase):
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0,0),
             prediction_horizon=pd.Timedelta(days=1),
-            prediction_rate=pd.Timedelta(days=1)
+            prediction_rate=pd.Timedelta(days=1),
+            add_calendar_year_feature=False,
         )
 
     def test_transform_data_shapes(self):
@@ -62,7 +63,7 @@ class TestDataPreprocessor(unittest.TestCase):
         self.assertIsInstance(self.preprocessor._first_prediction_date, pd.Timestamp)
 
     def test_none_datasplit(self):
-        """ 
+        """
         Test behavior when data_split is None
         """
 
@@ -73,7 +74,8 @@ class TestDataPreprocessor(unittest.TestCase):
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0,0),
             prediction_horizon=pd.Timedelta(days=1),
-            prediction_rate=pd.Timedelta(days=1)
+            prediction_rate=pd.Timedelta(days=1),
+            add_calendar_year_feature=False,
         )
 
         x, y = preprocessor_none_split.transform_data(self.power_data, self.weather_data)

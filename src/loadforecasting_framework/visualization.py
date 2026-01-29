@@ -1,4 +1,4 @@
-""" 
+"""
 This module implements a Plotly Dash application for visualizing load forecasting results.
 """
 
@@ -15,7 +15,7 @@ os.environ['HOST'] = '127.0.0.1'
 
 class PlotlyApp:
     """A Plotly Dash application for visualizing load forecasting results."""
-    
+
     def __init__(
                 self,
                 x_model,
@@ -82,7 +82,7 @@ class PlotlyApp:
         )(self.update_date_plot)
 
     def update_label(self, selected_dataset, selected_date):
-            
+
         # Validate the inputs
         #
         if selected_dataset is None:

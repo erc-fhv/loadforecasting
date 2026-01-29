@@ -41,7 +41,8 @@ class TestFormattingX(unittest.TestCase):
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
             prediction_horizon=pd.Timedelta(days=1),
-            prediction_rate=pd.Timedelta(days=1)
+            prediction_rate=pd.Timedelta(days=1),
+            add_calendar_year_feature=False,
         )
 
         # Set prediction timerange first
@@ -58,12 +59,12 @@ class TestFormattingX(unittest.TestCase):
         self.assertEqual(len(x_all.shape), 3, "x_all should be 3-dimensional")
         self.assertGreater(x_all.shape[0], 0, "Should have at least one batch")
         self.assertEqual(x_all.shape[1], 96, "Should have 96 timesteps (quarter-hourly for 24h, i.e., 4*24)")
-        
+
         # Calculate expected number of features:
-        # 7 (weekday one-hot) + 2 (hour cyclical) + 2 (day-of-year cyclical) 
+        # 7 (weekday one-hot) + 2 (hour cyclical) + 2 (day-of-year cyclical)
         # + 3 (lagged profiles) + 3 (weather features) = 17
         expected_features = 7 + 2 + 2 + 3 + 3
-        self.assertEqual(x_all.shape[2], expected_features, 
+        self.assertEqual(x_all.shape[2], expected_features,
                         f"Should have {expected_features} features")
 
     def test_formatting_x_without_weather(self):
@@ -73,7 +74,8 @@ class TestFormattingX(unittest.TestCase):
             num_of_weather_features=3,  # Must specify when no weather data provided
             first_prediction_clocktime=datetime.time(0, 0),
             prediction_horizon=pd.Timedelta(hours=24),
-            prediction_rate=pd.Timedelta(days=1)
+            prediction_rate=pd.Timedelta(days=1),
+            add_calendar_year_feature=False,
         )
 
         preprocessor.set_prediction_timerange(self.power_data)
@@ -101,7 +103,8 @@ class TestFormattingX(unittest.TestCase):
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
             prediction_horizon=pd.Timedelta(hours=24),
-            prediction_rate=pd.Timedelta(days=1)
+            prediction_rate=pd.Timedelta(days=1),
+            add_calendar_year_feature=False,
         )
 
         preprocessor.set_prediction_timerange(self.power_data)
@@ -123,7 +126,8 @@ class TestFormattingX(unittest.TestCase):
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
             prediction_horizon=pd.Timedelta(hours=24),
-            prediction_rate=pd.Timedelta(days=1)
+            prediction_rate=pd.Timedelta(days=1),
+            add_calendar_year_feature=False,
         )
 
         preprocessor.set_prediction_timerange(self.power_data)
@@ -136,7 +140,7 @@ class TestFormattingX(unittest.TestCase):
 
         # Check first batch - get the weekday encoding (first 7 features)
         first_batch_weekdays = x_all[0, :, :7]
-        
+
         # Each timestep should have exactly one 1 in the weekday encoding
         row_sums = np.sum(first_batch_weekdays, axis=1)
         np.testing.assert_array_almost_equal(row_sums, np.ones(len(row_sums)),
@@ -149,7 +153,8 @@ class TestFormattingX(unittest.TestCase):
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
             prediction_horizon=pd.Timedelta(hours=24),
-            prediction_rate=pd.Timedelta(days=1)
+            prediction_rate=pd.Timedelta(days=1),
+            add_calendar_year_feature=False,
         )
 
         preprocessor.set_prediction_timerange(self.power_data)
@@ -163,7 +168,7 @@ class TestFormattingX(unittest.TestCase):
         # Hour cyclical features (indices 7 and 8)
         hour_sin = x_all[:, :, 7]
         hour_cos = x_all[:, :, 8]
-        
+
         # Should be in range [-1, 1]
         self.assertTrue(np.all(hour_sin >= -1) and np.all(hour_sin <= 1))
         self.assertTrue(np.all(hour_cos >= -1) and np.all(hour_cos <= 1))
@@ -171,7 +176,7 @@ class TestFormattingX(unittest.TestCase):
         # Day-of-year cyclical features (indices 9 and 10)
         day_sin = x_all[:, :, 9]
         day_cos = x_all[:, :, 10]
-        
+
         # Should be in range [-1, 1]
         self.assertTrue(np.all(day_sin >= -1) and np.all(day_sin <= 1))
         self.assertTrue(np.all(day_cos >= -1) and np.all(day_cos <= 1))
@@ -183,7 +188,8 @@ class TestFormattingX(unittest.TestCase):
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
             prediction_horizon=pd.Timedelta(hours=24),
-            prediction_rate=pd.Timedelta(days=1)
+            prediction_rate=pd.Timedelta(days=1),
+            add_calendar_year_feature=False,
         )
 
         preprocessor.set_prediction_timerange(self.power_data)
@@ -200,7 +206,7 @@ class TestFormattingX(unittest.TestCase):
         # Find a batch that includes the public holiday
         # 2025-01-22 is 21 days after 2025-01-01, and we start predictions after 21 days (3*7)
         # So it should be around batch index 0 or 1
-        
+
         # For simplicity, just check that the one-hot encoding has valid values
         weekday_encoding = x_all[:, :, :7]
         self.assertTrue(np.all(np.sum(weekday_encoding, axis=2) == 1),
@@ -214,7 +220,8 @@ class TestFormattingX(unittest.TestCase):
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
             prediction_horizon=pd.Timedelta(hours=24),
-            prediction_rate=pd.Timedelta(days=1)  # Daily
+            prediction_rate=pd.Timedelta(days=1),  # Daily
+            add_calendar_year_feature=False,
         )
         preprocessor_daily.set_prediction_timerange(self.power_data)
         x_daily = preprocessor_daily.formatting_x(self.power_data, self.weather_data, [])
@@ -225,7 +232,8 @@ class TestFormattingX(unittest.TestCase):
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
             prediction_horizon=pd.Timedelta(hours=24),
-            prediction_rate=pd.Timedelta(days=7)  # Weekly
+            prediction_rate=pd.Timedelta(days=7),  # Weekly
+            add_calendar_year_feature=False,
         )
         preprocessor_weekly.set_prediction_timerange(self.power_data)
         x_weekly = preprocessor_weekly.formatting_x(self.power_data, self.weather_data, [])
@@ -241,7 +249,8 @@ class TestFormattingX(unittest.TestCase):
             num_of_weather_features=3,
             first_prediction_clocktime=datetime.time(0, 0),
             prediction_horizon=pd.Timedelta(hours=24),
-            prediction_rate=pd.Timedelta(days=1)
+            prediction_rate=pd.Timedelta(days=1),
+            add_calendar_year_feature=False,
         )
 
         # Don't call set_prediction_timerange - should raise TypeError
