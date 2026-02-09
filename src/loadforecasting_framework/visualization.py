@@ -127,7 +127,9 @@ class PlotlyApp:
 
             # Get the real measured power profile of the selected day
             y_real = self.y_plot[selected_dataset][selected_date,:,0]
-            y_real = self.normalizer.de_normalize_y(y_real)
+
+            if self.normalizer:
+                y_real = self.normalizer.de_normalize_y(y_real)
 
             # Get the predicted power profile of the selected day
             x_selected = self.x_plot[selected_dataset]
@@ -139,7 +141,9 @@ class PlotlyApp:
             else:
                 y_pred = self.model_plot.predict(x_selected)
                 y_pred = y_pred[selected_date,:,0]
-            y_pred = self.normalizer.de_normalize_y(y_pred)
+
+            if self.normalizer:
+                y_pred = self.normalizer.de_normalize_y(y_pred)
 
             # Create a DataFrame for Plotly Express
             startdate = self.data_preprocessor.get_start_date_from_index(
