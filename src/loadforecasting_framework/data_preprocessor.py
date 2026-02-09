@@ -20,7 +20,7 @@ class DataPreprocessor:
         prediction_horizon: pd.Timedelta = pd.Timedelta(days=1),
         prediction_rate: pd.Timedelta = pd.Timedelta(days=1),
         shift_weather_feature: bool = True,
-        add_calendar_year_feature: bool = True,
+        add_calendar_year_feature: bool = False,
         ) -> None:
         """
         Constructor of the DataPreprocessor class.
