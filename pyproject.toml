@@ -22,6 +22,7 @@ dependencies = [
     "meteostat==1.7",
     "dash",
     "kaleido",
+    "pygam"
 ]
 license = "MIT"
 

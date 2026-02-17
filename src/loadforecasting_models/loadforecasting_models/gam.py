@@ -1,8 +1,9 @@
 from typing import Callable, Literal, Union
-from sklearn.neighbors import KNeighborsRegressor
 import numpy as np
 import torch
 from .normalizer import Normalizer
+from pygam.terms import TermList
+from pygam import LinearGAM
 
 # Define a type that can be either a torch Tensor or a numpy ndarray
 ArrayLike = Union[torch.Tensor, np.ndarray]
@@ -14,9 +15,10 @@ class Gam():
 
     def __init__(
         self,
-        k: int,
-        weights: Union[Literal['uniform', 'distance'], Callable] = 'distance',
+        all_gam_terms:TermList,
         normalizer: Union[Normalizer, None] = None,
+        lam:float = 0.5,
+        fit_intercept:bool = True,
         ) -> None:
         """
         Args:
@@ -27,41 +29,11 @@ class Gam():
         """
 
         self.normalizer = normalizer
-        all_gam_terms = (
-            # s(features.index("time_of_day"), basis="cp", n_splines=24) +
-            # s(features.index("temperature")) +
-            # s(features.index("irradiance")) +
-            s(features.index("lagged_power_7d")) +
-            # s(features.index("wind_speed_10m")) +
-            f(features.index("day_of_week")) +
-            # f(features.index("is_holiday")) +
-            # s(features.index("day_of_year"), basis="cp"),
-            te(
-                s(features.index("time_of_day"), n_splines=5),
-                s(features.index("temperature"), n_splines=5),
-            ) +
-            te(
-                s(features.index("time_of_day"), n_splines=10, lam=0.3),
-                s(features.index("irradiance"), n_splines=10, lam=0.15),
-            ) +
-            te(
-                s(features.index("temperature"), n_splines=10, lam=0.3),
-                s(features.index("wind_speed_10m"), n_splines=10, lam=0.15),
-            )
-            # s(features.index("direct_normal_irradiance")),
-            # s(features.index("diffuse_radiation")),
-            # s(features.index("direct_radiation")),
-            # s(features.index("shortwave_radiation")),
-            # s(features.index("nr_of_households")),
-            # s(features.index("pv_installed")),
-            # s(features.index("wind_chill")),
-            # s(features.index("heating_degree")),
-            # s(features.index("cooling_degree")),
 
-            self.gam = LinearGAM(
-                all_gam_terms,
-                lam=0.5,
-                fit_intercept=True
+        self.gam = LinearGAM(
+            all_gam_terms,
+            lam=lam,
+            fit_intercept=fit_intercept,
             )
 
     def predict(
@@ -116,7 +88,7 @@ class Gam():
         self.gam.fit(x_train, y_train)
 
         history = {}
-        history['loss'] = [0.0]
+        history['loss'] = self.evaluate(x_train, y_train)['test_loss']
 
         return history
 
@@ -168,6 +140,7 @@ class Gam():
             reference = float(torch.max(y_tensor) - torch.min(y_tensor))
         else:
             raise ValueError(f"Unexpected parameter: loss_relative_to = {loss_relative_to}")
+
         loss = eval_fn(output, y_tensor)
         results['test_loss'] = [loss.item()]
         results['test_loss_relative'] = [100.0 * loss.item() / reference]
@@ -178,9 +151,13 @@ class Gam():
     def state_dict(self):
         """Store the persistent parameters of this model."""
         state_dict = {}
-        state_dict['gam'] = self.gam
+        state_dict['x_train'] = self.x_train
+        state_dict['y_train'] = self.y_train
         return state_dict
 
     def load_state_dict(self, state_dict):
-        """Load the persistent parameters of this model and re-trigger the KNN fitting."""
-        self.gam = state_dict['gam']
+        """Load the persistent parameters of this model and re-trigger the fitting."""
+        self.x_train = state_dict['x_train']
+        self.y_train = state_dict['y_train']
+
+        self.knn_fit()

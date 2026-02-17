@@ -13,7 +13,8 @@ dependencies = [
     "torch",
     "scikit-learn",
     "xlstm",
-    "optuna"
+    "optuna",
+    "pygam"
 ]
 license = "MIT"
 
