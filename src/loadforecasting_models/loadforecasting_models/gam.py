@@ -1,4 +1,4 @@
-from typing import Callable, Literal, Union
+from typing import Callable, Union
 import numpy as np
 import torch
 from .normalizer import Normalizer
