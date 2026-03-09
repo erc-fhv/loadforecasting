@@ -2,6 +2,7 @@
 This file contains the configuration for an automated simulation run.
 """
 
+import os
 from typing import NamedTuple
 from .interfaces import DataSplitType
 
@@ -25,11 +26,12 @@ class Model():
 
 class AggregationCount():
     """Different numbers of sizes of energy communities ."""
-    ONE_HOUSEHOLD    = (1,   '../../data/london_loadprofiles_1households_each.pkl')
-    TWO_HOUSEHOLDS   = (2,   '../../data/london_loadprofiles_2households_each.pkl')
-    TEN_HOUSEHOLDS  = (10,  '../../data/london_loadprofiles_10households_each.pkl')
-    FIFTY_HOUSEHOLDS  = (50,  '../../data/london_loadprofiles_50households_each.pkl')  # <= Baseline
-    HUNDRED_HOUSEHOLDS = (100, '../../data/london_loadprofiles_100households_each.pkl')
+    data_path          = os.path.join(os.path.dirname(__file__), '../../data/london_loadprofiles_')
+    ONE_HOUSEHOLD      = (1, data_path + '1households_each.pkl')
+    TWO_HOUSEHOLDS     = (2, data_path + '2households_each.pkl')
+    TEN_HOUSEHOLDS     = (10, data_path + '10households_each.pkl')
+    FIFTY_HOUSEHOLDS   = (50, data_path + '50households_each.pkl')  # <= Baseline
+    HUNDRED_HOUSEHOLDS = (100, data_path + '100households_each.pkl')
 
 class NrOfCommunities():
     """Different numbers of communities to train on."""
@@ -61,6 +63,7 @@ class DataSplit():
 class UsedModels():
     """Different models to be used for the load forecasting."""
     ALL = ('Perfect', 'Knn', 'Persistence', 'xLstm', 'Lstm', 'Transformer')
+    TRANSFORMER_ONLY = ('Transformer',)
 
 class Epochs():
     """Different numbers of training epochs."""
