@@ -62,7 +62,7 @@ class Gam():
             output_shape = (x_tensor.shape[0], x_tensor.shape[1], 1)
             x_tensor = x_tensor.reshape(-1, x_tensor.shape[2])
         elif x_tensor.ndim == 2:
-            output_shape = (x_tensor.shape[0], 1)
+            output_shape = (x_tensor.shape[0],)
         else:
             raise ValueError(f"Unexpected number of dimensions for x: {x_tensor.ndim}")
 
@@ -72,9 +72,9 @@ class Gam():
         # Reshape back if needed
         y_pred = y_pred.reshape(output_shape)
 
-        # Convert back to numpy if needed
-        if input_was_numpy:
-            y_pred = y_pred.numpy()
+        # Convert back to torch if needed
+        if input_was_numpy is False:
+            y_pred = torch.from_numpy(y_pred).float()
 
         return y_pred
 
@@ -97,7 +97,7 @@ class Gam():
         if isinstance(x_train, np.ndarray):
             x_train  = torch.from_numpy(x_train).float()
         if isinstance(y_train, np.ndarray):
-            y_train  = torch.from_numpy(y_train).float()
+            y_train  = torch.from_numpy(y_train.copy()).float()
 
         # Store training features
         if x_train.ndim == 3:
@@ -109,10 +109,10 @@ class Gam():
             raise ValueError(f"Unexpected number of dimensions for x_train: {x_train.ndim}")
 
         # Store training target
-        if y_train.ndim == 3:
-            # Convert from (batch_len, seq, features) to (batch_len * seq, features)
-            self.y_train = y_train.reshape(-1, y_train.shape[2])
-        elif y_train.ndim == 2:
+        if y_train.ndim in [2, 3]:
+            # Convert from (batch_len, seq, 1) to (batch_len * seq)
+            self.y_train = y_train.flatten()
+        elif y_train.ndim == 1:
             self.y_train = y_train
         else:
             raise ValueError(f"Unexpected number of dimensions for y_train: {y_train.ndim}")
