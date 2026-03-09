@@ -275,7 +275,7 @@ The entire paper can be reproduced by following these steps.
 
 1. Download the whole repository:
     ```bash
-    git clone https://github.com/erc-fhv/loadforecasting.git
+    git clone -b Next_Energy_Publication https://github.com/erc-fhv/loadforecasting.git
     ```
 
 1. Set up the environment (Linux only):
@@ -284,31 +284,24 @@ The entire paper can be reproduced by following these steps.
     conda activate load_forecasting
     ```
 
-1. Install the local packages (without dependencies)
-    ```bash
-    # From the project root
-    pip install --no-deps -e src/loadforecasting_models/
-    pip install --no-deps -e .
-    ```
-
 1. Train the models:
     ```bash
-    python src/loadforecasting_framework/model_trainer.py
+    python scripts/ModelTrainer.py
     ```
 
 1. Generate figures and tables or run the case study:
 
     Open and run either 
     ```
-    src/loadforecasting_framework/paper_illustration.ipynb
+    scripts/Paper_Illustration.ipynb
     ```
     or    
     ```
-    src/loadforecasting_framework/model_evaluation.ipynb
+    scripts/Model_Evaluation.ipynb
     ```
     or    
     ```
-    src/loadforecasting_framework/case_study/CaseStudy.ipynb
+    scripts/case_study/CaseStudy.ipynb
     ```
 ## Citation
 
