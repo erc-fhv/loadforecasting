@@ -325,5 +325,8 @@ If you use this codebase, or find our work valuable, please cite the following p
 ```
 
 ## Acknowledgments
+<a href="https://projekte.ffg.at/projekt/4597880">
+  <img src="FFG_Logo.png" alt="FFG Logo" width="180" align="right" style="margin-right:16px; margin-bottom:8px;">
+</a>
 We gratefully acknowledge the financial support from the Austrian Research Promotion Agency FFG for the Hub4FlECs project (COIN FFG 898053), which provided funding for the development of the software provided. https://projekte.ffg.at/projekt/4597880
 
