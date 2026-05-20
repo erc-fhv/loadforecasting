@@ -5,7 +5,7 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from loadforecasting_framework import DataPreprocessor, DataSplitType
+from loadforecasting_framework import DataPreprocessor
 
 
 class TestFormattingX(unittest.TestCase):

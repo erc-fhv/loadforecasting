@@ -1,17 +1,17 @@
 name: Test loadforecasting_models
 
 on:
-  push:  
+  push:
     paths:
      - 'src/loadforecasting_models/loadforecasting_models/*.py'
      - 'tests/*.py'
 
 jobs:
   test_loadforecasting_models:
-    runs-on: ubuntu-latest    
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, 3.12]
+        python-version: [3.9, 3.13]
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
