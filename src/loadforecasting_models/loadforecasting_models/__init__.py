@@ -8,3 +8,6 @@ from .perfect import Perfect
 from .gam import Gam
 from .normalizer import Normalizer
 from .physics_pv_forecast import PhysicsPvForecast
+from .ridge import Ridge
+from .random_forest import RandomForest
+from .xgb import XGBoost

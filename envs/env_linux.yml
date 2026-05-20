@@ -331,5 +331,6 @@ dependencies:
       - websocket-client==1.8.0
       - werkzeug==3.0.4
       - widgetsnbextension==4.0.13
+      - xgboost==3.2.0
       - xlstm==1.0.6
       - zipp==3.20.1

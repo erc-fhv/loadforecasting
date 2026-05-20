@@ -14,7 +14,8 @@ dependencies = [
     "scikit-learn",
     "xlstm",
     "optuna",
-    "pygam"
+    "pygam",
+    "xgboost"
 ]
 license = "MIT"
 
