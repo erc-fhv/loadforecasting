@@ -7,3 +7,4 @@ from .transformer_full import TransformerFull
 from .perfect import Perfect
 from .gam import Gam
 from .normalizer import Normalizer
+from .physics_pv_forecast import PhysicsPvForecast
