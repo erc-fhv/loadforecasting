@@ -211,7 +211,7 @@ class PytorchHelper():
         # Initialize metrics
         loss_sum = 0
         total_samples = 0
-        prediction = torch.zeros(size=(y_test.size(0), 0, y_test.size(2)))
+        prediction = torch.zeros(size=(0, y_test.size(1), y_test.size(2)))
 
         # Unnormalize the target variable, if wished.
         if de_normalize:
@@ -241,7 +241,7 @@ class PytorchHelper():
                 loss_sum += loss.item() * batch_x.size(0)
                 total_samples += batch_x.size(0)
 
-                prediction = torch.cat([prediction, output], dim=1)
+                prediction = torch.cat([prediction, output], dim=0)
 
         # Calculate average test loss
         if total_samples > 0:
