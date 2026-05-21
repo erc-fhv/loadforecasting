@@ -36,8 +36,8 @@ class PhysicsPvForecast:
     def __init__(
         self,
         total_pv_peak_power_wp: float,
-        inverter_max_power_w: float,
-        feature_index_netload_7d_ago: int,
+        inverter_max_power_w: Optional[float] = None,
+        feature_index_netload_7d_ago: int = 0,
         feature_index_radiation: int,
         feature_index_ambient_temperature: int,
         feature_index_radiation_7d_ago: int,
@@ -56,6 +56,7 @@ class PhysicsPvForecast:
                 in Wp (1000 W/m², 25 °C cell temperature).
             inverter_max_power_w:
                 Maximum AC output power of the inverter in W (clips AC output).
+                If None, defaults to ``total_pv_peak_power_wp`` (no clipping beyond peak power).
             feature_index_netload_7d_ago:
                 Feature index in ``x`` that contains the 7-days-ago net load.
             feature_index_radiation:
@@ -106,7 +107,7 @@ class PhysicsPvForecast:
 
         self.normalizer = normalizer
         self.total_pv_peak_power_wp = total_pv_peak_power_wp
-        self.inverter_max_power_w = inverter_max_power_w
+        self.inverter_max_power_w = inverter_max_power_w if inverter_max_power_w is not None else total_pv_peak_power_wp
         self.feature_index_netload_7d_ago = feature_index_netload_7d_ago
         self.feature_index_radiation = feature_index_radiation
         self.feature_index_ambient_temperature = feature_index_ambient_temperature
@@ -250,20 +251,13 @@ class PhysicsPvForecast:
         Returns:
             Predicted y tensor of shape ``(batch_len, sequence_len, 1)``.
         """
+
         input_was_tensor = isinstance(x, torch.Tensor)
 
-        # De-normalize x to obtain physical (un-scaled) values
-        if self.normalizer is not None:
-            x_denorm = self.normalizer.de_normalize_x(x)
-            if isinstance(x_denorm, torch.Tensor):
-                x_np = x_denorm.detach().cpu().numpy()
-            else:
-                x_np = np.asarray(x_denorm, dtype=np.float64)
+        if input_was_tensor:
+            x_np = x.detach().cpu().numpy()
         else:
-            if isinstance(x, torch.Tensor):
-                x_np = x.detach().cpu().numpy()
-            else:
-                x_np = np.asarray(x, dtype=np.float64)
+            x_np = np.asarray(x, dtype=np.float64)
 
         # --- Extract 7-day-ago net load ---
         netload_7d = x_np[:, :, self.feature_index_netload_7d_ago]
