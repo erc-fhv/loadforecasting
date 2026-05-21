@@ -14,6 +14,7 @@ class Persistence:
     def __init__(self,
             lagged_load_feature: int,
             normalizer: Normalizer,
+            de_normalize_x: bool = True,
             ) -> None:
         """
         Args:
@@ -23,6 +24,7 @@ class Persistence:
         """
         self.normalizer = normalizer
         self.lagged_load_feature = lagged_load_feature
+        self.de_normalize_x = de_normalize_x
 
     def predict(self,
             x: ArrayLike,
@@ -31,7 +33,7 @@ class Persistence:
         Upcoming load profile = load profile 7 days ago.
 
         Args:
-            x (ArrayLike): Normalised model input tensor of shape (batch_len, 
+            x (ArrayLike): Normalised model input tensor of shape (batch_len,
                 sequence_len, features), where the feature at index `lagged_load_feature`
                 contains the lagged load values.
 
@@ -40,7 +42,8 @@ class Persistence:
         """
 
         # De-normalize all inputs
-        x = self.normalizer.de_normalize_x(x)
+        if self.de_normalize_x:
+            x = self.normalizer.de_normalize_x(x)
 
         # Take the chosen lagged loads as predictions
         y_pred = x[:,:, self.lagged_load_feature]
@@ -109,7 +112,7 @@ class Persistence:
             raise ValueError(f"Unexpected parameter: loss_relative_to = {loss_relative_to}")
         loss = eval_fn(output, y_tensor)
         results['test_loss'] = [loss.item()]
-        results['test_loss_relative'] = [100.0*loss.item()/reference]            
+        results['test_loss_relative'] = [100.0*loss.item()/reference]
         results['predicted_profile'] = output
 
         return results
