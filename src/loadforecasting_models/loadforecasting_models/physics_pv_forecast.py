@@ -29,19 +29,18 @@ class PhysicsPvForecast:
     one for the current prediction day and one for the same day 7 days ago (lagged
     weather).  The calling application is responsible for providing these features.
 
-    Units: PV system parameters must be in the same power unit as the net load
-    (e.g. all in W, or all in kW).
+    Units: PV system parameters are in kW; net load must also be in kW.
     """
 
     def __init__(
         self,
-        total_pv_peak_power_wp: float,
+        total_pv_peak_power_kw: float,
         feature_index_radiation: int,
         feature_index_ambient_temperature: int,
         feature_index_radiation_7d_ago: int,
         feature_index_ambient_temperature_7d_ago: int,
         feature_index_netload_7d_ago: int = 0,
-        inverter_max_power_w: Optional[float] = None,
+        inverter_max_power_kw: Optional[float] = None,
         normalizer: Optional[Normalizer] = None,
         temp_coefficient_pct_per_degc: float = -0.35,
         inverter_efficiency: float = 0.95,
@@ -51,12 +50,12 @@ class PhysicsPvForecast:
     ) -> None:
         """
         Args:
-            total_pv_peak_power_wp:
-                Total PV system peak power at Standard Test Conditions (STC)
-                in Wp (1000 W/m², 25 °C cell temperature).
-            inverter_max_power_w:
-                Maximum AC output power of the inverter in W (clips AC output).
-                If None, defaults to ``total_pv_peak_power_wp`` (no clipping beyond peak power).
+            total_pv_peak_power_kw:
+                Total PV system peak power at Standard Test Conditions (STC) in kWp
+                (1000 W/m², 25 °C cell temperature).
+            inverter_max_power_kw:
+                Maximum AC output power of the inverter in kW (clips AC output).
+                If None, defaults to ``total_pv_peak_power_kw`` (no clipping beyond peak power).
             feature_index_netload_7d_ago:
                 Feature index in ``x`` that contains the 7-days-ago net load.
             feature_index_radiation:
@@ -105,9 +104,12 @@ class PhysicsPvForecast:
                 "Provide 'feature_index_wind_speed' and 'feature_index_wind_speed_7d_ago'."
             )
 
+        if inverter_max_power_kw is None:
+            inverter_max_power_kw = total_pv_peak_power_kw
+
         self.normalizer = normalizer
-        self.total_pv_peak_power_wp = total_pv_peak_power_wp
-        self.inverter_max_power_w = inverter_max_power_w if inverter_max_power_w is not None else total_pv_peak_power_wp
+        self.total_pv_peak_power_kw = total_pv_peak_power_kw
+        self.inverter_max_power_kw = inverter_max_power_kw
         self.feature_index_netload_7d_ago = feature_index_netload_7d_ago
         self.feature_index_radiation = feature_index_radiation
         self.feature_index_ambient_temperature = feature_index_ambient_temperature
@@ -206,7 +208,7 @@ class PhysicsPvForecast:
         """
         Compute AC PV output power via linear STC extrapolation.
 
-        Returns non-negative power clipped at ``inverter_max_power_w``.
+        Returns non-negative power clipped at ``inverter_max_power_kw``.
 
         Args:
             radiation: Global radiation on tilted module surface (W/m²).
@@ -214,17 +216,17 @@ class PhysicsPvForecast:
             wind_speed: Wind speed (m/s). Required for King / Kurtz / Skoplaki.
 
         Returns:
-            AC PV output power (same unit as ``total_pv_peak_power_wp``).
+            AC PV output power (same unit as ``total_pv_peak_power_kw``).
         """
         t_cell = self._cell_temperature(t_ambient, radiation, wind_speed)
 
         dc_power = (
-            self.total_pv_peak_power_wp
+            self.total_pv_peak_power_kw
             * (radiation / 1000.0)
             * ((t_cell - 25.0) * self.temp_coefficient_pct_per_degc / 100.0 + 1.0)
         )
 
-        ac_power = np.minimum(dc_power * self.inverter_efficiency, self.inverter_max_power_w)
+        ac_power = np.minimum(dc_power * self.inverter_efficiency, self.inverter_max_power_kw)
 
         # Clamp to zero: no reverse power flow through the model
         return np.maximum(ac_power, 0.0)
