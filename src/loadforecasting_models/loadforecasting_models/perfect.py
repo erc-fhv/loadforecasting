@@ -49,6 +49,12 @@ class Perfect():
         Evaluate the model on the given x_test and y_test.
         """
 
+        # Unnormalize the target variable, if wished.
+        if de_normalize:
+            assert self.normalizer is not None, "No normalizer given."
+            y_test = self.normalizer.de_normalize_y(y_test)
+            assert isinstance(y_test, torch.Tensor), "Denormalized output is not a torch.Tensor"
+
         if results is None:
             results = {}
 
