@@ -196,7 +196,7 @@ class PytorchHelper():
         y_test: ArrayLike,
         results: dict,
         de_normalize: bool = False,
-        loss_relative_to: str = "mean",
+        loss_relative_to: str = "",
         ) -> dict:
         """
         Evaluate the model on the given x_test and y_test.
@@ -245,6 +245,13 @@ class PytorchHelper():
 
         # Calculate average test loss
         if total_samples > 0:
+
+            # Set default reference for relative loss if not given as argument and as attribute.
+            if loss_relative_to == "" and self.my_model.loss_relative_to != "":
+                loss_relative_to = self.my_model.loss_relative_to
+            else:
+                loss_relative_to = "mean"
+
             if loss_relative_to == "mean":
                 reference = float(torch.abs(torch.mean(y_test)))
             elif loss_relative_to == "max":

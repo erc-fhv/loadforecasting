@@ -12,19 +12,22 @@ class Persistence:
     """
 
     def __init__(self,
-            lagged_load_feature: int,
-            normalizer: Normalizer,
-            de_normalize_x: bool = True,
-            ) -> None:
+        lagged_load_feature: int,
+        normalizer: Normalizer,
+        de_normalize_x: bool = True,
+        loss_relative_to: str = "",
+        ) -> None:
         """
         Args:
             lagged_load_feature (int): The feature index in the input tensor that
                 contains the lagged load to be used for prediction.
             normalizer (Normalizer): Used for X and Y normalization and denormalization.
+            loss_relative_to (str): Reference for relative loss calculation. Default: "".
         """
         self.normalizer = normalizer
         self.lagged_load_feature = lagged_load_feature
         self.de_normalize_x = de_normalize_x
+        self.loss_relative_to = loss_relative_to
 
     def predict(self,
             x: ArrayLike,
@@ -69,7 +72,7 @@ class Persistence:
         results: Optional[dict] = None,
         de_normalize: bool = False,
         eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
-        loss_relative_to: str = "mean",
+        loss_relative_to: str = "",
         ) -> dict:
         """
         Evaluate the model on the given x_test and y_test.
@@ -100,6 +103,12 @@ class Persistence:
             assert isinstance(y_tensor, torch.Tensor), "Denormalized y_tensor is not a torch.Tensor"
             output = self.normalizer.de_normalize_y(output)
             assert isinstance(output, torch.Tensor), "Denormalized output is not a torch.Tensor"
+
+        # Set default reference for relative loss if not given as argument and not set as attribute.
+        if loss_relative_to == "" and self.loss_relative_to != "":
+            loss_relative_to = self.loss_relative_to
+        else:
+            loss_relative_to = "mean"
 
         # Compute Loss
         if loss_relative_to == "mean":

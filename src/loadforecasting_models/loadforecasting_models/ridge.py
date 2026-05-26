@@ -18,6 +18,7 @@ class Ridge:
         self,
         alpha: float = 1.0,
         normalizer: Optional[Normalizer] = None,
+        loss_relative_to: str = "",
     ) -> None:
         """
         Args:
@@ -26,9 +27,12 @@ class Ridge:
                 Default: 1.0.
             normalizer:
                 Used for X and Y normalization / denormalization.
+            loss_relative_to:
+                String indicating the reference value for relative loss calculation.
         """
         self.normalizer = normalizer
         self.model = SklearnRidge(alpha=alpha)
+        self.loss_relative_to = loss_relative_to
         self.x_train: torch.Tensor = torch.Tensor([])
         self.y_train: torch.Tensor = torch.Tensor([])
 
@@ -101,7 +105,7 @@ class Ridge:
         results: Optional[dict] = None,
         de_normalize: bool = False,
         eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
-        loss_relative_to: str = "range",
+        loss_relative_to: str = "",
     ) -> dict:
         """
         Evaluate the model on the given test data.
@@ -129,6 +133,12 @@ class Ridge:
             y_tensor = self.normalizer.de_normalize_y(y_tensor)
             output = self.normalizer.de_normalize_y(output)
             assert isinstance(y_tensor, torch.Tensor), "Denormalized y_tensor is not a torch.Tensor"
+
+        # Set default reference for relative loss if not given as argument and not set as attribute.
+        if loss_relative_to == "" and self.loss_relative_to != "":
+            loss_relative_to = self.loss_relative_to
+        else:
+            loss_relative_to = "mean"
 
         if loss_relative_to == "mean":
             reference = float(torch.abs(torch.mean(y_tensor)))

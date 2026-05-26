@@ -18,6 +18,7 @@ class Transformer(torch.nn.Module):
         model_size: str = '5k',
         loss_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
         normalizer: Optional[Normalizer] = None,
+        loss_relative_to: str = "",
         ) -> None:
         """
         Args:
@@ -31,11 +32,13 @@ class Transformer(torch.nn.Module):
                 torch.nn.MSELoss(), pytorch_helpers.smape, ...
             normalizer (Normalizer): Used for X and Y normalization and
                 denormalization.
+            loss_relative_to (str): Reference for relative loss calculation. Default: "".
         """
 
         super().__init__()
         self.loss_fn = loss_fn
         self.normalizer = normalizer
+        self.loss_relative_to = loss_relative_to
         self.create_model(model_size)
 
     def create_model(self, model_size) -> None:
@@ -146,13 +149,13 @@ class Transformer(torch.nn.Module):
         """
         Train this model.
         Args:
-            X_train (ArrayLike): Training input features of 
+            X_train (ArrayLike): Training input features of
                 shape (batch_len, sequence_len, features).
-            Y_train (ArrayLike): Training labels of 
+            Y_train (ArrayLike): Training labels of
                 shape (batch_len, sequence_len, 1).
-            X_dev (ArrayLike, optional): Validation input features of 
+            X_dev (ArrayLike, optional): Validation input features of
                 shape (batch_len, sequence_len, features).
-            Y_dev (ArrayLike, optional): Validation labels of 
+            Y_dev (ArrayLike, optional): Validation labels of
                 shape (batch_len, sequence_len, 1).
             pretrain_now (bool): Whether to run a pretraining phase.
             finetune_now (bool): Whether to run fine-tuning.
@@ -256,7 +259,7 @@ class Transformer(torch.nn.Module):
         y_test: ArrayLike,
         results: Optional[dict] = None,
         de_normalize: bool = False,
-        loss_relative_to: str = "mean",
+        loss_relative_to: str = "",
         ) -> dict:
         """
         Evaluate the model on the given x_test and y_test.

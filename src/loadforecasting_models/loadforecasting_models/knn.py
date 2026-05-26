@@ -17,6 +17,7 @@ class Knn():
         k: int,
         weights: Union[Literal['uniform', 'distance'], Callable] = 'distance',
         normalizer: Union[Normalizer, None] = None,
+        loss_relative_to: str = "",
         ) -> None:
         """
         Args:
@@ -24,12 +25,14 @@ class Knn():
             weights: Weight function used in prediction. Possible values: 'uniform',
                 'distance' or a callable distance function.
             normalizer (Normalizer): Used for X and Y normalization and denormalization.
+            loss_relative_to (str): String indicating the reference value for relative loss calculation.
         """
 
         self.knn = KNeighborsRegressor(n_neighbors = k, weights=weights)
         self.x_train = torch.Tensor([])
         self.y_train = torch.Tensor([])
         self.normalizer = normalizer
+        self.loss_relative_to = loss_relative_to
 
     def predict(
         self, x: ArrayLike,
@@ -70,7 +73,7 @@ class Knn():
         """
         Train this model.
         Args:
-            X_train (torch.Tensor): Training input features of shape (batch_len, sequence_len, 
+            X_train (torch.Tensor): Training input features of shape (batch_len, sequence_len,
                 features).
             Y_train (torch.Tensor): Training labels of shape (batch_len, sequence_len, 1).
         Returns:
@@ -107,7 +110,7 @@ class Knn():
         results: Union[dict, None] = None,
         de_normalize: bool = False,
         eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
-        loss_relative_to: str = "mean",
+        loss_relative_to: str = "",
         ) -> dict:
         """
         Evaluate the model on the given x_test and y_test.
@@ -139,6 +142,12 @@ class Knn():
             output = self.normalizer.de_normalize_y(output)
             assert isinstance(y_tensor, torch.Tensor), "Denormalized y_tensor is not a torch.Tensor"
 
+        # Set default reference for relative loss if not given as argument and not set as attribute.
+        if loss_relative_to == "" and self.loss_relative_to != "":
+            loss_relative_to = self.loss_relative_to
+        else:
+            loss_relative_to = "mean"
+
         # Compute Loss
         if loss_relative_to == "mean":
             reference = float(torch.abs(torch.mean(y_tensor)))
@@ -150,7 +159,7 @@ class Knn():
             raise ValueError(f"Unexpected parameter: loss_relative_to = {loss_relative_to}")
         loss = eval_fn(output, y_tensor)
         results['test_loss'] = [loss.item()]
-        results['test_loss_relative'] = [100.0 * loss.item() / reference]            
+        results['test_loss_relative'] = [100.0 * loss.item() / reference]
         results['predicted_profile'] = output
 
         return results

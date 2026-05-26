@@ -25,6 +25,7 @@ class XGBoost:
         n_jobs: int = -1,
         random_state: Optional[int] = None,
         normalizer: Optional[Normalizer] = None,
+        loss_relative_to: str = "",
     ) -> None:
         """
         Args:
@@ -43,8 +44,11 @@ class XGBoost:
                 Seed for reproducibility. Default: None.
             normalizer:
                 Used for X and Y normalization / denormalization.
+            loss_relative_to:
+                Reference for relative loss calculation. Default: "".
         """
         self.normalizer = normalizer
+        self.loss_relative_to = loss_relative_to
         self.model = XGBRegressor(
             n_estimators=n_estimators,
             max_depth=max_depth,
@@ -126,7 +130,7 @@ class XGBoost:
         results: Optional[dict] = None,
         de_normalize: bool = False,
         eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
-        loss_relative_to: str = "range",
+        loss_relative_to: str = "",
     ) -> dict:
         """
         Evaluate the model on the given test data.
@@ -154,6 +158,12 @@ class XGBoost:
             y_tensor = self.normalizer.de_normalize_y(y_tensor)
             output = self.normalizer.de_normalize_y(output)
             assert isinstance(y_tensor, torch.Tensor), "Denormalized y_tensor is not a torch.Tensor"
+
+        # Set default reference for relative loss if not given as argument and not set as attribute.
+        if loss_relative_to == "" and self.loss_relative_to != "":
+            loss_relative_to = self.loss_relative_to
+        else:
+            loss_relative_to = "mean"
 
         if loss_relative_to == "mean":
             reference = float(torch.abs(torch.mean(y_tensor)))

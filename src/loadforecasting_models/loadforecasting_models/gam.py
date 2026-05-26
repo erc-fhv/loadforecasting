@@ -19,6 +19,7 @@ class Gam():
         normalizer: Union[Normalizer, None] = None,
         lam:float = 0.5,
         fit_intercept:bool = True,
+        loss_relative_to: str = "",
         ) -> None:
         """
         Args:
@@ -26,9 +27,11 @@ class Gam():
             normalizer (Normalizer): Used for X and Y normalization and denormalization.
             lam (float): Regularization parameter for the GAM model.
             fit_intercept (bool): Whether to fit an intercept term in the GAM model.
+            loss_relative_to (str): Reference for relative loss calculation. Default: "".
         """
 
         self.normalizer = normalizer
+        self.loss_relative_to = loss_relative_to
         self.x_train = torch.Tensor([])
         self.y_train = torch.Tensor([])
 
@@ -133,7 +136,7 @@ class Gam():
         results: Union[dict, None] = None,
         de_normalize: bool = False,
         eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
-        loss_relative_to: str = "range",
+        loss_relative_to: str = "",
         ) -> dict:
         """
         Evaluate the model on the given x_test and y_test.
@@ -164,6 +167,12 @@ class Gam():
             y_tensor = self.normalizer.de_normalize_y(y_tensor)
             output = self.normalizer.de_normalize_y(output)
             assert isinstance(y_tensor, torch.Tensor), "Denormalized y_tensor is not a torch.Tensor"
+
+        # Set default reference for relative loss if not given as argument and not set as attribute.
+        if loss_relative_to == "" and self.loss_relative_to != "":
+            loss_relative_to = self.loss_relative_to
+        else:
+            loss_relative_to = "mean"
 
         # Compute Loss
         if loss_relative_to == "mean":

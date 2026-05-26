@@ -47,6 +47,7 @@ class PhysicsPvForecast:
         cell_temp_model: str = "King",
         feature_index_wind_speed: Optional[int] = None,
         feature_index_wind_speed_7d_ago: Optional[int] = None,
+        loss_relative_to: str = "",
     ) -> None:
         """
         Args:
@@ -90,6 +91,7 @@ class PhysicsPvForecast:
             feature_index_wind_speed_7d_ago:
                 Feature index for wind speed (m/s) 7 days ago.
                 Required for ``'King'``, ``'Kurtz'``, and ``'Skoplaki'`` models.
+            loss_relative_to (str): Reference for relative loss calculation. Default: "".
         """
         if cell_temp_model not in ("King", "Kurtz", "Ross", "Skoplaki"):
             raise ValueError(
@@ -120,6 +122,7 @@ class PhysicsPvForecast:
         self.cell_temp_model = cell_temp_model
         self.feature_index_wind_speed = feature_index_wind_speed
         self.feature_index_wind_speed_7d_ago = feature_index_wind_speed_7d_ago
+        self.loss_relative_to = loss_relative_to
 
     # ------------------------------------------------------------------
     # Cell temperature correlations
@@ -319,7 +322,7 @@ class PhysicsPvForecast:
         results: Optional[dict] = None,
         de_normalize: bool = False,
         eval_fn: Callable[..., torch.Tensor] = torch.nn.L1Loss(),
-        loss_relative_to: str = "mean",
+        loss_relative_to: str = "",
     ) -> dict:
         """
         Evaluate the model on the given test data.
@@ -368,6 +371,12 @@ class PhysicsPvForecast:
             assert isinstance(output, torch.Tensor), (
                 "Denormalized output is not a torch.Tensor"
             )
+
+        # Set default reference for relative loss if not given as argument and not set as attribute.
+        if loss_relative_to == "" and self.loss_relative_to != "":
+            loss_relative_to = self.loss_relative_to
+        else:
+            loss_relative_to = "mean"
 
         if loss_relative_to == "mean":
             reference = float(torch.abs(torch.mean(y_tensor)))
