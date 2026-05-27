@@ -372,11 +372,12 @@ class PhysicsPvForecast:
                 "Denormalized output is not a torch.Tensor"
             )
 
-        # Set default reference for relative loss if not given as argument and not set as attribute.
-        if loss_relative_to == "" and self.loss_relative_to != "":
-            loss_relative_to = self.loss_relative_to
-        else:
-            loss_relative_to = "mean"
+        # Set reference for relative loss if 'loss_relative_to' is an empty string.
+        if loss_relative_to == "":
+            if self.loss_relative_to != "":
+                loss_relative_to = self.loss_relative_to
+            else:
+                loss_relative_to = "mean"
 
         if loss_relative_to == "mean":
             reference = float(torch.abs(torch.mean(y_tensor)))
