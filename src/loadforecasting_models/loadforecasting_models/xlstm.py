@@ -250,7 +250,6 @@ class xLstm(torch.nn.Module):
             val_ratio (float, optional): Proportion of data for validation
                 compared to the total training data.
             verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
-                optuna_study_name (str, optional): Name for the Optuna study.
 
         Returns:
             dict: Training history and best hyperparameters.
