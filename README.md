@@ -2,7 +2,7 @@
 
 ## Summary
 
-This repository provides a flexible and modular framework for short-term load forecasting (STLF), 
+This repository provides a flexible and modular framework for short-term load forecasting (STLF),
 suitable for both research and real-world applications. It supports:
 
 - Deep learning models: Transformer, Lstm, xLstm
@@ -12,9 +12,9 @@ suitable for both research and real-world applications. It supports:
 
 ## Related Paper
 
-More information about the models and the framework can be found in the following paper:  
+More information about the models and the framework can be found in the following paper:
 
-> Moosbrugger et al. (2025), *Load Forecasting for Households and Energy Communities: Are Deep 
+> Moosbrugger et al. (2025), *Load Forecasting for Households and Energy Communities: Are Deep
 Learning Models Worth the Effort?*, [arXiv:2501.05000](https://arxiv.org/abs/2501.05000)
 
 
@@ -39,8 +39,8 @@ The repository is organized as follows:
 ├── envs/                             # Conda environments
 │   ├── env_linux.yml                 # Reproducible environment for the paper
 │   └── env_from_nxai.yml             # Environment from xLstm authors
-│   
-├── src/      
+│
+├── src/
 │   ├── loadforecasting_models/       # All forecasting models
 |   │   ├── pyproject.toml            # Description of the 'loadforecasting_models' package
 │   │   └── **.py                     # Implementations of deep learning & baseline models
@@ -172,7 +172,7 @@ Our forecasting models can be easily reused in other applications as shown below
     ```python
     from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
     import torch
-    
+
     # Same setup as above
     # ...
     myModel = Knn(k=40, weights='distance', normalizer=normalizer)
@@ -180,13 +180,13 @@ Our forecasting models can be easily reused in other applications as shown below
     # ...
     ```
 
-4. Using automatic machine-learning hyperparameter tuning. This automatically optimizes 
+4. Using automatic machine-learning hyperparameter tuning. This automatically optimizes
 hyperparameters like nr-of-epochs, batch-sizes, model-size, and learning-rate:
 
     ```python
     from loadforecasting_models import Knn, Lstm, Transformer, xLstm, Persistence, Normalizer
     import torch
-    
+
     # Same setup as above
     # ...
     myModel = Transformer()
@@ -216,6 +216,7 @@ hyperparameters like nr-of-epochs, batch-sizes, model-size, and learning-rate:
     start_date = pd.Timestamp('2023-01-01')
     end_date = pd.Timestamp('2024-01-01')
     timestamps = pd.date_range(start=start_date, end=end_date, freq='15min')
+    n_days = timestamps.floor('D').nunique()
 
     df_load = pd.DataFrame({
         'timestamp': timestamps,
@@ -238,8 +239,8 @@ hyperparameters like nr-of-epochs, batch-sizes, model-size, and learning-rate:
         normalizer=normalizer,
         add_lagged_profiles=(7, 14, 21),
         data_split = DataSplitType(
-            train_set_1 = int(len(timestamps)*0.8), # 80% historic training data
-            test_set=int(len(timestamps)*0.2),  # 20% future test data
+            train_set_1 = -1,
+            test_set=int(n_days*0.2),  # 20% test data
             dev_set=0, train_set_2=0, pad=0),
     )
 
@@ -298,15 +299,15 @@ The entire paper can be reproduced by following these steps.
 
 1. Generate figures and tables or run the case study:
 
-    Open and run either 
+    Open and run either
     ```
     src/loadforecasting_framework/paper_illustration.ipynb
     ```
-    or    
+    or
     ```
     src/loadforecasting_framework/model_evaluation.ipynb
     ```
-    or    
+    or
     ```
     src/loadforecasting_framework/case_study/CaseStudy.ipynb
     ```
@@ -329,4 +330,3 @@ If you use this codebase, or find our work valuable, please cite the following p
   <img src="FFG_Logo.png" alt="FFG Logo" width="180" align="right" style="margin-right:16px; margin-bottom:8px;">
 </a>
 We gratefully acknowledge the financial support from the Austrian Research Promotion Agency FFG for the Hub4FlECs project (COIN FFG 898053), which provided funding for the development of the software provided. https://projekte.ffg.at/projekt/4597880
-
