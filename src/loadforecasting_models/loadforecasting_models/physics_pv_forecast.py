@@ -34,13 +34,11 @@ class PhysicsPvForecast:
 
     def __init__(
         self,
-        total_pv_peak_power_kw: float,
         feature_index_radiation: int,
         feature_index_ambient_temperature: int,
         feature_index_radiation_7d_ago: int,
         feature_index_ambient_temperature_7d_ago: int,
         feature_index_netload_7d_ago: int = 0,
-        inverter_max_power_kw: Optional[float] = None,
         normalizer: Optional[Normalizer] = None,
         temp_coefficient_pct_per_degc: float = -0.35,
         inverter_efficiency: float = 0.95,
@@ -51,12 +49,6 @@ class PhysicsPvForecast:
     ) -> None:
         """
         Args:
-            total_pv_peak_power_kw:
-                Total PV system peak power at Standard Test Conditions (STC) in kWp
-                (1000 W/m², 25 °C cell temperature).
-            inverter_max_power_kw:
-                Maximum AC output power of the inverter in kW (clips AC output).
-                If None, defaults to ``total_pv_peak_power_kw`` (no clipping beyond peak power).
             feature_index_netload_7d_ago:
                 Feature index in ``x`` that contains the 7-days-ago net load.
             feature_index_radiation:
@@ -106,12 +98,9 @@ class PhysicsPvForecast:
                 "Provide 'feature_index_wind_speed' and 'feature_index_wind_speed_7d_ago'."
             )
 
-        if inverter_max_power_kw is None:
-            inverter_max_power_kw = total_pv_peak_power_kw
-
         self.normalizer = normalizer
-        self.total_pv_peak_power_kw = total_pv_peak_power_kw
-        self.inverter_max_power_kw = inverter_max_power_kw
+        self.total_pv_peak_power_kw = None
+        self.inverter_max_power_kw = None
         self.feature_index_netload_7d_ago = feature_index_netload_7d_ago
         self.feature_index_radiation = feature_index_radiation
         self.feature_index_ambient_temperature = feature_index_ambient_temperature
@@ -311,8 +300,14 @@ class PhysicsPvForecast:
                 return y_out.numpy()
             return y_out
 
-    def train_model(self) -> dict:
-        """No training required for this physics-based model."""
+    def train_model(self, y_train: ArrayLike) -> dict:
+        """Learn total_pv_peak_power_kw from y_train as -min(y_train)."""
+        if isinstance(y_train, torch.Tensor):
+            y_np = y_train.detach().cpu().numpy()
+        else:
+            y_np = np.asarray(y_train, dtype=np.float64)
+        self.total_pv_peak_power_kw = -float(np.min(y_np))
+        self.inverter_max_power_kw = self.total_pv_peak_power_kw
         return {"loss": [0.0]}
 
     def evaluate(
