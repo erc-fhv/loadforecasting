@@ -14,7 +14,7 @@ suitable for both research and real-world applications. It supports:
 
 More information about the models and the framework can be found in the following paper:
 
-> Moosbrugger et al. (2025), *Load Forecasting for Households and Energy Communities: Are Deep
+> Moosbrugger et al. (2026), *Load Forecasting for Households and Energy Communities: Are Deep
 Learning Models Worth the Effort?*, [doi:10.1016/j.nxener.2026.100851](https://doi.org/10.1016/j.nxener.2026.100851)
 
 
