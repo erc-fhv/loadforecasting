@@ -209,8 +209,6 @@ class PytorchHelper():
             y_test  = torch.from_numpy(y_test)
 
         # Initialize metrics
-        loss_sum = 0
-        total_samples = 0
         prediction = torch.zeros(size=(0, y_test.size(1), y_test.size(2)))
 
         # Unnormalize the target variable, if wished.
@@ -225,26 +223,22 @@ class PytorchHelper():
 
         self.my_model.eval()       # Switch off the training flags
         with torch.no_grad():  # No gradient calculation
-            for batch_x, batch_y in val_loader:
+            for batch_x, _ in val_loader:
 
                 # Predict
                 output: torch.Tensor
                 output = self.my_model(batch_x.float())
 
-                # Unnormalize the target variable, if wished.
-                if de_normalize:
-                    assert self.my_model.normalizer is not None, "No normalizer given."
-                    output = self.my_model.normalizer.de_normalize_y(output)
-
-                # Compute Metrics
-                loss = self.my_model.loss_fn(output, batch_y.float())
-                loss_sum += loss.item() * batch_x.size(0)
-                total_samples += batch_x.size(0)
-
                 prediction = torch.cat([prediction, output], dim=0)
 
+        # Unnormalize the predictions, if wished.
+        if de_normalize:
+            assert self.my_model.normalizer is not None, "No normalizer given."
+            prediction = self.my_model.normalizer.de_normalize_y(prediction)
+
         # Calculate average test loss
-        if total_samples > 0:
+        if prediction.size(0) > 0:
+            test_loss = float(self.my_model.loss_fn(prediction, y_test.float()))
 
             # Set default reference for relative loss if not given as argument and as attribute.
             if loss_relative_to == "" and self.my_model.loss_relative_to != "":
@@ -260,7 +254,6 @@ class PytorchHelper():
                 reference = float(torch.max(y_test) - torch.min(y_test))
             else:
                 raise ValueError(f"Unexpected parameter: loss_relative_to = {loss_relative_to}")
-            test_loss = loss_sum / total_samples
             results['test_loss'] = [test_loss]
             results['test_loss_relative'] = [100.0 * test_loss / reference]
             results['predicted_profile'] = prediction
