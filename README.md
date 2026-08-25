@@ -15,7 +15,7 @@ suitable for both research and real-world applications. It supports:
 More information about the models and the framework can be found in the following paper:
 
 > Moosbrugger et al. (2025), *Load Forecasting for Households and Energy Communities: Are Deep
-Learning Models Worth the Effort?*, [arXiv:2501.05000](https://arxiv.org/abs/2501.05000)
+Learning Models Worth the Effort?*, [doi:10.1016/j.nxener.2026.100851](https://doi.org/10.1016/j.nxener.2026.100851)
 
 
 ## GitHub CI Status
@@ -316,12 +316,15 @@ The entire paper can be reproduced by following these steps.
 If you use this codebase, or find our work valuable, please cite the following paper:
 
 ```
-@article{moosbrugger2025load,
-  title={Load Forecasting for Households and Energy Communities: Are Deep Learning Models Worth the Effort?},
+@article{moosbrugger2026load,
+  title={Load forecasting for households and energy communities: Are deep learning models worth the effort?},
   author={Moosbrugger, Lukas and Seiler, Valentin and Wohlgenannt, Philipp and Hegenbart, Sebastian and Ristov, Sashko and Eder, Elias and Kepplinger, Peter},
-  journal={arXiv preprint},
-  year={2025},
-  doi={10.48550/arXiv.2501.05000}
+  journal={Next Energy},
+  volume={13},
+  pages={100851},
+  year={2026},
+  publisher={Elsevier},
+  doi={10.1016/j.nxener.2026.100851}
 }
 ```
 
