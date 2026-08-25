@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Any
+from typing import Union, Tuple, Any, Optional
 import numpy as np
 import torch
 
@@ -18,7 +18,7 @@ class Normalizer():
         self.std_y = 1.
         self.y_rescaling_factor = None
 
-    def set_y_rescaling_factor(self, factor: ArrayLike | None) -> None:
+    def set_y_rescaling_factor(self, factor: Optional[ArrayLike]) -> None:
         """
         Inject an optional per-element rescaling factor for de_normalize_y
         (e.g. the windowed community sizes, to scale per-household values back
