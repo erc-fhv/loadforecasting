@@ -16,6 +16,18 @@ class Normalizer():
         self.std_x = 1.
         self.mean_y = 0.
         self.std_y = 1.
+        self.y_rescaling_factor = None
+
+    def set_y_rescaling_factor(self, factor: ArrayLike | None) -> None:
+        """
+        Inject an optional per-element rescaling factor for de_normalize_y
+        (e.g. the windowed community sizes, to scale per-household values back
+        to the aggregate profile). The factor must have the same shape as the
+        tensors passed to de_normalize_y. Set to None to disable rescaling.
+        """
+        if factor is not None and not self.is_tensor(factor):
+            factor = self.convert_to_torch_tensor(np.asarray(factor, dtype=np.float32))
+        self.y_rescaling_factor = factor
 
     def normalize(
         self,
@@ -121,6 +133,14 @@ class Normalizer():
         # Optionally convert back to torch tensor
         if is_torch_tensor:
             y_denormalized = self.convert_to_torch_tensor(y_denormalized)
+
+        # Apply the optional per-element rescaling factor (if injected)
+        if self.y_rescaling_factor is not None:
+            if y_denormalized.shape != self.y_rescaling_factor.shape:
+                raise ValueError(
+                    f"Shape of y {tuple(y_denormalized.shape)} does not match the "
+                    f"injected y_rescaling_factor {tuple(self.y_rescaling_factor.shape)}.")
+            y_denormalized = y_denormalized * self.y_rescaling_factor
 
         return y_denormalized
 
