@@ -40,7 +40,7 @@ class Tirex2:
             batch_size (int): Batch size used for the TiRex-2 forecast calls.
             context_length (int | None): Optional cap on the number of historic
                 timesteps used as context. If None, all available history is used.
-            loss_relative_to (str): Reference for relative loss calculation. Default: "".
+            loss_relative_to (str): Reference for relative loss calculation. Default is "".
         """
         self.normalizer = normalizer
         self.future_covariate_indices = future_covariate_indices
