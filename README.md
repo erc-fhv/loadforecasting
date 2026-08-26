@@ -5,8 +5,9 @@
 This repository provides a flexible and modular framework for short-term load forecasting (STLF),
 suitable for both research and real-world applications. It supports:
 
-- Deep learning models: Transformer, Lstm, xLstm
-- Baseline model: Knn, Persistence, Perfect
+- Deep learning models: Transformer, Lstm, xLstm, Tirex2
+- Machine learning models: Knn, Random Forest, Linear Regression, XGBoost
+- Baseline models: Persistence, Physial PV Model
 - Full pipeline for training, evaluation, and visualization
 - Reproducibility of all experiments from the following paper
 

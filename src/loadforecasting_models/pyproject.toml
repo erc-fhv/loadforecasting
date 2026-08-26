@@ -15,7 +15,8 @@ dependencies = [
     "xlstm",
     "optuna",
     "pygam",
-    "xgboost"
+    "xgboost",
+    "tirex-2"
 ]
 license = "MIT"
 

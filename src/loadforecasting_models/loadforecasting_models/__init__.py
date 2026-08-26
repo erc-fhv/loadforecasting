@@ -11,3 +11,4 @@ from .physics_pv_forecast import PhysicsPvForecast
 from .ridge import Ridge
 from .random_forest import RandomForest
 from .xgb import XGBoost
+from .tirex2 import Tirex2
