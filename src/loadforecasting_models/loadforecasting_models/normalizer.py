@@ -173,4 +173,6 @@ class Normalizer():
 
     def convert_to_torch_tensor(self, x: Any) -> torch.Tensor:
         """Convert input to torch tensor."""
+        if torch.is_tensor(x):
+            return x.detach().clone()
         return torch.tensor(x)

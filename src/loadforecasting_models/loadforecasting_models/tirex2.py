@@ -65,6 +65,8 @@ class Tirex2:
     def _load_model(self):
         """Lazy-load the TiRex-2 checkpoint."""
         if self._model is None:
+            from huggingface_hub.utils import disable_progress_bars
+            disable_progress_bars()
             from tirex2 import load_model
             self._model = load_model(self.ckpt, device=self.device)
         return self._model
