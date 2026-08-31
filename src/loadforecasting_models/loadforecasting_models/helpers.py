@@ -20,6 +20,23 @@ if TYPE_CHECKING:
 # Define a type that can be either a torch Tensor or a numpy ndarray
 ArrayLike = Union[torch.Tensor, np.ndarray]
 
+
+def _time_series_splits(n_samples: int, k_folds: int):
+    """
+    Yield (train_idx, val_idx) index arrays for cross-validation. For k_folds <= 1,
+    yields a single static 80/20 train/validation split (matching the historical
+    meaning of k_folds=1: "the same as a static train-dev-split"). For k_folds >= 2,
+    uses sklearn's TimeSeriesSplit(n_splits=k_folds).
+    """
+
+    if k_folds <= 1:
+        split_point = min(max(1, round(n_samples * 0.8)), n_samples - 1)
+        yield np.arange(0, split_point), np.arange(split_point, n_samples)
+    else:
+        splitter = TimeSeriesSplit(n_splits=k_folds)
+        yield from splitter.split(np.arange(n_samples))
+
+
 class SequenceDataset(Dataset):
     """Custom Dataset for sequence data."""
 
@@ -370,6 +387,9 @@ class OptunaHelper:
         best_epochs = best_params['epochs']
         best_batch_size = best_params['batch_size']
         best_model_size = best_params['model_size']
+        # Resolve the schedule name to its actual learning rates, so callers that reuse
+        # best_params later (e.g. to reconstruct training) don't need self.lr_schedules.
+        best_params['learning_rates'] = best_learning_rates
 
         x_train_final = x_train
         if selected_feature_indices is not None:
@@ -437,9 +457,8 @@ class OptunaHelper:
         #
         cv_losses = []
         n_samples = self.x_train.shape[0]
-        splitter = TimeSeriesSplit(n_splits=self.k_folds)
 
-        for train_idx, val_idx in splitter.split(np.arange(n_samples)):
+        for train_idx, val_idx in _time_series_splits(n_samples, self.k_folds):
 
             # Split data
             x_fold_train = self.x_train[train_idx]
@@ -612,10 +631,9 @@ class SklearnOptunaHelper:
         selected_feature_indices = self._suggest_feature_indices(trial)
 
         n_samples = self.x_train.shape[0]
-        splitter = TimeSeriesSplit(n_splits=self.k_folds)
 
         cv_losses = []
-        for train_idx, val_idx in splitter.split(np.arange(n_samples)):
+        for train_idx, val_idx in _time_series_splits(n_samples, self.k_folds):
 
             x_fold_train = self.x_train[train_idx]
             y_fold_train = self.y_train[train_idx]
