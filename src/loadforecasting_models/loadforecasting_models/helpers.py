@@ -9,6 +9,7 @@ import math
 import numpy as np
 import torch
 import optuna
+from sklearn.model_selection import TimeSeriesSplit
 from torch import optim
 from torch.utils.data import DataLoader, Dataset
 
@@ -310,7 +311,7 @@ class OptunaHelper:
         self.x_train: ArrayLike
         self.y_train: ArrayLike
         self.k_folds: int
-        self.val_ratio: float
+        self.feature_index_groups: Union[Sequence[Sequence[int]], None]
         self.verbose_level: int
 
     def train_auto(
@@ -318,8 +319,8 @@ class OptunaHelper:
         x_train: ArrayLike,
         y_train: ArrayLike,
         n_trials: int = 50,
-        k_folds: int = 1,
-        val_ratio: float = 0.2,
+        k_folds: int = 3,
+        feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
         verbose: int = 1,
         ) -> dict:
         """
@@ -328,10 +329,11 @@ class OptunaHelper:
             x_train (ArrayLike): Training input features of the model.
             y_train (ArrayLike): Training target values of the model.
             n_trials (int, optional): Number of Optuna trials.
-            k_folds (int): Number of folds for the timeseries cross-validation. If set to 1,
-                this is the same as a static train-dev-split.
-            val_ratio (float, optional): Proportion of data for validation
-                compared to the total training data.
+            k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
+            feature_index_groups: Optional list of column-index groups (one group per
+                named feature, since one named feature can expand to several encoded
+                columns). If given, Optuna additionally chooses which groups to keep,
+                and the returned history contains the winning 'selected_feature_indices'.
             verbose (int, optional): Verbosity level. 0: silent, 1: dots, 2: full.
         Returns:
             dict: Training history containing loss values.
@@ -341,7 +343,7 @@ class OptunaHelper:
         self.x_train = x_train
         self.y_train = y_train
         self.k_folds = k_folds
-        self.val_ratio = val_ratio
+        self.feature_index_groups = feature_index_groups
         self.verbose_level = verbose
 
         # Create and run Optuna study
@@ -355,18 +357,23 @@ class OptunaHelper:
 
         if verbose > 0:
             print(f"Starting Optuna optimization with {n_trials} trials "
-                  f"and {k_folds} expanding window splits...")
+                  f"and {k_folds} TimeSeriesSplit folds...")
 
         study.optimize(
             self.objective, n_trials=n_trials, show_progress_bar=(verbose > 0)
         )
 
         # Get best hyperparameters
-        best_params = study.best_params
+        best_params = dict(study.best_params)
+        selected_feature_indices = self._extract_selected_indices(best_params)
         best_learning_rates = self.lr_schedules[best_params['lr_schedule_name']]
         best_epochs = best_params['epochs']
         best_batch_size = best_params['batch_size']
         best_model_size = best_params['model_size']
+
+        x_train_final = x_train
+        if selected_feature_indices is not None:
+            x_train_final = x_train[..., selected_feature_indices]
 
         if verbose > 0:
             print("\nBest hyperparameters found:")
@@ -374,6 +381,8 @@ class OptunaHelper:
             print(f"  learning_rate_schedule: {best_learning_rates}")
             print(f"  epochs: {best_epochs}")
             print(f"  batch_size: {best_batch_size}")
+            if selected_feature_indices is not None:
+                print(f"  selected_feature_indices: {selected_feature_indices}")
             print(f"  Best CV loss: {study.best_value:.6f}")
 
         # Reinitialize model with best model size if different
@@ -381,7 +390,7 @@ class OptunaHelper:
 
         # Train final model with best hyperparameters on full training data
         history = self.my_model.train_model(
-            x_train = x_train,
+            x_train = x_train_final,
             y_train = y_train,
             epochs = best_epochs,
             learning_rates = best_learning_rates,
@@ -393,6 +402,7 @@ class OptunaHelper:
         history['best_params'] = best_params
         history['best_cv_loss'] = study.best_value
         history['optuna_study'] = study
+        history['selected_feature_indices'] = selected_feature_indices
 
         return history
 
@@ -421,28 +431,25 @@ class OptunaHelper:
         trial_model_size = trial.suggest_categorical(
             'model_size', ['0.1k', '0.2k', '0.5k', '1k', '2k', '5k', '10k', '20k', '40k', '80k']
             )
+        selected_feature_indices = self._suggest_feature_indices(trial)
 
-        # Expanding window cross-validation
+        # Time series cross-validation
         #
         cv_losses = []
         n_samples = self.x_train.shape[0]
+        splitter = TimeSeriesSplit(n_splits=self.k_folds)
 
-        for split_idx in range(self.k_folds):
-
-            # Determine train and validation indices
-            val_size = int(self.val_ratio * n_samples)
-            step_size = (n_samples - val_size) // self.k_folds
-            train_end = (split_idx + 1) * step_size
-            val_end = train_end + val_size
-            assert val_end <= n_samples, f"Validation end index {val_end} exceeds data " + \
-                f"size {n_samples}."
+        for train_idx, val_idx in splitter.split(np.arange(n_samples)):
 
             # Split data
-            x_fold_train = self.x_train[0:train_end]
-            y_fold_train = self.y_train[0:train_end]
-            x_fold_val = self.x_train[train_end:val_end]
-            y_fold_val = self.y_train[train_end:val_end]
-            assert y_fold_val.shape[0] == val_size, "Validation size mismatch."
+            x_fold_train = self.x_train[train_idx]
+            y_fold_train = self.y_train[train_idx]
+            x_fold_val = self.x_train[val_idx]
+            y_fold_val = self.y_train[val_idx]
+
+            if selected_feature_indices is not None:
+                x_fold_train = x_fold_train[..., selected_feature_indices]
+                x_fold_val = x_fold_val[..., selected_feature_indices]
 
             # Create a fresh model copy for this fold
             self.my_model.create_model(trial_model_size)
@@ -465,3 +472,200 @@ class OptunaHelper:
 
         # Return mean validation loss across folds
         return float(np.mean(cv_losses))
+
+    def _suggest_feature_indices(self, trial: optuna.Trial) -> Union[list, None]:
+        """Ask the trial which feature groups to keep in, if feature search is enabled."""
+
+        if not self.feature_index_groups:
+            return None
+        selected = []
+        for group_id, indices in enumerate(self.feature_index_groups):
+            if trial.suggest_categorical(f"use_feature_group_{group_id}", [True, False]):
+                selected.extend(indices)
+        if not selected:
+            raise optuna.TrialPruned("No feature group selected.")
+        return sorted(selected)
+
+    def _extract_selected_indices(self, best_params: dict) -> Union[list, None]:
+        """Pop the feature-group flags out of best_params, returning the winning indices."""
+
+        if not self.feature_index_groups:
+            return None
+        selected = []
+        for group_id, indices in enumerate(self.feature_index_groups):
+            if best_params.pop(f"use_feature_group_{group_id}"):
+                selected.extend(indices)
+        return sorted(selected)
+
+
+class SklearnOptunaHelper:
+    """
+    Helper class for Optuna hyperparameter optimization of scikit-learn-style models
+    (Knn, Ridge, RandomForest, XGBoost, Gam), optionally including feature-group
+    selection. Mirrors the calling convention of OptunaHelper, but re-creates a fresh
+    model instance per trial/fold instead of relying on a create_model() method.
+    """
+
+    def __init__(self, my_model):
+        self.my_model = my_model
+        self.model_class = type(my_model)
+
+        # Initialize attributes for training
+        self.x_train: ArrayLike
+        self.y_train: ArrayLike
+        self.k_folds: int
+        self.feature_index_groups: Union[Sequence[Sequence[int]], None]
+        self.fixed_kwargs: dict
+        self.verbose_level: int
+
+    def train_auto(
+        self,
+        x_train: ArrayLike,
+        y_train: ArrayLike,
+        n_trials: int = 50,
+        k_folds: int = 3,
+        feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
+        fixed_kwargs: Union[dict, None] = None,
+        verbose: int = 1,
+        ) -> dict:
+        """
+        Tune this model's hyperparameters (and, if feature_index_groups is given, which
+        feature groups to use) with Optuna and time series cross-validation, then
+        reinitialize the given model instance in place with the best settings and fit
+        it on the full training data.
+
+        Args:
+            x_train (ArrayLike): Training input features of the model.
+            y_train (ArrayLike): Training target values of the model.
+            n_trials (int): Number of Optuna trials.
+            k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
+            feature_index_groups: Optional list of column-index groups (one group per
+                named feature, since one named feature can expand to several encoded
+                columns) to choose from.
+            fixed_kwargs: Extra constructor kwargs that must stay the same across all
+                trials (e.g. Gam's all_gam_terms).
+            verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
+
+        Returns:
+            dict: Training history of the final, refit model, including 'best_params'
+            and 'selected_feature_indices'.
+        """
+
+        self.x_train = x_train
+        self.y_train = y_train
+        self.k_folds = k_folds
+        self.feature_index_groups = feature_index_groups
+        self.fixed_kwargs = fixed_kwargs or {}
+        self.verbose_level = verbose
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        study = optuna.create_study(
+            direction='minimize',
+            study_name=f"loadforecasting_{self.model_class.__name__}_{timestamp}",
+            storage="sqlite:///optuna_study.db",
+            load_if_exists=False,
+        )
+
+        if verbose > 0:
+            print(f"Starting Optuna optimization with {n_trials} trials "
+                  f"and {k_folds} TimeSeriesSplit folds...")
+
+        study.optimize(self.objective, n_trials=n_trials, show_progress_bar=(verbose > 0))
+
+        best_params = dict(study.best_params)
+        selected_feature_indices = self._extract_selected_indices(best_params)
+        model_params = best_params
+
+        x_train_final = x_train
+        if selected_feature_indices is not None:
+            x_train_final = x_train[..., selected_feature_indices]
+
+        if verbose > 0:
+            print("\nBest hyperparameters found:")
+            for key, value in model_params.items():
+                print(f"  {key}: {value}")
+            if selected_feature_indices is not None:
+                print(f"  selected_feature_indices: {selected_feature_indices}")
+            print(f"  Best CV loss: {study.best_value:.6f}")
+
+        # Reinitialize the given model instance in place with the best settings, then
+        # fit it on the full training data.
+        self.my_model.__init__(
+            normalizer=self.my_model.normalizer,
+            loss_relative_to=self.my_model.loss_relative_to,
+            **self.fixed_kwargs,
+            **model_params,
+            )
+        history = self.my_model.train_model(x_train_final, y_train)
+
+        history['best_params'] = model_params
+        history['best_cv_loss'] = study.best_value
+        history['optuna_study'] = study
+        history['selected_feature_indices'] = selected_feature_indices
+
+        return history
+
+    def objective(self, trial: optuna.Trial) -> float:
+        """Objective function for Optuna optimization."""
+
+        model_params = self.model_class.suggest_params(trial)
+        selected_feature_indices = self._suggest_feature_indices(trial)
+
+        n_samples = self.x_train.shape[0]
+        splitter = TimeSeriesSplit(n_splits=self.k_folds)
+
+        cv_losses = []
+        for train_idx, val_idx in splitter.split(np.arange(n_samples)):
+
+            x_fold_train = self.x_train[train_idx]
+            y_fold_train = self.y_train[train_idx]
+            x_fold_val = self.x_train[val_idx]
+            y_fold_val = self.y_train[val_idx]
+
+            if selected_feature_indices is not None:
+                x_fold_train = x_fold_train[..., selected_feature_indices]
+                x_fold_val = x_fold_val[..., selected_feature_indices]
+
+            trial_model = self.model_class(
+                normalizer=self.my_model.normalizer,
+                loss_relative_to=self.my_model.loss_relative_to,
+                **self.fixed_kwargs,
+                **model_params,
+                )
+            try:
+                trial_model.train_model(x_fold_train, y_fold_train)
+                eval_result = trial_model.evaluate(x_fold_val, y_fold_val, results={},
+                    de_normalize=False)
+            except ValueError as error:
+                # E.g. a sampled hyperparameter (such as Knn's k) that is only valid for
+                # larger folds than the early, small TimeSeriesSplit folds provide.
+                raise optuna.TrialPruned(
+                    f"Fold training/evaluation failed for params {model_params}: {error}"
+                    ) from error
+            cv_losses.append(float(eval_result['test_loss'][-1]))
+
+        return float(np.mean(cv_losses))
+
+    def _suggest_feature_indices(self, trial: optuna.Trial) -> Union[list, None]:
+        """Ask the trial which feature groups to keep in, if feature search is enabled."""
+
+        if not self.feature_index_groups:
+            return None
+        selected = []
+        for group_id, indices in enumerate(self.feature_index_groups):
+            if trial.suggest_categorical(f"use_feature_group_{group_id}", [True, False]):
+                selected.extend(indices)
+        if not selected:
+            raise optuna.TrialPruned("No feature group selected.")
+        return sorted(selected)
+
+    def _extract_selected_indices(self, best_params: dict) -> Union[list, None]:
+        """Pop the feature-group flags out of best_params, returning the winning indices."""
+
+        if not self.feature_index_groups:
+            return None
+        selected = []
+        for group_id, indices in enumerate(self.feature_index_groups):
+            if best_params.pop(f"use_feature_group_{group_id}"):
+                selected.extend(indices)
+        return sorted(selected)

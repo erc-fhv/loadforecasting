@@ -230,13 +230,13 @@ class xLstm(torch.nn.Module):
         x_train: ArrayLike,
         y_train: ArrayLike,
         n_trials: int = 50,
-        k_folds: int = 1,
-        val_ratio: float = 0.2,
+        k_folds: int = 3,
+        feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
         verbose: int = 1,
         ) -> dict:
         """
         Train this model with automatic hyperparameter optimization using
-        Optuna and expanding window cross-validation.
+        Optuna and TimeSeriesSplit cross-validation.
 
         Args:
             x_train (ArrayLike): Training input features of
@@ -245,10 +245,9 @@ class xLstm(torch.nn.Module):
                 shape (batch_len, sequence_len, 1).
             n_trials (int): Number of Optuna trials for hyperparameter
                 search.
-            k_folds (int): Number of folds for the timeseries cross-validation. If set to 1,
-                this is the same as a static train-dev-split.
-            val_ratio (float, optional): Proportion of data for validation
-                compared to the total training data.
+            k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
+            feature_index_groups: Optional list of column-index groups (one group per
+                named feature) to choose from during tuning.
             verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
 
         Returns:
@@ -261,7 +260,7 @@ class xLstm(torch.nn.Module):
             y_train=y_train,
             n_trials=n_trials,
             k_folds=k_folds,
-            val_ratio=val_ratio,
+            feature_index_groups=feature_index_groups,
             verbose=verbose,
             )
 

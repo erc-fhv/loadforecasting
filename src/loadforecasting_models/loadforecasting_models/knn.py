@@ -1,7 +1,8 @@
-from typing import Callable, Literal, Union
+from typing import Callable, Literal, Sequence, Union
 from sklearn.neighbors import KNeighborsRegressor
 import numpy as np
 import torch
+from .helpers import SklearnOptunaHelper
 from .normalizer import Normalizer
 
 # Define a type that can be either a torch Tensor or a numpy ndarray
@@ -94,6 +95,53 @@ class Knn():
         history['loss'] = [0.0]
 
         return history
+
+    def train_model_auto(
+        self,
+        x_train: ArrayLike,
+        y_train: ArrayLike,
+        n_trials: int = 50,
+        k_folds: int = 3,
+        feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
+        verbose: int = 1,
+        ) -> dict:
+        """
+        Tune this model's hyperparameters (k, weights), optionally including which
+        feature groups to use, with Optuna and TimeSeriesSplit cross-validation, then
+        refit on the full training data with the best settings found.
+
+        Args:
+            x_train (ArrayLike): Training input features of
+                shape (batch_len, sequence_len, features).
+            y_train (ArrayLike): Training labels of
+                shape (batch_len, sequence_len, 1).
+            n_trials (int): Number of Optuna trials for hyperparameter search.
+            k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
+            feature_index_groups: Optional list of column-index groups (one group per
+                named feature) to choose from during tuning.
+            verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
+
+        Returns:
+            dict: Training history and best hyperparameters.
+        """
+
+        tuner = SklearnOptunaHelper(self)
+        return tuner.train_auto(
+            x_train=x_train,
+            y_train=y_train,
+            n_trials=n_trials,
+            k_folds=k_folds,
+            feature_index_groups=feature_index_groups,
+            verbose=verbose,
+            )
+
+    @staticmethod
+    def suggest_params(trial) -> dict:
+        """Optuna search space for this model's hyperparameters."""
+        return {
+            'k': trial.suggest_int('k', 3, 100, log=True),
+            'weights': trial.suggest_categorical('weights', ['uniform', 'distance']),
+        }
 
     def knn_fit(self) -> None:
         """Fit the model with hourly training data."""

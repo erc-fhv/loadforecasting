@@ -1,9 +1,10 @@
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Sequence, Union
 
 import numpy as np
 import torch
 from xgboost import XGBRegressor
 
+from .helpers import SklearnOptunaHelper
 from .normalizer import Normalizer
 
 ArrayLike = Union[torch.Tensor, np.ndarray]
@@ -122,6 +123,54 @@ class XGBoost:
         history = {}
         history['loss'] = self.evaluate(x_train, y_train)['test_loss']
         return history
+
+    def train_model_auto(
+        self,
+        x_train: ArrayLike,
+        y_train: ArrayLike,
+        n_trials: int = 50,
+        k_folds: int = 3,
+        feature_index_groups: Optional[Sequence[Sequence[int]]] = None,
+        verbose: int = 1,
+        ) -> dict:
+        """
+        Tune this model's hyperparameters (n_estimators, max_depth, learning_rate,
+        subsample), optionally including which feature groups to use, with Optuna and
+        TimeSeriesSplit cross-validation, then refit on the full training data with
+        the best settings found.
+
+        Args:
+            x_train: Input features of shape (batch_len, sequence_len, features).
+            y_train: Target values of shape (batch_len, sequence_len, 1).
+            n_trials (int): Number of Optuna trials for hyperparameter search.
+            k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
+            feature_index_groups: Optional list of column-index groups (one group per
+                named feature) to choose from during tuning.
+            verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
+
+        Returns:
+            dict: Training history and best hyperparameters.
+        """
+
+        tuner = SklearnOptunaHelper(self)
+        return tuner.train_auto(
+            x_train=x_train,
+            y_train=y_train,
+            n_trials=n_trials,
+            k_folds=k_folds,
+            feature_index_groups=feature_index_groups,
+            verbose=verbose,
+            )
+
+    @staticmethod
+    def suggest_params(trial) -> dict:
+        """Optuna search space for this model's hyperparameters."""
+        return {
+            'n_estimators': trial.suggest_int('n_estimators', 50, 500, log=True),
+            'max_depth': trial.suggest_int('max_depth', 2, 10),
+            'learning_rate': trial.suggest_float('learning_rate', 1e-3, 0.3, log=True),
+            'subsample': trial.suggest_float('subsample', 0.5, 1.0),
+        }
 
     def evaluate(
         self,

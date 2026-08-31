@@ -1,6 +1,7 @@
 from typing import Callable, Union
 import numpy as np
 import torch
+from .helpers import SklearnOptunaHelper
 from .normalizer import Normalizer
 from pygam.terms import TermList
 from pygam import LinearGAM
@@ -32,6 +33,7 @@ class Gam():
 
         self.normalizer = normalizer
         self.loss_relative_to = loss_relative_to
+        self.all_gam_terms = all_gam_terms
         self.x_train = torch.Tensor([])
         self.y_train = torch.Tensor([])
 
@@ -128,6 +130,52 @@ class Gam():
         history['loss'] = self.evaluate(x_train, y_train)['test_loss']
 
         return history
+
+    def train_model_auto(
+        self,
+        x_train: ArrayLike,
+        y_train: ArrayLike,
+        n_trials: int = 50,
+        k_folds: int = 3,
+        verbose: int = 1,
+        ) -> dict:
+        """
+        Tune this model's hyperparameters (lam, fit_intercept) with Optuna and
+        TimeSeriesSplit cross-validation, then refit on the full training data with
+        the best settings found.
+
+        Note: unlike the other scikit-learn-style models, Gam does not support
+        feature-group search, since each term in all_gam_terms is already bound to
+        specific feature indices when the model is constructed.
+
+        Args:
+            x_train: Input features of shape (batch_len, sequence_len, features).
+            y_train: Target values of shape (batch_len, sequence_len, 1).
+            n_trials (int): Number of Optuna trials for hyperparameter search.
+            k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
+            verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
+
+        Returns:
+            dict: Training history and best hyperparameters.
+        """
+
+        tuner = SklearnOptunaHelper(self)
+        return tuner.train_auto(
+            x_train=x_train,
+            y_train=y_train,
+            n_trials=n_trials,
+            k_folds=k_folds,
+            fixed_kwargs={'all_gam_terms': self.all_gam_terms},
+            verbose=verbose,
+            )
+
+    @staticmethod
+    def suggest_params(trial) -> dict:
+        """Optuna search space for this model's hyperparameters."""
+        return {
+            'lam': trial.suggest_float('lam', 1e-3, 1e3, log=True),
+            'fit_intercept': trial.suggest_categorical('fit_intercept', [True, False]),
+        }
 
     def evaluate(
         self,
