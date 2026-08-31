@@ -125,6 +125,8 @@ class RandomForest:
         n_trials: int = 50,
         k_folds: int = 3,
         feature_index_groups: Optional[Sequence[Sequence[int]]] = None,
+        storage_path: Optional[str] = None,
+        study_name: Union[str, None] = None,
         verbose: int = 1,
         ) -> dict:
         """
@@ -140,6 +142,7 @@ class RandomForest:
             k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
             feature_index_groups: Optional list of column-index groups (one group per
                 named feature) to choose from during tuning.
+            storage_path: Optional sqlite file path for the Optuna study storage.
             verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
 
         Returns:
@@ -153,6 +156,8 @@ class RandomForest:
             n_trials=n_trials,
             k_folds=k_folds,
             feature_index_groups=feature_index_groups,
+            storage_path=storage_path,
+            study_name=study_name,
             verbose=verbose,
             )
 
@@ -160,7 +165,7 @@ class RandomForest:
     def suggest_params(trial) -> dict:
         """Optuna search space for this model's hyperparameters."""
         return {
-            'n_estimators': trial.suggest_int('n_estimators', 50, 500, log=True),
+            'n_estimators': trial.suggest_int('n_estimators', 5, 500, log=True),
             'max_depth': trial.suggest_categorical(
                 'max_depth', [None, 3, 5, 8, 12, 16, 24, 32]),
             'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 20, log=True),

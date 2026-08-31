@@ -1,6 +1,7 @@
-from typing import Optional, Callable, Union
+from typing import Optional, Callable, Sequence, Union
 import numpy as np
 import torch
+from .helpers import SklearnOptunaHelper
 from .normalizer import Normalizer
 
 # Define a type that can be either a torch Tensor or a numpy ndarray
@@ -62,13 +63,21 @@ class Tirex2:
         state['_model'] = None
         return state
 
+    # Loaded checkpoints, shared across instances and keyed by (ckpt, device). Needed
+    # because context_length/future_covariate_indices only affect inference, not the
+    # loaded weights, so hyperparameter tuning (which constructs a fresh instance per
+    # trial/fold) would otherwise reload the checkpoint from scratch every time.
+    _MODEL_CACHE: dict = {}
+
     def _load_model(self):
-        """Lazy-load the TiRex-2 checkpoint."""
-        if self._model is None:
+        """Lazy-load the TiRex-2 checkpoint (cached per checkpoint+device)."""
+        cache_key = (self.ckpt, self.device)
+        if cache_key not in Tirex2._MODEL_CACHE:
             from huggingface_hub.utils import disable_progress_bars
             disable_progress_bars()
             from tirex2 import load_model
-            self._model = load_model(self.ckpt, device=self.device)
+            Tirex2._MODEL_CACHE[cache_key] = load_model(self.ckpt, device=self.device)
+        self._model = Tirex2._MODEL_CACHE[cache_key]
         return self._model
 
     def train_model(self,
@@ -99,6 +108,67 @@ class Tirex2:
         history['loss'] = [0.0]
 
         return history
+
+    def train_model_auto(
+        self,
+        x_train: ArrayLike,
+        y_train: ArrayLike,
+        n_trials: int = 20,
+        k_folds: int = 2,
+        feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
+        storage_path: Union[str, None] = None,
+        study_name: Union[str, None] = None,
+        verbose: int = 1,
+        ) -> dict:
+        """
+        Tune context_length and, if feature_index_groups is given, which feature
+        groups to use as future_covariate_indices, with Optuna and TimeSeriesSplit
+        cross-validation. No weights are fitted (this is a zero-shot model), so
+        tuning searches directly over evaluate() loss for each candidate setting.
+
+        Note: unlike the column-slicing models (Knn, Ridge, ...), this model only
+        ever consumes the specific columns named by future_covariate_indices, not
+        all of x's columns - so an empty selection (a univariate forecast) is a
+        valid choice here, and the full x is always passed through unsliced.
+
+        Defaults for n_trials/k_folds are lower than the other models': each trial
+        runs actual foundation-model inference (no cheap proxy loss available), and
+        model construction is comparatively expensive even with checkpoint caching.
+
+        Args:
+            x_train: Input features of shape (batch_len, sequence_len, features).
+            y_train: Target values of shape (batch_len, sequence_len, 1).
+            n_trials (int): Number of Optuna trials for hyperparameter search.
+            k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
+            feature_index_groups: Optional list of column-index groups (one group per
+                named feature) to choose future_covariate_indices from.
+            storage_path: Optional sqlite file path for the Optuna study storage.
+            verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
+
+        Returns:
+            dict: Training history and best hyperparameters.
+        """
+
+        tuner = SklearnOptunaHelper(self)
+        return tuner.train_auto(
+            x_train=x_train,
+            y_train=y_train,
+            n_trials=n_trials,
+            k_folds=k_folds,
+            feature_index_groups=feature_index_groups,
+            covariate_param_name='future_covariate_indices',
+            storage_path=storage_path,
+            study_name=study_name,
+            verbose=verbose,
+            )
+
+    @staticmethod
+    def suggest_params(trial) -> dict:
+        """Optuna search space for this model's hyperparameters."""
+        return {
+            # TiRex-2 uses only the last 2048 steps of context anyway.
+            'context_length': trial.suggest_int('context_length', 168, 2048, log=True),
+        }
 
     def _build_timeseries(self,
         x: torch.Tensor,

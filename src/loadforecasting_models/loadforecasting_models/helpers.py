@@ -37,6 +37,23 @@ def _time_series_splits(n_samples: int, k_folds: int):
         yield from splitter.split(np.arange(n_samples))
 
 
+def _require_completed_trial(study: optuna.Study, model_class_name: str) -> None:
+    """
+    Raise a clear error if every trial in the study was pruned or failed (e.g. every
+    fold of every trial hit an incompatible hyperparameter/data combination), rather
+    than letting study.best_params fail with an opaque backend "Record does not
+    exist" error.
+    """
+
+    if not any(trial.state == optuna.trial.TrialState.COMPLETE for trial in study.trials):
+        raise RuntimeError(
+            f"Optuna tuning for {model_class_name} produced no completed trial (all "
+            f"{len(study.trials)} were pruned or failed) - see the trial warnings "
+            "above for the underlying cause. Try more trials, fewer/looser search "
+            "bounds, or check that the training data is large/varied enough for the "
+            "chosen k_folds.")
+
+
 class SequenceDataset(Dataset):
     """Custom Dataset for sequence data."""
 
@@ -325,40 +342,54 @@ class OptunaHelper:
 
         # Initialize attributes for training
         self.lr_schedules: dict
-        self.x_train: ArrayLike
-        self.y_train: ArrayLike
+        self.datasets: Sequence[tuple]
         self.k_folds: int
         self.feature_index_groups: Union[Sequence[Sequence[int]], None]
         self.verbose_level: int
 
     def train_auto(
         self,
-        x_train: ArrayLike,
-        y_train: ArrayLike,
+        x_train: Union[ArrayLike, Sequence[ArrayLike]],
+        y_train: Union[ArrayLike, Sequence[ArrayLike]],
         n_trials: int = 50,
         k_folds: int = 3,
         feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
+        storage_path: Union[str, None] = None,
+        study_name: Union[str, None] = None,
         verbose: int = 1,
         ) -> dict:
         """
         Train the model with automatic hyperparameter optimization.
+
+        x_train/y_train can either be a single dataset, or a list of datasets (e.g.
+        one per community) - see SklearnOptunaHelper.train_auto for the exact
+        single-vs-pooled semantics (this class mirrors it). In pooled mode, no final
+        fit is performed; my_model is left with its best model_size, but unfitted.
+
         Args:
-            x_train (ArrayLike): Training input features of the model.
-            y_train (ArrayLike): Training target values of the model.
+            x_train: Training input features, or a list of them (one per dataset).
+            y_train: Training target values, or a list of them (one per dataset).
             n_trials (int, optional): Number of Optuna trials.
-            k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
+            k_folds (int): Number of TimeSeriesSplit folds used for cross-validation
+                (per dataset in single-dataset mode; across datasets in pooled mode).
             feature_index_groups: Optional list of column-index groups (one group per
                 named feature, since one named feature can expand to several encoded
                 columns). If given, Optuna additionally chooses which groups to keep,
                 and the returned history contains the winning 'selected_feature_indices'.
+            storage_path: Optional sqlite file path for the Optuna study storage (e.g.
+                '<outputs_dir>/optuna_study.db'). Defaults to 'optuna_study.db' in the
+                current working directory.
+            study_name: Optional stable study name. If given, the study is resumed
+                (load_if_exists=True) rather than created fresh - repeated calls with
+                the same study_name+storage_path chain onto the same study. If None
+                (default), a fresh, uniquely-timestamped study is created.
             verbose (int, optional): Verbosity level. 0: silent, 1: dots, 2: full.
         Returns:
             dict: Training history containing loss values.
         """
 
         # Store training parameters as instance attributes
-        self.x_train = x_train
-        self.y_train = y_train
+        self.datasets = SklearnOptunaHelper._as_dataset_list(x_train, y_train)
         self.k_folds = k_folds
         self.feature_index_groups = feature_index_groups
         self.verbose_level = verbose
@@ -367,18 +398,21 @@ class OptunaHelper:
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         study = optuna.create_study(
             direction='minimize',
-            study_name=f"loadforecasting_{self.my_model.__class__.__name__}_{timestamp}",
-            storage="sqlite:///optuna_study.db",
-            load_if_exists=False,
+            study_name=study_name or f"loadforecasting_{self.my_model.__class__.__name__}_{timestamp}",
+            storage=f"sqlite:///{storage_path or 'optuna_study.db'}",
+            load_if_exists=study_name is not None,
         )
 
         if verbose > 0:
+            pooling_note = f", pooled across {len(self.datasets)} datasets" \
+                if len(self.datasets) > 1 else ""
             print(f"Starting Optuna optimization with {n_trials} trials "
-                  f"and {k_folds} TimeSeriesSplit folds...")
+                  f"and {k_folds} TimeSeriesSplit folds{pooling_note}...")
 
         study.optimize(
             self.objective, n_trials=n_trials, show_progress_bar=(verbose > 0)
         )
+        _require_completed_trial(study, self.my_model.__class__.__name__)
 
         # Get best hyperparameters
         best_params = dict(study.best_params)
@@ -390,10 +424,6 @@ class OptunaHelper:
         # Resolve the schedule name to its actual learning rates, so callers that reuse
         # best_params later (e.g. to reconstruct training) don't need self.lr_schedules.
         best_params['learning_rates'] = best_learning_rates
-
-        x_train_final = x_train
-        if selected_feature_indices is not None:
-            x_train_final = x_train[..., selected_feature_indices]
 
         if verbose > 0:
             print("\nBest hyperparameters found:")
@@ -408,15 +438,24 @@ class OptunaHelper:
         # Reinitialize model with best model size if different
         self.my_model.create_model(model_size = best_model_size)
 
-        # Train final model with best hyperparameters on full training data
-        history = self.my_model.train_model(
-            x_train = x_train_final,
-            y_train = y_train,
-            epochs = best_epochs,
-            learning_rates = best_learning_rates,
-            batch_size = best_batch_size,
-            verbose = verbose,
-            )
+        history = {}
+        if len(self.datasets) == 1:
+            # Single dataset: also fit on the full (feature-sliced) training data,
+            # so the given model instance is immediately usable.
+            x_data, y_data = self.datasets[0]
+            x_train_final = x_data
+            if selected_feature_indices is not None:
+                x_train_final = x_data[..., selected_feature_indices]
+            history = self.my_model.train_model(
+                x_train = x_train_final,
+                y_train = y_data,
+                epochs = best_epochs,
+                learning_rates = best_learning_rates,
+                batch_size = best_batch_size,
+                verbose = verbose,
+                )
+        # else: pooled mode - no single "full training set" to fit on. The model is
+        # left with the best model_size (create_model above), but unfitted.
 
         # Add best params to history
         history['best_params'] = best_params
@@ -453,44 +492,58 @@ class OptunaHelper:
             )
         selected_feature_indices = self._suggest_feature_indices(trial)
 
-        # Time series cross-validation
-        #
         cv_losses = []
-        n_samples = self.x_train.shape[0]
+        if len(self.datasets) == 1:
+            # Single dataset: average over all k_folds within it.
+            x_data, y_data = self.datasets[0]
+            for train_idx, val_idx in _time_series_splits(x_data.shape[0], self.k_folds):
+                cv_losses.append(self._fit_and_eval(x_data, y_data, train_idx, val_idx,
+                    selected_feature_indices, trial_model_size, trial_epochs,
+                    learning_rates, trial_batch_size))
+        else:
+            # Multiple datasets (e.g. communities): each contributes exactly one
+            # fold, cycling through the k_folds fold positions across datasets - see
+            # SklearnOptunaHelper.objective for the rationale.
+            for dataset_index, (x_data, y_data) in enumerate(self.datasets):
+                splits = list(_time_series_splits(x_data.shape[0], self.k_folds))
+                train_idx, val_idx = splits[dataset_index % len(splits)]
+                cv_losses.append(self._fit_and_eval(x_data, y_data, train_idx, val_idx,
+                    selected_feature_indices, trial_model_size, trial_epochs,
+                    learning_rates, trial_batch_size))
 
-        for train_idx, val_idx in _time_series_splits(n_samples, self.k_folds):
-
-            # Split data
-            x_fold_train = self.x_train[train_idx]
-            y_fold_train = self.y_train[train_idx]
-            x_fold_val = self.x_train[val_idx]
-            y_fold_val = self.y_train[val_idx]
-
-            if selected_feature_indices is not None:
-                x_fold_train = x_fold_train[..., selected_feature_indices]
-                x_fold_val = x_fold_val[..., selected_feature_indices]
-
-            # Create a fresh model copy for this fold
-            self.my_model.create_model(trial_model_size)
-
-            # Train on this fold
-            _ = self.my_model.train_model(
-                x_train = x_fold_train,
-                y_train = y_fold_train,
-                epochs = trial_epochs,
-                learning_rates = learning_rates,
-                batch_size = trial_batch_size,
-                verbose = self.verbose_level,
-            )
-
-            # Evaluate on validation set
-            eval_value = self.my_model.evaluate(x_fold_val, y_fold_val, results={},
-                de_normalize=False)
-            test_loss = float(eval_value['test_loss'][-1])
-            cv_losses.append(test_loss)
-
-        # Return mean validation loss across folds
+        # Return mean validation loss across folds/datasets
         return float(np.mean(cv_losses))
+
+    def _fit_and_eval(self, x_data, y_data, train_idx, val_idx, selected_feature_indices,
+            trial_model_size, trial_epochs, learning_rates, trial_batch_size) -> float:
+        """Fit one trial's model on one fold and return its validation loss."""
+
+        x_fold_train = x_data[train_idx]
+        y_fold_train = y_data[train_idx]
+        x_fold_val = x_data[val_idx]
+        y_fold_val = y_data[val_idx]
+
+        if selected_feature_indices is not None:
+            x_fold_train = x_fold_train[..., selected_feature_indices]
+            x_fold_val = x_fold_val[..., selected_feature_indices]
+
+        # Create a fresh model copy for this fold
+        self.my_model.create_model(trial_model_size)
+
+        # Train on this fold
+        _ = self.my_model.train_model(
+            x_train = x_fold_train,
+            y_train = y_fold_train,
+            epochs = trial_epochs,
+            learning_rates = learning_rates,
+            batch_size = trial_batch_size,
+            verbose = self.verbose_level,
+        )
+
+        # Evaluate on validation set
+        eval_value = self.my_model.evaluate(x_fold_val, y_fold_val, results={},
+            de_normalize=False)
+        return float(eval_value['test_loss'][-1])
 
     def _suggest_feature_indices(self, trial: optuna.Trial) -> Union[list, None]:
         """Ask the trial which feature groups to keep in, if feature search is enabled."""
@@ -530,74 +583,132 @@ class SklearnOptunaHelper:
         self.model_class = type(my_model)
 
         # Initialize attributes for training
-        self.x_train: ArrayLike
-        self.y_train: ArrayLike
+        self.datasets: Sequence[tuple]
         self.k_folds: int
         self.feature_index_groups: Union[Sequence[Sequence[int]], None]
+        self.covariate_param_name: Union[str, None]
         self.fixed_kwargs: dict
+        self.suggest_params_kwargs: dict
+        self.param_resolver: Union[callable, None]
         self.verbose_level: int
 
     def train_auto(
         self,
-        x_train: ArrayLike,
-        y_train: ArrayLike,
+        x_train: Union[ArrayLike, Sequence[ArrayLike]],
+        y_train: Union[ArrayLike, Sequence[ArrayLike]],
         n_trials: int = 50,
         k_folds: int = 3,
         feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
+        covariate_param_name: Union[str, None] = None,
         fixed_kwargs: Union[dict, None] = None,
+        suggest_params_kwargs: Union[dict, None] = None,
+        param_resolver: Union[callable, None] = None,
+        storage_path: Union[str, None] = None,
+        study_name: Union[str, None] = None,
         verbose: int = 1,
         ) -> dict:
         """
         Tune this model's hyperparameters (and, if feature_index_groups is given, which
-        feature groups to use) with Optuna and time series cross-validation, then
-        reinitialize the given model instance in place with the best settings and fit
-        it on the full training data.
+        feature groups to use) with Optuna and time series cross-validation.
+
+        x_train/y_train can either be a single dataset, or a list of datasets (e.g.
+        one per community). With a single dataset, each trial is evaluated by
+        averaging over all k_folds TimeSeriesSplit folds of it (as usual), and the
+        model instance given at construction is reinitialized in place with the best
+        settings and fit on the full dataset before returning.
+
+        With multiple datasets, each trial is instead evaluated by giving each
+        dataset exactly one TimeSeriesSplit fold - cycling through the k_folds fold
+        positions across the datasets (dataset i gets fold i % k_folds) - and
+        averaging the resulting per-dataset losses. This way, every trial's loss
+        reflects generalization across all given datasets (e.g. communities) at
+        once, rather than just one, without paying k_folds evaluations per dataset;
+        and cycling through fold positions still gives every trial some data from
+        each part of the time range (e.g. season) covered by the folds, spread
+        across the pooled datasets instead of repeated within each one. In this
+        mode, no final fit is performed (there is no single "full training set" to
+        fit on) - the given model instance is left reinitialized with the best
+        settings, but unfitted. Call my_model.train_model(...) yourself afterwards
+        on whichever dataset you want an actual fitted model for.
 
         Args:
-            x_train (ArrayLike): Training input features of the model.
-            y_train (ArrayLike): Training target values of the model.
+            x_train: Training input features, or a list of them (one per dataset).
+            y_train: Training target values, or a list of them (one per dataset).
             n_trials (int): Number of Optuna trials.
-            k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
+            k_folds (int): Number of TimeSeriesSplit folds used for cross-validation
+                (per dataset in single-dataset mode; across datasets in pooled mode).
             feature_index_groups: Optional list of column-index groups (one group per
                 named feature, since one named feature can expand to several encoded
                 columns) to choose from.
+            covariate_param_name: If given, the selected feature indices are NOT used
+                to slice x (the default). Instead, they are passed as a constructor
+                kwarg of this name (e.g. Tirex2/Chronos2's future_covariate_indices),
+                for models that only consume a named subset of x's columns rather than
+                all of them. An empty selection is then a valid choice (univariate
+                forecast), unlike the default slicing mode where it would leave the
+                model with zero input features.
             fixed_kwargs: Extra constructor kwargs that must stay the same across all
-                trials (e.g. Gam's all_gam_terms).
+                trials (e.g. PhysicsPvForecast-style fixed feature indices).
+            suggest_params_kwargs: Extra keyword arguments forwarded to the model
+                class's suggest_params(trial, **suggest_params_kwargs), for models
+                whose search space depends on external context (e.g. Gam's list of
+                candidate all_gam_terms).
+            param_resolver: Optional callable(dict) -> dict, applied to the raw
+                (JSON-serializable) suggested/stored params right before constructing
+                a model, to turn e.g. an index into the actual object it refers to
+                (e.g. Gam's term_set_index -> all_gam_terms). The raw, unresolved
+                params are still what's returned in history['best_params'].
+            storage_path: Optional sqlite file path for the Optuna study storage
+                (e.g. '<outputs_dir>/optuna_study.db'). Defaults to 'optuna_study.db'
+                in the current working directory.
+            study_name: Optional stable study name. If given, the study is resumed
+                (load_if_exists=True) rather than created fresh - repeated calls with
+                the same study_name+storage_path chain onto the same study, so its
+                sampler keeps learning across calls. If None (default), a fresh,
+                uniquely-timestamped study is created.
             verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
 
         Returns:
-            dict: Training history of the final, refit model, including 'best_params'
-            and 'selected_feature_indices'.
+            dict: Training history (of the final, refit model in single-dataset mode;
+            otherwise just the tuning metadata), including 'best_params' and
+            'selected_feature_indices'.
         """
 
-        self.x_train = x_train
-        self.y_train = y_train
+        self.datasets = self._as_dataset_list(x_train, y_train)
         self.k_folds = k_folds
         self.feature_index_groups = feature_index_groups
+        self.covariate_param_name = covariate_param_name
         self.fixed_kwargs = fixed_kwargs or {}
+        self.suggest_params_kwargs = suggest_params_kwargs or {}
+        self.param_resolver = param_resolver
         self.verbose_level = verbose
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         study = optuna.create_study(
             direction='minimize',
-            study_name=f"loadforecasting_{self.model_class.__name__}_{timestamp}",
-            storage="sqlite:///optuna_study.db",
-            load_if_exists=False,
+            study_name=study_name or f"loadforecasting_{self.model_class.__name__}_{timestamp}",
+            storage=f"sqlite:///{storage_path or 'optuna_study.db'}",
+            load_if_exists=study_name is not None,
         )
 
         if verbose > 0:
+            pooling_note = f", pooled across {len(self.datasets)} datasets" \
+                if len(self.datasets) > 1 else ""
             print(f"Starting Optuna optimization with {n_trials} trials "
-                  f"and {k_folds} TimeSeriesSplit folds...")
+                  f"and {k_folds} TimeSeriesSplit folds{pooling_note}...")
 
         study.optimize(self.objective, n_trials=n_trials, show_progress_bar=(verbose > 0))
+        _require_completed_trial(study, self.model_class.__name__)
 
         best_params = dict(study.best_params)
         selected_feature_indices = self._extract_selected_indices(best_params)
         model_params = best_params
 
-        x_train_final = x_train
-        if selected_feature_indices is not None:
-            x_train_final = x_train[..., selected_feature_indices]
+        resolved_params = self.param_resolver(model_params) if self.param_resolver \
+            else model_params
+        if selected_feature_indices is not None and self.covariate_param_name is not None:
+            resolved_params = dict(resolved_params)
+            resolved_params[self.covariate_param_name] = selected_feature_indices
 
         if verbose > 0:
             print("\nBest hyperparameters found:")
@@ -607,15 +718,26 @@ class SklearnOptunaHelper:
                 print(f"  selected_feature_indices: {selected_feature_indices}")
             print(f"  Best CV loss: {study.best_value:.6f}")
 
-        # Reinitialize the given model instance in place with the best settings, then
-        # fit it on the full training data.
-        self.my_model.__init__(
-            normalizer=self.my_model.normalizer,
-            loss_relative_to=self.my_model.loss_relative_to,
+        # Reinitialize the given model instance in place with the best settings.
+        ctor_kwargs = {
+            'normalizer': self.my_model.normalizer,
+            'loss_relative_to': self.my_model.loss_relative_to,
             **self.fixed_kwargs,
-            **model_params,
-            )
-        history = self.my_model.train_model(x_train_final, y_train)
+            }
+        ctor_kwargs.update(resolved_params)
+        self.my_model.__init__(**ctor_kwargs)
+
+        history = {}
+        if len(self.datasets) == 1:
+            # Single dataset: also fit on the full (feature-sliced) training data,
+            # so the given model instance is immediately usable.
+            x_data, y_data = self.datasets[0]
+            x_train_final = x_data
+            if selected_feature_indices is not None and self.covariate_param_name is None:
+                x_train_final = x_data[..., selected_feature_indices]
+            history = self.my_model.train_model(x_train_final, y_data)
+        # else: pooled mode - no single "full training set" to fit on. The model
+        # instance is left reinitialized with the best settings, but unfitted.
 
         history['best_params'] = model_params
         history['best_cv_loss'] = study.best_value
@@ -624,45 +746,80 @@ class SklearnOptunaHelper:
 
         return history
 
+    @staticmethod
+    def _as_dataset_list(x_train, y_train) -> list:
+        """Normalize x_train/y_train into a list of (x, y) dataset tuples."""
+
+        if isinstance(x_train, (list, tuple)):
+            assert isinstance(y_train, (list, tuple)) and len(y_train) == len(x_train), \
+                "y_train must be a list of the same length as x_train."
+            return list(zip(x_train, y_train))
+        return [(x_train, y_train)]
+
     def objective(self, trial: optuna.Trial) -> float:
         """Objective function for Optuna optimization."""
 
-        model_params = self.model_class.suggest_params(trial)
+        model_params = self.model_class.suggest_params(trial, **self.suggest_params_kwargs)
         selected_feature_indices = self._suggest_feature_indices(trial)
-
-        n_samples = self.x_train.shape[0]
+        resolved_params = self.param_resolver(model_params) if self.param_resolver \
+            else model_params
 
         cv_losses = []
-        for train_idx, val_idx in _time_series_splits(n_samples, self.k_folds):
+        if len(self.datasets) == 1:
+            # Single dataset: average over all k_folds within it.
+            x_data, y_data = self.datasets[0]
+            for train_idx, val_idx in _time_series_splits(x_data.shape[0], self.k_folds):
+                cv_losses.append(self._fit_and_eval(x_data, y_data, train_idx, val_idx,
+                    resolved_params, selected_feature_indices, model_params))
+        else:
+            # Multiple datasets (e.g. communities): each contributes exactly one
+            # fold, cycling through the k_folds fold positions across datasets, so
+            # the pool as a whole still covers all fold positions (e.g. seasons)
+            # without paying k_folds evaluations per dataset.
+            for dataset_index, (x_data, y_data) in enumerate(self.datasets):
+                splits = list(_time_series_splits(x_data.shape[0], self.k_folds))
+                train_idx, val_idx = splits[dataset_index % len(splits)]
+                cv_losses.append(self._fit_and_eval(x_data, y_data, train_idx, val_idx,
+                    resolved_params, selected_feature_indices, model_params))
 
-            x_fold_train = self.x_train[train_idx]
-            y_fold_train = self.y_train[train_idx]
-            x_fold_val = self.x_train[val_idx]
-            y_fold_val = self.y_train[val_idx]
+        return float(np.mean(cv_losses))
 
-            if selected_feature_indices is not None:
+    def _fit_and_eval(self, x_data, y_data, train_idx, val_idx, resolved_params,
+            selected_feature_indices, model_params_for_error) -> float:
+        """Fit one trial's model on one fold and return its validation loss."""
+
+        x_fold_train = x_data[train_idx]
+        y_fold_train = y_data[train_idx]
+        x_fold_val = x_data[val_idx]
+        y_fold_val = y_data[val_idx]
+
+        fold_resolved_params = resolved_params
+        if selected_feature_indices is not None:
+            if self.covariate_param_name is not None:
+                fold_resolved_params = dict(resolved_params)
+                fold_resolved_params[self.covariate_param_name] = selected_feature_indices
+            else:
                 x_fold_train = x_fold_train[..., selected_feature_indices]
                 x_fold_val = x_fold_val[..., selected_feature_indices]
 
-            trial_model = self.model_class(
-                normalizer=self.my_model.normalizer,
-                loss_relative_to=self.my_model.loss_relative_to,
-                **self.fixed_kwargs,
-                **model_params,
-                )
-            try:
-                trial_model.train_model(x_fold_train, y_fold_train)
-                eval_result = trial_model.evaluate(x_fold_val, y_fold_val, results={},
-                    de_normalize=False)
-            except ValueError as error:
-                # E.g. a sampled hyperparameter (such as Knn's k) that is only valid for
-                # larger folds than the early, small TimeSeriesSplit folds provide.
-                raise optuna.TrialPruned(
-                    f"Fold training/evaluation failed for params {model_params}: {error}"
-                    ) from error
-            cv_losses.append(float(eval_result['test_loss'][-1]))
-
-        return float(np.mean(cv_losses))
+        ctor_kwargs = {
+            'normalizer': self.my_model.normalizer,
+            'loss_relative_to': self.my_model.loss_relative_to,
+            **self.fixed_kwargs,
+            }
+        ctor_kwargs.update(fold_resolved_params)
+        trial_model = self.model_class(**ctor_kwargs)
+        try:
+            trial_model.train_model(x_fold_train, y_fold_train)
+            eval_result = trial_model.evaluate(x_fold_val, y_fold_val, results={},
+                de_normalize=False)
+        except ValueError as error:
+            # E.g. a sampled hyperparameter (such as Knn's k) that is only valid for
+            # larger folds than the early, small TimeSeriesSplit folds provide.
+            raise optuna.TrialPruned(
+                f"Fold training/evaluation failed for params {model_params_for_error}: {error}"
+                ) from error
+        return float(eval_result['test_loss'][-1])
 
     def _suggest_feature_indices(self, trial: optuna.Trial) -> Union[list, None]:
         """Ask the trial which feature groups to keep in, if feature search is enabled."""
@@ -673,7 +830,10 @@ class SklearnOptunaHelper:
         for group_id, indices in enumerate(self.feature_index_groups):
             if trial.suggest_categorical(f"use_feature_group_{group_id}", [True, False]):
                 selected.extend(indices)
-        if not selected:
+        if not selected and self.covariate_param_name is None:
+            # An empty selection is meaningless for a model that consumes all of x's
+            # columns as its input (it would be left with zero features). It is a
+            # valid choice (e.g. a univariate forecast) in covariate_param_name mode.
             raise optuna.TrialPruned("No feature group selected.")
         return sorted(selected)
 

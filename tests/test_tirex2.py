@@ -1,9 +1,23 @@
 from unittest.mock import patch
 import numpy as np
+import pytest
 import torch
 from loadforecasting_models import Tirex2, Normalizer
 
 QUANTILE_LEVELS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+
+@pytest.fixture(autouse=True)
+def clear_tirex2_model_cache():
+    """
+    Tirex2 caches loaded checkpoints at the class level, keyed by (ckpt, device), so
+    that repeated instantiations during hyperparameter tuning don't reload the
+    checkpoint from scratch. Without clearing it between tests, the first test's
+    patched tirex2.load_model return value would leak into every later test that
+    uses the same (default) ckpt/device.
+    """
+    Tirex2._MODEL_CACHE.clear()
+    yield
+    Tirex2._MODEL_CACHE.clear()
 
 class FakeForecastModel:
     """Fake tirex2.ForecastModel: returns deterministic quantile forecasts."""

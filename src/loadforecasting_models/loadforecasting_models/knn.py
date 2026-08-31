@@ -103,6 +103,8 @@ class Knn():
         n_trials: int = 50,
         k_folds: int = 3,
         feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
+        storage_path: Union[str, None] = None,
+        study_name: Union[str, None] = None,
         verbose: int = 1,
         ) -> dict:
         """
@@ -119,6 +121,7 @@ class Knn():
             k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
             feature_index_groups: Optional list of column-index groups (one group per
                 named feature) to choose from during tuning.
+            storage_path: Optional sqlite file path for the Optuna study storage.
             verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
 
         Returns:
@@ -132,6 +135,8 @@ class Knn():
             n_trials=n_trials,
             k_folds=k_folds,
             feature_index_groups=feature_index_groups,
+            storage_path=storage_path,
+            study_name=study_name,
             verbose=verbose,
             )
 
@@ -144,7 +149,7 @@ class Knn():
         }
 
     def knn_fit(self) -> None:
-        """Fit the model with hourly training data."""
+        """Fit the model with training data."""
 
         batches, timesteps, num_features = self.x_train.shape
         x_hourly = self.x_train.view(batches * timesteps, num_features).numpy()
