@@ -136,6 +136,7 @@ class Gam():
         x_train: ArrayLike,
         y_train: ArrayLike,
         term_candidates: Union[list, None] = None,
+        param_resolver: Union[callable, None] = None,
         n_trials: int = 50,
         k_folds: int = 3,
         storage_path: Union[str, None] = None,
@@ -143,23 +144,33 @@ class Gam():
         verbose: int = 1,
         ) -> dict:
         """
-        Tune this model's hyperparameters (lam, fit_intercept) with Optuna and
-        TimeSeriesSplit cross-validation, then refit on the full training data with
-        the best settings found.
+        Tune this model's hyperparameters (lam) with Optuna and TimeSeriesSplit
+        cross-validation, then refit on the full training data with the best
+        settings found.
 
         Note: unlike the other scikit-learn-style models, Gam does not support
         feature-group search, since each term in all_gam_terms is already bound to
         specific feature indices when the model is constructed. Instead, if
         term_candidates is given (a list of whole TermList objects, e.g. with/without
-        an interaction term, or a different lag day feeding the trend term), Optuna
-        additionally picks which candidate term set to use, letting you compare
-        structurally different models without hand-picking one.
+        an interaction term, a different lag day feeding the trend term, or
+        different n_splines choices), Optuna additionally picks which candidate term
+        set to use, letting you compare structurally different models without
+        hand-picking one. (n_splines can't be tuned as a separate global dimension
+        the way lam can - pyGAM only accepts it per-term at construction time - so
+        it has to be baked into the term_candidates themselves.)
 
         Args:
             x_train: Input features of shape (batch_len, sequence_len, features).
             y_train: Target values of shape (batch_len, sequence_len, 1).
             term_candidates: Optional list of TermList objects to choose from. If
                 None, only self.all_gam_terms is used (as before).
+            param_resolver: Optional callable(dict) -> dict that resolves a raw
+                suggested/stored params dict (containing 'term_set_index') into
+                actual constructor kwargs (containing 'all_gam_terms'). If not
+                given but term_candidates is, a resolver mapping term_set_index
+                into term_candidates[term_set_index] is built automatically. Pass
+                your own if you need this resolution to also happen outside of
+                tuning (e.g. when reusing a stored term_set_index).
             n_trials (int): Number of Optuna trials for hyperparameter search.
             k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
             storage_path: Optional sqlite file path for the Optuna study storage.
@@ -170,12 +181,13 @@ class Gam():
             given, best_params['term_set_index'] names the winning candidate.
         """
 
-        def resolve_term_set(params: dict) -> dict:
-            resolved = dict(params)
-            term_set_index = resolved.pop('term_set_index', None)
-            resolved['all_gam_terms'] = term_candidates[term_set_index] \
-                if term_set_index is not None else self.all_gam_terms
-            return resolved
+        if param_resolver is None and term_candidates:
+            def param_resolver(params: dict) -> dict:
+                resolved = dict(params)
+                term_set_index = resolved.pop('term_set_index', None)
+                resolved['all_gam_terms'] = term_candidates[term_set_index] \
+                    if term_set_index is not None else self.all_gam_terms
+                return resolved
 
         tuner = SklearnOptunaHelper(self)
         return tuner.train_auto(
@@ -184,7 +196,7 @@ class Gam():
             n_trials=n_trials,
             k_folds=k_folds,
             suggest_params_kwargs={'term_candidates': term_candidates},
-            param_resolver=resolve_term_set,
+            param_resolver=param_resolver,
             storage_path=storage_path,
             study_name=study_name,
             verbose=verbose,
@@ -195,7 +207,6 @@ class Gam():
         """Optuna search space for this model's hyperparameters."""
         params = {
             'lam': trial.suggest_float('lam', 1e-3, 1e3, log=True),
-            'fit_intercept': trial.suggest_categorical('fit_intercept', [True, False]),
         }
         if term_candidates:
             params['term_set_index'] = trial.suggest_int(
