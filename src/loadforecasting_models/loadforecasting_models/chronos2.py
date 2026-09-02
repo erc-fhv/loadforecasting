@@ -27,6 +27,7 @@ class Chronos2:
         device: Optional[str] = None,
         batch_size: int = 64,
         context_length: Optional[int] = None,
+        eval_stride: int = 1,
         loss_relative_to: str = "",
         ) -> None:
         """
@@ -42,6 +43,15 @@ class Chronos2:
             context_length (int | None): Optional cap on the number of historic
                 timesteps used as context. If None, the model's default context
                 length (8192 for Chronos-2) is used.
+            eval_stride (int): In evaluate(), only forecast/score every Nth window
+                (default 1 = every window). The context built for each scored window
+                still includes every true value that came before it in x_test/y_test
+                (built from the full, unstrided data) - only the *selection* of which
+                windows are actually sent to the model and scored is subsampled, so
+                the context stays gapless. predict() always uses every window,
+                regardless of this setting. Useful to cut wall-clock during
+                hyperparameter tuning, where evaluate() is the dominant cost (one
+                sequential forecast call per window).
             loss_relative_to (str): Reference for relative loss calculation. Default is "".
         """
         self.normalizer = normalizer
@@ -52,6 +62,8 @@ class Chronos2:
         self.device = device
         self.batch_size = batch_size
         self.context_length = context_length
+        assert eval_stride >= 1, f"eval_stride must be >= 1, got {eval_stride}"
+        self.eval_stride = eval_stride
         self.loss_relative_to = loss_relative_to
 
         self._model = None      # Lazy-loaded Chronos2Pipeline
@@ -118,6 +130,7 @@ class Chronos2:
         n_trials: int = 20,
         k_folds: int = 2,
         feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
+        eval_stride: int = 1,
         storage_path: Union[str, None] = None,
         study_name: Union[str, None] = None,
         verbose: int = 1,
@@ -144,6 +157,10 @@ class Chronos2:
             k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
             feature_index_groups: Optional list of column-index groups (one group per
                 named feature) to choose future_covariate_indices from.
+            eval_stride: Passed as a fixed (untuned) constructor kwarg to every
+                trial's model - see Chronos2.__init__'s eval_stride for what it
+                does. Default 1 = no subsampling. Cuts per-trial wall-clock since
+                evaluate() forecasts sequentially, one call per scored window.
             storage_path: Optional sqlite file path for the Optuna study storage.
             verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
 
@@ -159,6 +176,7 @@ class Chronos2:
             k_folds=k_folds,
             feature_index_groups=feature_index_groups,
             covariate_param_name='future_covariate_indices',
+            fixed_kwargs={'eval_stride': eval_stride},
             storage_path=storage_path,
             study_name=study_name,
             verbose=verbose,
@@ -235,15 +253,24 @@ class Chronos2:
     def _forecast(self,
         x: torch.Tensor,
         y_true: Optional[torch.Tensor] = None,
+        stride: int = 1,
         ) -> torch.Tensor:
         """
-        Forecast all windows in x and return the median quantile predictions
-        with shape (batch_len, sequence_len, 1).
+        Forecast every `stride`-th window in x and return the median quantile
+        predictions with shape (ceil(batch_len/stride), sequence_len, 1).
+
+        The context for each forecast window is still built from the full,
+        unstrided x/y_true (see _build_inputs) - stride only subsamples which of
+        the resulting, already-correctly-contextualized windows are actually sent
+        to the (expensive) model.predict() call, so the context never has gaps
+        even when stride > 1.
         """
 
         model = self._load_model()
         horizon = x.shape[1]
         inputs = self._build_inputs(x, y_true)
+        if stride > 1:
+            inputs = inputs[::stride]
 
         predictions = model.predict(
             inputs=inputs,
@@ -301,7 +328,9 @@ class Chronos2:
 
         The true values of the previous test windows are used as part of the
         forecast context, as a real day-ahead forecaster would have access to
-        all past actuals.
+        all past actuals. If self.eval_stride > 1, only every eval_stride-th
+        window is actually forecast and scored (see _forecast) - y_test is
+        subsampled the same way before computing the loss, so shapes still match.
         """
 
         if results is None:
@@ -317,7 +346,9 @@ class Chronos2:
         else:
             y_tensor  = y_test.float()
 
-        output = self._forecast(x_tensor, y_true=y_tensor)
+        output = self._forecast(x_tensor, y_true=y_tensor, stride=self.eval_stride)
+        if self.eval_stride > 1:
+            y_tensor = y_tensor[::self.eval_stride]
 
         assert output.shape == y_tensor.shape, \
             f"Shape mismatch: got {output.shape}, expected {y_tensor.shape})"
