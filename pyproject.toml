@@ -22,7 +22,8 @@ dependencies = [
     "meteostat==1.7",
     "dash",
     "kaleido",
-    "pygam"
+    "pygam",
+    "pip install tirex-2"
 ]
 license = "MIT"
 

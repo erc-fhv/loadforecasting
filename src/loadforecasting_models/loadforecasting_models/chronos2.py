@@ -169,7 +169,7 @@ class Chronos2:
         """Optuna search space for this model's hyperparameters."""
         return {
             # Chronos-2's own max context length is 8192.
-            'context_length': trial.suggest_int('context_length', 168, 8192, log=True),
+            'context_length': trial.suggest_int('context_length', 168, 2048, log=True),
         }
 
     def _build_inputs(self,
