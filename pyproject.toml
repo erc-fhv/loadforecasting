@@ -23,7 +23,7 @@ dependencies = [
     "dash",
     "kaleido",
     "pygam",
-    "pip install tirex-2"
+    "tirex-2"
 ]
 license = "MIT"
 
