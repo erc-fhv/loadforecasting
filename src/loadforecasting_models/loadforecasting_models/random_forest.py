@@ -46,6 +46,9 @@ class RandomForest:
         """
         self.normalizer = normalizer
         self.loss_relative_to = loss_relative_to
+        self.n_estimators = n_estimators
+        self.max_depth = max_depth
+        self.min_samples_leaf = min_samples_leaf
         self.model = SklearnRandomForest(
             n_estimators=n_estimators,
             max_depth=max_depth,

@@ -50,6 +50,10 @@ class XGBoost:
         """
         self.normalizer = normalizer
         self.loss_relative_to = loss_relative_to
+        self.n_estimators = n_estimators
+        self.max_depth = max_depth
+        self.learning_rate = learning_rate
+        self.subsample = subsample
         self.model = XGBRegressor(
             n_estimators=n_estimators,
             max_depth=max_depth,

@@ -54,6 +54,31 @@ def _require_completed_trial(study: optuna.Study, model_class_name: str) -> None
             "chosen k_folds.")
 
 
+class _ParamNameRecorder:
+    """
+    Stands in for an optuna.Trial to discover which parameter names (and bounds)
+    a model class's suggest_params(trial) asks for, without needing a real trial
+    or study. Used to build a safe seed trial from a model's current (pre-tuning)
+    attribute values - see SklearnOptunaHelper._seed_default_hyperparams.
+    """
+
+    def __init__(self):
+        # name -> ("range", low, high) | ("categorical", choices)
+        self.bounds: dict = {}
+
+    def suggest_int(self, name, low, high, *, step=1, log=False):
+        self.bounds[name] = ("range", low, high)
+        return low
+
+    def suggest_float(self, name, low, high, *, step=None, log=False):
+        self.bounds[name] = ("range", low, high)
+        return low
+
+    def suggest_categorical(self, name, choices):
+        self.bounds[name] = ("categorical", tuple(choices))
+        return choices[0]
+
+
 class SequenceDataset(Dataset):
     """Custom Dataset for sequence data."""
 
@@ -345,6 +370,7 @@ class OptunaHelper:
         self.datasets: Sequence[tuple]
         self.k_folds: int
         self.feature_index_groups: Union[Sequence[Sequence[int]], None]
+        self.default_feature_group_ids: Union[Sequence[int], None]
         self.verbose_level: int
 
     def train_auto(
@@ -354,6 +380,7 @@ class OptunaHelper:
         n_trials: int = 50,
         k_folds: int = 3,
         feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
+        default_feature_group_ids: Union[Sequence[int], None] = None,
         storage_path: Union[str, None] = None,
         study_name: Union[str, None] = None,
         verbose: int = 1,
@@ -376,6 +403,12 @@ class OptunaHelper:
                 named feature, since one named feature can expand to several encoded
                 columns). If given, Optuna additionally chooses which groups to keep,
                 and the returned history contains the winning 'selected_feature_indices'.
+            default_feature_group_ids: Optional list of indices into
+                feature_index_groups (by position) to enable in one seeded trial
+                (via study.enqueue_trial), so a chosen "known-good" default feature
+                selection is always evaluated at least once, and a combinatorial
+                feature-group search space can't make tuning end up worse than that
+                default. Has no effect if feature_index_groups is not given.
             storage_path: Optional sqlite file path for the Optuna study storage (e.g.
                 '<outputs_dir>/optuna_study.db'). Defaults to 'optuna_study.db' in the
                 current working directory.
@@ -392,6 +425,7 @@ class OptunaHelper:
         self.datasets = SklearnOptunaHelper._as_dataset_list(x_train, y_train)
         self.k_folds = k_folds
         self.feature_index_groups = feature_index_groups
+        self.default_feature_group_ids = default_feature_group_ids
         self.verbose_level = verbose
 
         # Create and run Optuna study
@@ -408,6 +442,11 @@ class OptunaHelper:
                 if len(self.datasets) > 1 else ""
             print(f"Starting Optuna optimization with {n_trials} trials "
                   f"and {k_folds} TimeSeriesSplit folds{pooling_note}...")
+
+        if self.feature_index_groups and self.default_feature_group_ids is not None:
+            default_ids = set(self.default_feature_group_ids)
+            study.enqueue_trial({f"use_feature_group_{i}": (i in default_ids)
+                for i in range(len(self.feature_index_groups))})
 
         study.optimize(
             self.objective, n_trials=n_trials, show_progress_bar=(verbose > 0)
@@ -697,6 +736,15 @@ class SklearnOptunaHelper:
             print(f"Starting Optuna optimization with {n_trials} trials "
                   f"and {k_folds} TimeSeriesSplit folds{pooling_note}...")
 
+        # Seed one trial with my_model's current (pre-tuning) configuration, so a
+        # combinatorial/high-dimensional search space (e.g. many feature groups)
+        # can never make the tuned result worse than not tuning at all - Optuna
+        # will only move away from this configuration if it finds something that
+        # actually scores better on the CV loss.
+        seed_params = {**self._seed_default_hyperparams(), **self._seed_default_feature_flags()}
+        if seed_params:
+            study.enqueue_trial(seed_params)
+
         study.optimize(self.objective, n_trials=n_trials, show_progress_bar=(verbose > 0))
         _require_completed_trial(study, self.model_class.__name__)
 
@@ -847,3 +895,55 @@ class SklearnOptunaHelper:
             if best_params.pop(f"use_feature_group_{group_id}"):
                 selected.extend(indices)
         return sorted(selected)
+
+    def _seed_default_feature_flags(self) -> dict:
+        """
+        Build the use_feature_group_* flags reproducing my_model's pre-tuning
+        default feature selection: every group, for column-slicing models (which
+        had no feature selection before tuning existed - all of x was used); or
+        only the group(s) covering my_model's current covariate_param_name value,
+        for covariate-passing models (e.g. Tirex2/Chronos2's
+        future_covariate_indices default of a single named covariate).
+        """
+
+        if not self.feature_index_groups:
+            return {}
+        if self.covariate_param_name is None:
+            return {f"use_feature_group_{i}": True
+                for i in range(len(self.feature_index_groups))}
+
+        default_indices = set(getattr(self.my_model, self.covariate_param_name, None) or [])
+        return {f"use_feature_group_{i}": bool(set(indices) & default_indices)
+            for i, indices in enumerate(self.feature_index_groups)}
+
+    def _seed_default_hyperparams(self) -> dict:
+        """
+        Build a {param_name: value} seed from my_model's current (pre-tuning)
+        attribute values, restricted to the parameters suggest_params() actually
+        searches over and to values that fall within its declared bounds - so a
+        stale or out-of-range default can never break study.optimize(). A model
+        whose tunable constructor args aren't mirrored as same-named attributes
+        (nothing to introspect) simply seeds nothing for this part.
+        """
+
+        recorder = _ParamNameRecorder()
+        self.model_class.suggest_params(recorder, **self.suggest_params_kwargs)
+
+        seed = {}
+        for name, spec in recorder.bounds.items():
+            if not hasattr(self.my_model, name):
+                continue
+            value = getattr(self.my_model, name)
+            kind = spec[0]
+            if kind == "range":
+                _, low, high = spec
+                # e.g. Tirex2/Chronos2's context_length defaults to None (no cap) -
+                # not a valid value for its own suggest_int range, so skip it.
+                if isinstance(value, (int, float)) and not isinstance(value, bool) \
+                        and low <= value <= high:
+                    seed[name] = value
+            else:
+                _, choices = spec
+                if value in choices:
+                    seed[name] = value
+        return seed

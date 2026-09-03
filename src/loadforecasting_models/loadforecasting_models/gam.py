@@ -34,6 +34,7 @@ class Gam():
         self.normalizer = normalizer
         self.loss_relative_to = loss_relative_to
         self.all_gam_terms = all_gam_terms
+        self.lam = lam
         self.x_train = torch.Tensor([])
         self.y_train = torch.Tensor([])
 

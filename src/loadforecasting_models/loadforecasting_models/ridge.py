@@ -32,6 +32,7 @@ class Ridge:
                 String indicating the reference value for relative loss calculation.
         """
         self.normalizer = normalizer
+        self.alpha = alpha
         self.model = SklearnRidge(alpha=alpha)
         self.loss_relative_to = loss_relative_to
         self.x_train: torch.Tensor = torch.Tensor([])

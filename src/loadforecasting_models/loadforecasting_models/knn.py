@@ -29,6 +29,8 @@ class Knn():
             loss_relative_to (str): String indicating the reference value for relative loss calculation.
         """
 
+        self.k = k
+        self.weights = weights
         self.knn = KNeighborsRegressor(n_neighbors = k, weights=weights)
         self.x_train = torch.Tensor([])
         self.y_train = torch.Tensor([])

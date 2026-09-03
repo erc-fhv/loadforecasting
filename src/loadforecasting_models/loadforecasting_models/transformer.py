@@ -196,6 +196,7 @@ class Transformer(torch.nn.Module):
         n_trials: int = 50,
         k_folds: int = 3,
         feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
+        default_feature_group_ids: Union[Sequence[int], None] = None,
         storage_path: Union[str, None] = None,
         study_name: Union[str, None] = None,
         verbose: int = 1,
@@ -214,6 +215,8 @@ class Transformer(torch.nn.Module):
             k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
             feature_index_groups: Optional list of column-index groups (one group per
                 named feature) to choose from during tuning.
+            default_feature_group_ids: Optional indices into feature_index_groups to
+                seed as one guaranteed trial - see OptunaHelper.train_auto.
             storage_path: Optional sqlite file path for the Optuna study storage.
             verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
 
@@ -228,6 +231,7 @@ class Transformer(torch.nn.Module):
             n_trials=n_trials,
             k_folds=k_folds,
             feature_index_groups=feature_index_groups,
+            default_feature_group_ids=default_feature_group_ids,
             storage_path=storage_path,
             study_name=study_name,
             verbose=verbose,
