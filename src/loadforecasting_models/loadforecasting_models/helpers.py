@@ -361,6 +361,17 @@ class PositionalEncoding(torch.nn.Module):
 class OptunaHelper:
     """Helper class for Optuna hyperparameter optimization."""
 
+    # Search space shared between objective() and _seed_default_hyperparams().
+    LR_SCHEDULES = {
+        "default": [0.01, 0.005, 0.001, 0.0005], # Default for this framework
+        "constant": [0.001],    # Default Adam Parameter as Baseline
+        "moderate_decay": [0.005, 0.0025, 0.001, 0.0005],
+        "conservative": [0.001, 0.0007, 0.0005, 0.0003],
+    }
+    MODEL_SIZES = ['0.1k', '0.2k', '0.5k', '1k', '2k', '5k', '10k', '20k', '40k', '80k']
+    BATCH_SIZES = [32, 64, 128, 256]
+    EPOCHS_BOUNDS = (30, 300)
+
     def __init__(self, my_model: "Union[Lstm, xLstm, Transformer, PatchTST]"):
 
         self.my_model = my_model
@@ -381,6 +392,7 @@ class OptunaHelper:
         k_folds: int = 3,
         feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
         default_feature_group_ids: Union[Sequence[int], None] = None,
+        default_hyperparams: Union[dict, None] = None,
         storage_path: Union[str, None] = None,
         study_name: Union[str, None] = None,
         verbose: int = 1,
@@ -409,6 +421,13 @@ class OptunaHelper:
                 selection is always evaluated at least once, and a combinatorial
                 feature-group search space can't make tuning end up worse than that
                 default. Has no effect if feature_index_groups is not given.
+            default_hyperparams: Optional {'lr_schedule_name', 'epochs', 'batch_size',
+                'model_size'} values (e.g. a previous tuning run's best_params) to
+                seed as one guaranteed trial, alongside default_feature_group_ids, so
+                tuning starts from a known-good point instead of an arbitrary one.
+                Only keys whose value falls within this search space are used; the
+                rest are sampled normally, so a stale/out-of-range value can't break
+                study.optimize().
             storage_path: Optional sqlite file path for the Optuna study storage (e.g.
                 '<outputs_dir>/optuna_study.db'). Defaults to 'optuna_study.db' in the
                 current working directory.
@@ -443,10 +462,13 @@ class OptunaHelper:
             print(f"Starting Optuna optimization with {n_trials} trials "
                   f"and {k_folds} TimeSeriesSplit folds{pooling_note}...")
 
+        seed_params = self._seed_default_hyperparams(default_hyperparams)
         if self.feature_index_groups and self.default_feature_group_ids is not None:
             default_ids = set(self.default_feature_group_ids)
-            study.enqueue_trial({f"use_feature_group_{i}": (i in default_ids)
+            seed_params.update({f"use_feature_group_{i}": (i in default_ids)
                 for i in range(len(self.feature_index_groups))})
+        if seed_params:
+            study.enqueue_trial(seed_params)
 
         study.optimize(
             self.objective, n_trials=n_trials, show_progress_bar=(verbose > 0)
@@ -508,26 +530,18 @@ class OptunaHelper:
         """Objective function for Optuna optimization."""
 
         # Hyperparameters to choose from.
-        #
-
-        # Learning rate schedules. Learning rates will step through these values during training.
-        self.lr_schedules = {
-            "default": [0.01, 0.005, 0.001, 0.0005], # Default for this framework
-            "constant": [0.001],    # Default Adam Parameter as Baseline
-            "moderate_decay": [0.005, 0.0025, 0.001, 0.0005],
-            "conservative": [0.001, 0.0007, 0.0005, 0.0003],
-        }
+        self.lr_schedules = self.LR_SCHEDULES
         learning_rates = self.lr_schedules[trial.suggest_categorical(
             "lr_schedule_name", list(self.lr_schedules.keys())
             )]
         trial_epochs = trial.suggest_int(
-            "epochs", low=30, high=300, log=True,
+            "epochs", low=self.EPOCHS_BOUNDS[0], high=self.EPOCHS_BOUNDS[1], log=True,
             )
         trial_batch_size = trial.suggest_categorical(
-            'batch_size', [32, 64, 128, 256]
+            'batch_size', self.BATCH_SIZES
             )
         trial_model_size = trial.suggest_categorical(
-            'model_size', ['0.1k', '0.2k', '0.5k', '1k', '2k', '5k', '10k', '20k', '40k', '80k']
+            'model_size', self.MODEL_SIZES
             )
         selected_feature_indices = self._suggest_feature_indices(trial)
 
@@ -607,6 +621,35 @@ class OptunaHelper:
             if best_params.pop(f"use_feature_group_{group_id}"):
                 selected.extend(indices)
         return sorted(selected)
+
+    def _seed_default_hyperparams(self, default_hyperparams: Union[dict, None]) -> dict:
+        """
+        Build a {param_name: value} seed from the given default_hyperparams (e.g. a
+        previous tuning run's best_params), restricted to keys/values that fall
+        within this objective's search space - see SklearnOptunaHelper's
+        equivalent for the rationale (a stale or out-of-range default can never
+        break study.optimize()).
+        """
+
+        if not default_hyperparams:
+            return {}
+
+        seed = {}
+        if default_hyperparams.get('lr_schedule_name') in self.LR_SCHEDULES:
+            seed['lr_schedule_name'] = default_hyperparams['lr_schedule_name']
+
+        epochs = default_hyperparams.get('epochs')
+        if isinstance(epochs, (int, float)) and not isinstance(epochs, bool) \
+                and self.EPOCHS_BOUNDS[0] <= epochs <= self.EPOCHS_BOUNDS[1]:
+            seed['epochs'] = epochs
+
+        if default_hyperparams.get('batch_size') in self.BATCH_SIZES:
+            seed['batch_size'] = default_hyperparams['batch_size']
+
+        if default_hyperparams.get('model_size') in self.MODEL_SIZES:
+            seed['model_size'] = default_hyperparams['model_size']
+
+        return seed
 
 
 class SklearnOptunaHelper:

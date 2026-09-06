@@ -207,6 +207,7 @@ class Lstm(torch.nn.Module):
         k_folds: int = 3,
         feature_index_groups: Union[Sequence[Sequence[int]], None] = None,
         default_feature_group_ids: Union[Sequence[int], None] = None,
+        default_hyperparams: Union[dict, None] = None,
         storage_path: Union[str, None] = None,
         study_name: Union[str, None] = None,
         verbose: int = 1,
@@ -227,6 +228,8 @@ class Lstm(torch.nn.Module):
                 named feature) to choose from during tuning.
             default_feature_group_ids: Optional indices into feature_index_groups to
                 seed as one guaranteed trial - see OptunaHelper.train_auto.
+            default_hyperparams: Optional previously-tuned hyperparameters to seed as
+                one guaranteed trial - see OptunaHelper.train_auto.
             storage_path: Optional sqlite file path for the Optuna study storage.
             verbose (int): Verbosity level. 0: silent, 1: dots, 2: full.
 
@@ -242,6 +245,7 @@ class Lstm(torch.nn.Module):
             k_folds=k_folds,
             feature_index_groups=feature_index_groups,
             default_feature_group_ids=default_feature_group_ids,
+            default_hyperparams=default_hyperparams,
             storage_path=storage_path,
             study_name=study_name,
             verbose=verbose,
