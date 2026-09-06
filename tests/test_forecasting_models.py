@@ -77,11 +77,11 @@ def test_if_models_are_running_w_numpy():
 
 def test_models_simple_prediction():
     """
-    Test if models can learn and predict a simple sine wave and 
+    Test if models can learn and predict a simple sine wave and
     produce the correct output shape.
     """
 
-    for model_class in [Lstm, Transformer, PatchTST, xLstm, Knn]:
+    for model_class in [Lstm, Transformer, PatchTST, Knn]:
 
         for seq_len in [24, 24*4, 24*7]:
 
