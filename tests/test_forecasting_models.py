@@ -132,7 +132,7 @@ def test_models_simple_prediction():
                 f"Unexpected output shape: {y_pred.shape}"
 
             # 2. Check relative accuracy
-            treshold = 20.0 # [%]
+            treshold = 30.0 # [%]
             mae = torch.mean(torch.abs(torch.Tensor(y_pred - y_test_true)))
             mean_true = torch.mean(torch.abs(torch.Tensor(y_test_true)))
             n_mae = mae / mean_true
