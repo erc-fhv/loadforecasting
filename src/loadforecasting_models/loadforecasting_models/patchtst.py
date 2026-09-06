@@ -54,33 +54,33 @@ class PatchTST(torch.nn.Module):
 
         if model_size == "0.1k":
             num_layers=1
-            num_heads=2
-            dim_feedforward=5
-            d_model = 2
+            num_heads=1
+            dim_feedforward=2
+            d_model = 1
         elif model_size == "0.2k":
             num_layers=1
             num_heads=2
-            dim_feedforward=5
-            d_model=4
+            dim_feedforward=2
+            d_model=2
         elif model_size == "0.5k":
             num_layers=1
             num_heads=2
             dim_feedforward=6
-            d_model=6
+            d_model=4
         elif model_size == "1k":
             num_layers=1
             num_heads=2
-            dim_feedforward=10
-            d_model=10
+            dim_feedforward=22
+            d_model=6
         elif model_size == "2k":
             num_layers=1
             num_heads=2
-            dim_feedforward=16
-            d_model=14
+            dim_feedforward=31
+            d_model=10
         elif model_size == "5k":
             num_layers=1
             num_heads=4
-            dim_feedforward=90
+            dim_feedforward=37
             d_model=20
         elif model_size == "10k":
             num_layers=1
