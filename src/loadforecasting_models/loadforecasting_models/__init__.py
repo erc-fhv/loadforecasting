@@ -4,6 +4,7 @@ from .xlstm import xLstm
 from .lstm import Lstm
 from .transformer import Transformer
 from .transformer_full import TransformerFull
+from .patchtst import PatchTST
 from .perfect import Perfect
 from .gam import Gam
 from .normalizer import Normalizer
