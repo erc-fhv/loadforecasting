@@ -27,6 +27,7 @@ class Tirex2:
         device: Optional[str] = None,
         batch_size: int = 64,
         context_length: Optional[int] = None,
+        power_data_delay_steps: int = 0,
         eval_stride: int = 1,
         loss_relative_to: str = "",
         ) -> None:
@@ -42,6 +43,12 @@ class Tirex2:
             batch_size (int): Batch size used for the TiRex-2 forecast calls.
             context_length (int | None): Optional cap on the number of historic
                 timesteps used as context. If None, all available history is used.
+            power_data_delay_steps (int): Simulates a reporting delay on the target
+                (power/load) measurements: the most recent power_data_delay_steps of
+                every built context are zeroed out before being sent to the model,
+                regardless of whether they come from the stored training history or
+                from true values of earlier test windows. Future covariates (e.g.
+                weather) are left untouched. Default 0 = no delay.
             eval_stride (int): In evaluate(), only forecast/score every Nth window
                 (default 1 = every window). The context built for each scored window
                 still includes every true value that came before it in x_test/y_test
@@ -61,6 +68,9 @@ class Tirex2:
         self.device = device
         self.batch_size = batch_size
         self.context_length = context_length
+        assert power_data_delay_steps >= 0, \
+            f"power_data_delay_steps must be >= 0, got {power_data_delay_steps}"
+        self.power_data_delay_steps = power_data_delay_steps
         assert eval_stride >= 1, f"eval_stride must be >= 1, got {eval_stride}"
         self.eval_stride = eval_stride
         self.loss_relative_to = loss_relative_to
@@ -231,6 +241,14 @@ class Tirex2:
                 target = target[-self.context_length:]
                 if future_covariates is not None:
                     future_covariates = future_covariates[-(self.context_length + horizon):, :]
+
+            # Simulate a reporting delay on the power measurements: the most recent
+            # power_data_delay_steps of the context carry no live target values yet.
+            # Future covariates (e.g. weather) are unaffected.
+            if self.power_data_delay_steps > 0:
+                n_zero = min(self.power_data_delay_steps, target.shape[0])
+                target = target.clone()
+                target[-n_zero:] = 0.0
 
             # Z-score each covariate with the statistics of its context part
             if future_covariates is not None:

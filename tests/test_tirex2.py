@@ -130,6 +130,47 @@ def test_context_length_cap():
             assert ts.target.shape == (1, 48)
             assert ts.future_covariates.shape == (3, 48 + 24)
 
+def test_power_data_delay_zeroes_context_tail():
+    """Test if power_data_delay_steps zeroes only the most recent context steps,
+    leaving future covariates untouched."""
+
+    fake_model = FakeForecastModel()
+    with patch('tirex2.load_model', return_value=fake_model):
+        normalizer = Normalizer()
+        my_model = Tirex2(normalizer=normalizer, future_covariate_indices=[3, 4, 5],
+            power_data_delay_steps=48, loss_relative_to="range")
+
+        x_train = torch.randn(30, 24, 10)
+        y_train = torch.randn(30, 24, 1)
+        my_model.train_model(x_train, y_train)
+
+        x_test = torch.randn(3, 24, 10)
+        my_model.predict(x_test)
+
+        for ts in fake_model.seen_timeseries:
+            target = ts.target[0]
+            assert torch.all(target[-48:] == 0.0)
+            assert torch.any(target[:-48] != 0.0)
+            # Future covariates (e.g. weather) are not affected by the delay.
+            assert not torch.all(ts.future_covariates == 0.0)
+
+def test_power_data_delay_default_is_zero():
+    """Test if the default power_data_delay_steps=0 leaves the context untouched."""
+
+    fake_model = FakeForecastModel()
+    with patch('tirex2.load_model', return_value=fake_model):
+        my_model = create_model()
+
+        x_train = torch.randn(5, 24, 10)
+        y_train = torch.randn(5, 24, 1)
+        my_model.train_model(x_train, y_train)
+
+        x_test = torch.randn(2, 24, 10)
+        my_model.predict(x_test)
+
+        for ts in fake_model.seen_timeseries:
+            assert torch.any(ts.target != 0.0)
+
 def test_numpy_input():
     """Test if numpy inputs are accepted as well."""
 
