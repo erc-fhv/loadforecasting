@@ -45,10 +45,9 @@ class Tirex2:
                 timesteps used as context. If None, all available history is used.
             power_data_delay_steps (int): Simulates a reporting delay on the target
                 (power/load) measurements: the most recent power_data_delay_steps of
-                every built context are zeroed out before being sent to the model,
-                regardless of whether they come from the stored training history or
-                from true values of earlier test windows. Future covariates (e.g.
-                weather) are left untouched. Default 0 = no delay.
+                every built context are not available yet and are therefore dropped,
+                so the context holds the last context_length *available* values.
+                Default 0 = no delay.
             eval_stride (int): In evaluate(), only forecast/score every Nth window
                 (default 1 = every window). The context built for each scored window
                 still includes every true value that came before it in x_test/y_test
@@ -229,26 +228,28 @@ class Tirex2:
                 target = y_hist_flat
                 x_context = x_hist
 
+            # A reporting delay means the most recent target values are not available
+            # yet, so the context ends that many steps earlier.
+            n_dropped = 0
+            if self.power_data_delay_steps > 0:
+                n_dropped = min(self.power_data_delay_steps, target.shape[0] - 1)
+                target = target[:-n_dropped]
+
             # Future covariates: must cover context + prediction horizon
             future_covariates = None
             if self.future_covariate_indices is not None:
-                cov = torch.cat([x_context, x[i:i+1]], dim=0)         # (days, timesteps, features)
-                cov = cov[:, :, self.future_covariate_indices]
-                future_covariates = cov.reshape(-1, len(self.future_covariate_indices))
+                cov_context = x_context[:, :, self.future_covariate_indices] \
+                    .reshape(-1, len(self.future_covariate_indices))
+                if n_dropped > 0:
+                    cov_context = cov_context[:-n_dropped]
+                cov_future = x[i][:, self.future_covariate_indices]
+                future_covariates = torch.cat([cov_context, cov_future], dim=0)
 
             # Optionally cap the context length (covariates keep the horizon part)
             if self.context_length is not None and target.shape[0] > self.context_length:
                 target = target[-self.context_length:]
                 if future_covariates is not None:
                     future_covariates = future_covariates[-(self.context_length + horizon):, :]
-
-            # Simulate a reporting delay on the power measurements: the most recent
-            # power_data_delay_steps of the context carry no live target values yet.
-            # Future covariates (e.g. weather) are unaffected.
-            if self.power_data_delay_steps > 0:
-                n_zero = min(self.power_data_delay_steps, target.shape[0])
-                target = target.clone()
-                target[-n_zero:] = 0.0
 
             # Z-score each covariate with the statistics of its context part
             if future_covariates is not None:
@@ -274,12 +275,6 @@ class Tirex2:
         """
         Forecast every `stride`-th window in x and return the median quantile
         predictions with shape (ceil(batch_len/stride), sequence_len, 1).
-
-        The context for each forecast window is still built from the full,
-        unstrided x/y_true (see _build_timeseries) - stride only subsamples which
-        of the resulting, already-correctly-contextualized windows are actually
-        sent to the (expensive) model.forecast() call, so the context never has
-        gaps even when stride > 1.
         """
 
         model = self._load_model()
