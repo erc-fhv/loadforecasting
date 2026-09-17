@@ -301,11 +301,14 @@ class PhysicsPvForecast:
             return y_out
 
     def train_model(self, y_train: ArrayLike) -> dict:
-        """Learn total_pv_peak_power_kw from y_train as -min(y_train)."""
+        """Learn total_pv_peak_power_kw from y_train as -min(y_train), in the raw units of x."""
         if isinstance(y_train, torch.Tensor):
             y_np = y_train.detach().cpu().numpy()
         else:
             y_np = np.asarray(y_train, dtype=np.float64)
+        if self.normalizer is not None:
+            # Undo only the z-score (predict() works on raw x, which carries no rescaling factor)
+            y_np = y_np * self.normalizer.std_y + self.normalizer.mean_y
         self.total_pv_peak_power_kw = -float(np.min(y_np))
         self.inverter_max_power_kw = self.total_pv_peak_power_kw
         return {"loss": [0.0]}

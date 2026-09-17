@@ -20,6 +20,8 @@ class Chronos2:
     dev_set = 0 and train_set_2 = 0).
     """
 
+    MAX_CONTEXT_LENGTH = 8192  # Chronos-2's own maximum
+
     def __init__(self,
         normalizer: Normalizer,
         future_covariate_indices: Optional[list] = None,
@@ -46,9 +48,10 @@ class Chronos2:
                 length (8192 for Chronos-2) is used.
             power_data_delay_steps (int): Simulates a reporting delay on the target
                 (power/load) measurements: the most recent power_data_delay_steps of
-                every built context are not available yet and are therefore dropped,
-                so the context holds the last context_length *available* values.
-                Default 0 = no delay.
+                every built context are not available yet and are therefore masked as
+                NaN, so the context still ends right before the forecast window and
+                holds up to context_length *available* values (the total context is
+                capped at Chronos-2's maximum of 8192 steps). Default 0 = no delay.
             eval_stride (int): In evaluate(), only forecast/score every Nth window
                 (default 1 = every window). The context built for each scored window
                 still includes every true value that came before it in x_test/y_test
@@ -199,6 +202,12 @@ class Chronos2:
             'context_length': trial.suggest_int('context_length', 168, 2048, log=True),
         }
 
+    def _total_context_length(self) -> int:
+        """Context length including the NaN-masked reporting delay, capped at the model max."""
+        if self.context_length is None:
+            return self.MAX_CONTEXT_LENGTH
+        return min(self.context_length + self.power_data_delay_steps, self.MAX_CONTEXT_LENGTH)
+
     def _build_inputs(self,
         x: torch.Tensor,
         y_true: Optional[torch.Tensor],
@@ -230,16 +239,16 @@ class Chronos2:
                 target = y_hist_flat
                 x_context = x_hist
 
-            # A reporting delay means the most recent target values are not available
-            # yet, so the context ends that many steps earlier.
-            n_dropped = 0
+            # Reporting delay: mask the not yet available values as NaN (keeps the time axis).
             if self.power_data_delay_steps > 0:
-                n_dropped = min(self.power_data_delay_steps, target.shape[0] - 1)
-                target = target[:-n_dropped]
+                n_masked = min(self.power_data_delay_steps, target.shape[0] - 1)
+                target = target.clone()
+                target[-n_masked:] = float('nan')
 
-            # Optionally cap the context length
-            if self.context_length is not None and target.shape[0] > self.context_length:
-                target = target[-self.context_length:]
+            # Cap the context length, counting only the available values
+            max_context = self._total_context_length()
+            if target.shape[0] > max_context:
+                target = target[-max_context:]
 
             item = {'target': target}
 
@@ -249,10 +258,8 @@ class Chronos2:
                     .reshape(-1, len(self.future_covariate_indices))          # (context, F)
                 future_cov = x[i][:, self.future_covariate_indices]           # (horizon, F)
 
-                if n_dropped > 0:
-                    past_cov = past_cov[:-n_dropped]
-                if self.context_length is not None and past_cov.shape[0] > self.context_length:
-                    past_cov = past_cov[-self.context_length:]
+                if past_cov.shape[0] > max_context:
+                    past_cov = past_cov[-max_context:]
 
                 # Z-score each covariate with the statistics of its context part
                 mean = past_cov.mean(dim=0, keepdim=True)
@@ -288,7 +295,7 @@ class Chronos2:
             inputs=inputs,
             prediction_length=horizon,
             batch_size=self.batch_size,
-            context_length=self.context_length,
+            context_length=self._total_context_length(),
             )
 
         # Find the median (0.5) quantile index
