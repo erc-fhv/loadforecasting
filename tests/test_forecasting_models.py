@@ -264,6 +264,27 @@ def test_transfer_learning():
     print(f"Relative error : {n_mae:.2%}")
     assert n_mae < treshold/100., f"Model too inaccurate: {n_mae:.2%}"
 
+def test_prediction_independent_of_batch_position():
+    """
+    Test if a sample's prediction does not depend on its position within the batch,
+    e.g. due to a positional encoding applied along the batch instead of the time axis.
+    """
+
+    torch.manual_seed(0)
+    x = torch.randn(8, 24, 5)
+
+    for model_class in [Transformer, PatchTST, xLstm]:
+
+        print(f'Test the {model_class.__name__} model.')
+
+        model_class: Type[Union[Transformer, PatchTST, xLstm]]   # Help the type checker
+        my_model = model_class(model_size='5k')
+        y_pred_batch = my_model.predict(x)
+        y_pred_single = my_model.predict(x[5:6])
+
+        assert torch.allclose(y_pred_batch[5:6], y_pred_single, atol=1e-5), \
+            f"{model_class.__name__} prediction depends on the batch position."
+
 if __name__ == "__main__":
     for name, func in list(globals().items()):
         if name.startswith("test_") and callable(func):
