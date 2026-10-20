@@ -3,6 +3,9 @@ import torch
 from .chronos2 import Chronos2
 from .normalizer import Normalizer
 
+from huggingface_hub.utils import disable_progress_bars
+from timestral import TimestralForecaster
+
 
 class Timestral(Chronos2):
     """
@@ -52,14 +55,7 @@ class Timestral(Chronos2):
         """Lazy-load the Timestral checkpoint (cached per checkpoint+device)."""
         cache_key = (self.ckpt, self.device)
         if cache_key not in Timestral._MODEL_CACHE:
-            from huggingface_hub.utils import disable_progress_bars
             disable_progress_bars()
-            try:
-                from timestral import TimestralForecaster
-            except ImportError as e:
-                # Not on PyPI, so it can't be a regular dependency of this package.
-                raise ImportError("Timestral is not installed: pip install "
-                    "git+https://github.com/mistralai/timestral.git") from e
             Timestral._MODEL_CACHE[cache_key] = \
                 TimestralForecaster.from_pretrained(self.ckpt, device=self.device)
         self._model = Timestral._MODEL_CACHE[cache_key]

@@ -126,7 +126,7 @@ class CustomLRScheduler:
 class PytorchHelper():
     """Helper class for Pytorch models."""
 
-    def __init__(self, my_model: "Union[Lstm, xLstm, Transformer, TransformerFull, PatchTST, iTransformer]"):
+    def __init__(self, my_model: "Union[Lstm, Dense, xLstm, Transformer, TransformerFull, PatchTST, iTransformer]"):
         self.my_model = my_model
 
     def train(
@@ -374,7 +374,7 @@ class OptunaHelper:
     BATCH_SIZES = [32, 64, 128, 256]
     EPOCHS_BOUNDS = (30, 300)
 
-    def __init__(self, my_model: "Union[Lstm, xLstm, Transformer, PatchTST, iTransformer]"):
+    def __init__(self, my_model: "Union[Lstm, Dense, xLstm, Transformer, PatchTST, iTransformer]"):
 
         self.my_model = my_model
 

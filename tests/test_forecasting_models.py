@@ -1,7 +1,7 @@
 from typing import Type, Union
 import numpy as np
 import torch
-from loadforecasting_models import Knn, Lstm, Transformer, PatchTST, iTransformer, xLstm, Persistence, \
+from loadforecasting_models import Knn, Lstm, Dense, Transformer, PatchTST, iTransformer, xLstm, Persistence, \
     Normalizer
 
 def test_if_models_are_running():
@@ -10,7 +10,7 @@ def test_if_models_are_running():
     i.e. no accuracy is checked here.
     """
 
-    for model_class in [Knn, Lstm, Transformer, PatchTST, iTransformer, xLstm, Persistence]:
+    for model_class in [Knn, Lstm, Dense, Transformer, PatchTST, iTransformer, xLstm, Persistence]:
 
         print(f'Test the {model_class.__name__} model.')
 
@@ -45,7 +45,7 @@ def test_if_models_are_running_w_numpy():
     Do the same as test_if_models_are_running(), but with numpy arrays.
     """
 
-    for model_class in [Knn, Lstm, Transformer, PatchTST, iTransformer, xLstm, Persistence]:
+    for model_class in [Knn, Lstm, Dense, Transformer, PatchTST, iTransformer, xLstm, Persistence]:
 
         print(f'Test the {model_class.__name__} model.')
 
@@ -83,7 +83,7 @@ def test_models_simple_prediction():
     """
 
     # iTransformer is skipped: with 40 samples it overfits the pure-noise features
-    for model_class in [Lstm, Transformer, PatchTST, Knn]:
+    for model_class in [Lstm, Dense, Transformer, PatchTST, Knn]:
 
         for seq_len in [24, 24*4, 24*7]:
 
@@ -150,7 +150,7 @@ def test_models_simple_prediction_w_optuna():
     optimization via Optuna.
     """
 
-    for model_class in [Lstm, Transformer, PatchTST, iTransformer]: # xLstm is skipped here for time and statility reasons
+    for model_class in [Lstm, Dense, Transformer, PatchTST, iTransformer]: # xLstm is skipped here for time and statility reasons
 
         print(f'Testing simple prediction with {model_class.__name__}.')
 
@@ -275,7 +275,7 @@ def test_prediction_independent_of_batch_position():
     torch.manual_seed(0)
     x = torch.randn(8, 24, 5)
 
-    for model_class in [Transformer, PatchTST, iTransformer, xLstm]:
+    for model_class in [Dense, Transformer, PatchTST, iTransformer, xLstm]:
 
         print(f'Test the {model_class.__name__} model.')
 

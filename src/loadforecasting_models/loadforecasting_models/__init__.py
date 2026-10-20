@@ -2,6 +2,7 @@ from .knn import Knn
 from .persistence import Persistence
 from .xlstm import xLstm
 from .lstm import Lstm
+from .dense import Dense
 from .transformer import Transformer
 from .transformer_full import TransformerFull
 from .patchtst import PatchTST
