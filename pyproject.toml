@@ -23,7 +23,8 @@ dependencies = [
     "dash",
     "kaleido",
     "pygam",
-    "tirex-2"
+    "tirex-2",
+    "timestral @ git+https://github.com/mistralai/timestral.git"
 ]
 license = "MIT"
 
