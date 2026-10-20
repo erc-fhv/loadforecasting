@@ -4,7 +4,6 @@ from .chronos2 import Chronos2
 from .normalizer import Normalizer
 
 from huggingface_hub.utils import disable_progress_bars
-from timestral import TimestralForecaster
 
 
 class Timestral(Chronos2):
@@ -55,6 +54,11 @@ class Timestral(Chronos2):
         """Lazy-load the Timestral checkpoint (cached per checkpoint+device)."""
         cache_key = (self.ckpt, self.device)
         if cache_key not in Timestral._MODEL_CACHE:
+            try:
+                from timestral import TimestralForecaster  # optional, not on PyPI
+            except ImportError as e:
+                raise ImportError("Timestral requires: pip install "
+                    "git+https://github.com/mistralai/timestral.git") from e
             disable_progress_bars()
             Timestral._MODEL_CACHE[cache_key] = \
                 TimestralForecaster.from_pretrained(self.ckpt, device=self.device)
