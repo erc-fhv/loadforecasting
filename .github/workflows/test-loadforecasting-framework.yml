@@ -24,8 +24,11 @@ jobs:
         df -h
 
     - name: Set up Miniconda
-      uses: conda-incubator/setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v3
+      env:
+        CONDA_PLUGINS_AUTO_ACCEPT_TOS: "yes"
       with:
+        miniconda-version: "latest"
         activate-environment: load_forecasting
         environment-file: envs/env_linux.yml
         auto-activate-base: false

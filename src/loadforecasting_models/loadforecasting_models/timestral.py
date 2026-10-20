@@ -3,7 +3,6 @@ import torch
 from .chronos2 import Chronos2
 from .normalizer import Normalizer
 
-from huggingface_hub.utils import disable_progress_bars
 
 
 class Timestral(Chronos2):
@@ -59,6 +58,7 @@ class Timestral(Chronos2):
             except ImportError as e:
                 raise ImportError("Timestral requires: pip install "
                     "git+https://github.com/mistralai/timestral.git") from e
+            from huggingface_hub.utils import disable_progress_bars
             disable_progress_bars()
             Timestral._MODEL_CACHE[cache_key] = \
                 TimestralForecaster.from_pretrained(self.ckpt, device=self.device)
