@@ -18,7 +18,7 @@ class Gam():
         self,
         all_gam_terms:TermList,
         normalizer: Union[Normalizer, None] = None,
-        lam:float = 0.5,
+        lam:Union[float, list] = 0.5,
         fit_intercept:bool = True,
         loss_relative_to: str = "",
         ) -> None:
@@ -26,7 +26,8 @@ class Gam():
         Args:
             all_gam_terms (TermList): List of GAM terms to be used in the model.
             normalizer (Normalizer): Used for X and Y normalization and denormalization.
-            lam (float): Regularization parameter for the GAM model.
+            lam (float | list): Regularization parameter for the GAM model, either
+                global or one per term (as pyGAM's LinearGAM accepts it).
             fit_intercept (bool): Whether to fit an intercept term in the GAM model.
             loss_relative_to (str): Reference for relative loss calculation. Default: "".
         """
@@ -138,6 +139,7 @@ class Gam():
         y_train: ArrayLike,
         term_candidates: Union[list, None] = None,
         param_resolver: Union[callable, None] = None,
+        lam_groups: Union[list, None] = None,
         n_trials: int = 50,
         k_folds: int = 3,
         storage_path: Union[str, None] = None,
@@ -172,6 +174,9 @@ class Gam():
                 into term_candidates[term_set_index] is built automatically. Pass
                 your own if you need this resolution to also happen outside of
                 tuning (e.g. when reusing a stored term_set_index).
+            lam_groups: Optional list of term group names. If given, a separate
+                'lam_<group>' is tuned per group instead of one global 'lam', and
+                param_resolver has to map them onto a per-term lam list.
             n_trials (int): Number of Optuna trials for hyperparameter search.
             k_folds (int): Number of TimeSeriesSplit folds used for cross-validation.
             storage_path: Optional sqlite file path for the Optuna study storage.
@@ -196,7 +201,7 @@ class Gam():
             y_train=y_train,
             n_trials=n_trials,
             k_folds=k_folds,
-            suggest_params_kwargs={'term_candidates': term_candidates},
+            suggest_params_kwargs={'term_candidates': term_candidates, 'lam_groups': lam_groups},
             param_resolver=param_resolver,
             storage_path=storage_path,
             study_name=study_name,
@@ -204,11 +209,13 @@ class Gam():
             )
 
     @staticmethod
-    def suggest_params(trial, term_candidates=None) -> dict:
+    def suggest_params(trial, term_candidates=None, lam_groups=None) -> dict:
         """Optuna search space for this model's hyperparameters."""
-        params = {
-            'lam': trial.suggest_float('lam', 1e-3, 1e5, log=True),
-        }
+        if lam_groups:
+            params = {f'lam_{group}': trial.suggest_float(f'lam_{group}', 1e-3, 1e5, log=True)
+                for group in lam_groups}
+        else:
+            params = {'lam': trial.suggest_float('lam', 1e-3, 1e5, log=True)}
         if term_candidates:
             params['term_set_index'] = trial.suggest_int(
                 'term_set_index', 0, len(term_candidates) - 1)
