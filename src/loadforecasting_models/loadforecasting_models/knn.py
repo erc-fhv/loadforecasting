@@ -146,7 +146,7 @@ class Knn():
     def suggest_params(trial) -> dict:
         """Optuna search space for this model's hyperparameters."""
         return {
-            'k': trial.suggest_int('k', 3, 100, log=True),
+            'k': trial.suggest_int('k', 3, 300, log=True),
             'weights': trial.suggest_categorical('weights', ['uniform', 'distance']),
         }
 

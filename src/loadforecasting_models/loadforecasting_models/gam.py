@@ -207,7 +207,7 @@ class Gam():
     def suggest_params(trial, term_candidates=None) -> dict:
         """Optuna search space for this model's hyperparameters."""
         params = {
-            'lam': trial.suggest_float('lam', 1e-3, 1e3, log=True),
+            'lam': trial.suggest_float('lam', 1e-3, 1e5, log=True),
         }
         if term_candidates:
             params['term_set_index'] = trial.suggest_int(

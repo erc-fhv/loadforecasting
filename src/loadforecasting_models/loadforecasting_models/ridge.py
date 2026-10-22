@@ -146,7 +146,7 @@ class Ridge:
     def suggest_params(trial) -> dict:
         """Optuna search space for this model's hyperparameters."""
         return {
-            'alpha': trial.suggest_float('alpha', 1e-3, 1e3, log=True),
+            'alpha': trial.suggest_float('alpha', 1e-3, 1e5, log=True),
         }
 
     def evaluate(
