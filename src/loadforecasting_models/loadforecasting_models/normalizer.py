@@ -17,17 +17,32 @@ class Normalizer():
         self.mean_y = 0.
         self.std_y = 1.
         self.y_rescaling_factor = None
+        self.y_rescaling_offset = None
+        self.y_rescaling_sinh = False
 
-    def set_y_rescaling_factor(self, factor: Optional[ArrayLike]) -> None:
+    def set_y_rescaling_factor(
+        self,
+        factor: Optional[ArrayLike],
+        offset: Optional[ArrayLike] = None,
+        sinh: bool = False,
+        ) -> None:
         """
-        Inject an optional per-element rescaling factor for de_normalize_y
-        (e.g. the windowed community sizes, to scale per-household values back
-        to the aggregate profile). The factor must have the same shape as the
-        tensors passed to de_normalize_y. Set to None to disable rescaling.
+        Inject an optional per-element rescaling factor (and offset) for
+        de_normalize_y, which then returns y * factor + offset (e.g. the windowed
+        community sizes, to scale per-household values back to the aggregate
+        profile). Both must have the same shape as the tensors passed to
+        de_normalize_y. Set to None to disable rescaling. With sinh=True, y is
+        first transformed with sinh, to undo an asinh applied before the scaling.
         """
         if factor is not None and not self.is_tensor(factor):
             factor = self.convert_to_torch_tensor(np.asarray(factor, dtype=np.float32))
+        if offset is not None and not self.is_tensor(offset):
+            offset = self.convert_to_torch_tensor(np.asarray(offset, dtype=np.float32))
+        assert offset is None or factor is not None, "An offset needs a factor."
+        assert not sinh or factor is not None, "sinh needs a factor."
         self.y_rescaling_factor = factor
+        self.y_rescaling_offset = offset
+        self.y_rescaling_sinh = sinh
 
     def normalize(
         self,
@@ -140,7 +155,14 @@ class Normalizer():
                 raise ValueError(
                     f"Shape of y {tuple(y_denormalized.shape)} does not match the "
                     f"injected y_rescaling_factor {tuple(self.y_rescaling_factor.shape)}.")
+            # getattr, as Normalizers pickled before sinh/offset existed lack them
+            if getattr(self, 'y_rescaling_sinh', False):
+                y_denormalized = torch.sinh(y_denormalized) if self.is_tensor(y_denormalized) \
+                    else np.sinh(y_denormalized)
             y_denormalized = y_denormalized * self.y_rescaling_factor
+            offset = getattr(self, 'y_rescaling_offset', None)
+            if offset is not None:
+                y_denormalized = y_denormalized + offset
 
         return y_denormalized
 
