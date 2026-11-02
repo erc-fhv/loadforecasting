@@ -197,7 +197,7 @@ class PytorchHelper():
             for batch_x, batch_y in train_loader:
                 my_optimizer.zero_grad()
                 output = self.my_model(batch_x.float())
-                loss = self.my_model.loss_fn(output, batch_y)
+                loss = self.my_model.loss_fn(output, batch_y.float())
                 batch_losses.append(loss.item())
                 loss.backward()
                 my_optimizer.step()
