@@ -22,6 +22,24 @@ if TYPE_CHECKING:
 ArrayLike = Union[torch.Tensor, np.ndarray]
 
 
+def relative_loss_reference(y: torch.Tensor, loss_relative_to: str = "") -> float:
+    """
+    Reference value of the relative test loss (test_loss_relative = 100 * test_loss / reference).
+
+    loss_relative_to: "mean" (|mean of y|, default for ""), "mean_abs" (mean of |y|),
+    "max" (|max of y|) or "range" (max - min of y).
+    """
+    if loss_relative_to in ("", "mean"):
+        return float(torch.abs(torch.mean(y)))
+    if loss_relative_to == "mean_abs":
+        return float(torch.mean(torch.abs(y)))
+    if loss_relative_to == "max":
+        return float(torch.abs(torch.max(y)))
+    if loss_relative_to == "range":
+        return float(torch.max(y) - torch.min(y))
+    raise ValueError(f"Unexpected parameter: loss_relative_to = '{loss_relative_to}'")
+
+
 def _time_series_splits(n_samples: int, k_folds: int):
     """
     Yield (train_idx, val_idx) index arrays for cross-validation. For k_folds <= 1,
@@ -301,20 +319,7 @@ class PytorchHelper():
         if prediction.size(0) > 0:
             test_loss = float(self.my_model.loss_fn(prediction, y_test.float()))
 
-            # Set default reference for relative loss if not given as argument and as attribute.
-            if loss_relative_to == "" and self.my_model.loss_relative_to != "":
-                loss_relative_to = self.my_model.loss_relative_to
-            else:
-                loss_relative_to = "mean"
-
-            if loss_relative_to == "mean":
-                reference = float(torch.abs(torch.mean(y_test)))
-            elif loss_relative_to == "max":
-                reference = float(torch.abs(torch.max(y_test)))
-            elif loss_relative_to == "range":
-                reference = float(torch.max(y_test) - torch.min(y_test))
-            else:
-                raise ValueError(f"Unexpected parameter: loss_relative_to = {loss_relative_to}")
+            reference = relative_loss_reference(y_test, loss_relative_to or self.my_model.loss_relative_to)
             results['test_loss'] = [test_loss]
             results['test_loss_relative'] = [100.0 * test_loss / reference]
             results['predicted_profile'] = prediction

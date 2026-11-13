@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from sklearn.ensemble import RandomForestRegressor as SklearnRandomForest
 
-from .helpers import SklearnOptunaHelper
+from .helpers import SklearnOptunaHelper, relative_loss_reference
 from .normalizer import Normalizer
 
 ArrayLike = Union[torch.Tensor, np.ndarray]
@@ -210,21 +210,7 @@ class RandomForest:
             output = self.normalizer.de_normalize_y(output)
             assert isinstance(y_tensor, torch.Tensor), "Denormalized y_tensor is not a torch.Tensor"
 
-        # Set reference for relative loss if 'loss_relative_to' is an empty string.
-        if loss_relative_to == "":
-            if self.loss_relative_to != "":
-                loss_relative_to = self.loss_relative_to
-            else:
-                loss_relative_to = "mean"
-
-        if loss_relative_to == "mean":
-            reference = float(torch.abs(torch.mean(y_tensor)))
-        elif loss_relative_to == "max":
-            reference = float(torch.abs(torch.max(y_tensor)))
-        elif loss_relative_to == "range":
-            reference = float(torch.max(y_tensor) - torch.min(y_tensor))
-        else:
-            raise ValueError(f"Unexpected parameter: loss_relative_to = {loss_relative_to}")
+        reference = relative_loss_reference(y_tensor, loss_relative_to or self.loss_relative_to)
 
         output = torch.Tensor(output)
         loss = eval_fn(output, y_tensor)
