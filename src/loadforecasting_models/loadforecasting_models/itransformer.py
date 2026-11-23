@@ -352,7 +352,6 @@ class _LazySequenceProjection(LazyModuleMixin, torch.nn.Linear):
                 self.reset_parameters()
 
     def forward(self, tokens: torch.Tensor, seq_len: int) -> torch.Tensor:
-        # Check the weight shape, as out_features stays 0 if loaded from a state_dict
         expected_seq_len = self.weight.shape[0]
         assert seq_len == expected_seq_len, \
             f"Expected {expected_seq_len} timesteps, received {seq_len}"

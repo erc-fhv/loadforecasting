@@ -194,8 +194,7 @@ class Tirex2:
     def suggest_params(trial) -> dict:
         """Optuna search space for this model's hyperparameters."""
         return {
-            # TiRex-2 uses only the last 2048 steps of context anyway.
-            'context_length': trial.suggest_int('context_length', 168, 2048, log=True),
+            'context_length': trial.suggest_categorical('context_length', [512, 1024, 2048]),
         }
 
     def _build_timeseries(self,
